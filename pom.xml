@@ -8,10 +8,24 @@
     <version>0.1-SNAPSHOT</version>
     <packaging>pom</packaging>
 
+    <modules>
+        <module>tinyogg</module>
+    </modules>
+
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>be.twofold</groupId>
+                <artifactId>tinyogg</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
 </project>

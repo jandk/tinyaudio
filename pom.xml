@@ -9,6 +9,7 @@
     <packaging>pom</packaging>
 
     <modules>
+        <module>tinyflac</module>
         <module>tinyogg</module>
     </modules>
 
@@ -20,6 +21,11 @@
 
     <dependencyManagement>
         <dependencies>
+            <dependency>
+                <groupId>be.twofold</groupId>
+                <artifactId>tinyflac</artifactId>
+                <version>${project.version}</version>
+            </dependency>
             <dependency>
                 <groupId>be.twofold</groupId>
                 <artifactId>tinyogg</artifactId>

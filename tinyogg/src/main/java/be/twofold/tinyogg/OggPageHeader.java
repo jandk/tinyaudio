@@ -20,13 +20,13 @@ public final class OggPageHeader {
     private final byte[] rawHeader;
 
     private OggPageHeader(
-            byte headerTypeFlag,
-            long granulePosition,
-            int bitstreamSerialNumber,
-            int pageSequenceNumber,
-            int crcChecksum,
-            byte[] segmentTable,
-            byte[] rawHeader
+        byte headerTypeFlag,
+        long granulePosition,
+        int bitstreamSerialNumber,
+        int pageSequenceNumber,
+        int crcChecksum,
+        byte[] segmentTable,
+        byte[] rawHeader
     ) {
         this.rawHeader = Objects.requireNonNull(rawHeader);
         this.headerTypeFlag = headerTypeFlag;
@@ -40,8 +40,8 @@ public final class OggPageHeader {
     public static OggPageHeader read(InputStream in) throws IOException {
         byte[] rawHeader = IOUtils.readBytes(in, 27);
         ByteBuffer buffer = ByteBuffer
-                .wrap(rawHeader)
-                .order(ByteOrder.LITTLE_ENDIAN);
+            .wrap(rawHeader)
+            .order(ByteOrder.LITTLE_ENDIAN);
 
         if (buffer.getInt() != CAPTURE_PATTERN) {
             throw new OggException("Invalid capture pattern");
@@ -58,13 +58,13 @@ public final class OggPageHeader {
         byte[] segmentTable = IOUtils.readBytes(in, numberPageSegments);
 
         return new OggPageHeader(
-                headerTypeFlag,
-                granulePosition,
-                bitstreamSerialNumber,
-                pageSequenceNumber,
-                crcChecksum,
-                segmentTable,
-                rawHeader
+            headerTypeFlag,
+            granulePosition,
+            bitstreamSerialNumber,
+            pageSequenceNumber,
+            crcChecksum,
+            segmentTable,
+            rawHeader
         );
     }
 
@@ -129,16 +129,16 @@ public final class OggPageHeader {
         String bitstreamSerialNumber = String.format("0x%08X", this.bitstreamSerialNumber);
         String crcChecksum = String.format("0x%08X", this.crcChecksum);
         String segmentTable = IntStream.range(0, getSegmentCount())
-                .mapToObj(i -> Integer.toString(getSegment(i)))
-                .collect(Collectors.joining(", ", "[", "]"));
+            .mapToObj(i -> Integer.toString(getSegment(i)))
+            .collect(Collectors.joining(", ", "[", "]"));
 
         return "OggPageHeader(" +
-                "headerTypeFlag=" + headerTypeFlag + ", " +
-                "granulePosition=" + Long.toUnsignedString(granulePosition) + ", " +
-                "bitstreamSerialNumber=" + bitstreamSerialNumber + ", " +
-                "pageSequenceNumber=" + pageSequenceNumber + ", " +
-                "crcChecksum=" + crcChecksum + ", " +
-                "segmentTable=" + segmentTable +
-                ")";
+            "headerTypeFlag=" + headerTypeFlag + ", " +
+            "granulePosition=" + Long.toUnsignedString(granulePosition) + ", " +
+            "bitstreamSerialNumber=" + bitstreamSerialNumber + ", " +
+            "pageSequenceNumber=" + pageSequenceNumber + ", " +
+            "crcChecksum=" + crcChecksum + ", " +
+            "segmentTable=" + segmentTable +
+            ")";
     }
 }

@@ -43,8 +43,8 @@ public final class OggPage {
     @Override
     public String toString() {
         return "OggPage(" +
-                "header=" + header + ", " +
-                "payload=[" + payload.length + " bytes]" +
-                ")";
+            "header=" + header + ", " +
+            "payload=[" + payload.length + " bytes]" +
+            ")";
     }
 }

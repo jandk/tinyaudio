@@ -1,5 +1,6 @@
 package be.twofold.tinyflac;
 
+import be.twofold.tinyaudio.core.CRC;
 import be.twofold.tinyflac.metadata.StreamInfo;
 
 import java.io.IOException;
@@ -98,7 +99,7 @@ public class FlacDecoder extends InputStream {
     private boolean decodeNextFrame() throws IOException {
         assert pcmOffset == pcmLength;
 
-        CheckedInputStream checked = new CheckedInputStream(in, new Crc16());
+        CheckedInputStream checked = new CheckedInputStream(in, CRC.FLAC_FRAME.get());
 
         FlacFrameHeader frameHeader = FlacFrameHeader.read(checked);
         if (frameHeader == null) {

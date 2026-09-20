@@ -9,4 +9,11 @@
     </parent>
 
     <artifactId>tinyflac</artifactId>
+
+    <dependencies>
+        <dependency>
+            <groupId>be.twofold</groupId>
+            <artifactId>tinyaudio-core</artifactId>
+        </dependency>
+    </dependencies>
 </project>

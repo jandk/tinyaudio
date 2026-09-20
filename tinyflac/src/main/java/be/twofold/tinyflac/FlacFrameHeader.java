@@ -1,5 +1,7 @@
 package be.twofold.tinyflac;
 
+import be.twofold.tinyaudio.core.CRC;
+
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -15,7 +17,7 @@ public record FlacFrameHeader(
     long codedNumber
 ) {
     public static FlacFrameHeader read(InputStream is) throws IOException {
-        CheckedInputStream checked = new CheckedInputStream(is, new Crc8());
+        CheckedInputStream checked = new CheckedInputStream(is, CRC.FLAC_HEADER.get());
         DataInputStream dis = new DataInputStream(checked);
 
         int b0 = dis.read();

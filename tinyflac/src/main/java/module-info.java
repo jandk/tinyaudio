@@ -1,4 +1,5 @@
 module be.twofold.tinyflac {
+    requires be.twofold.tinyaudio.core;
     requires java.desktop;
 
     exports be.twofold.tinyflac;

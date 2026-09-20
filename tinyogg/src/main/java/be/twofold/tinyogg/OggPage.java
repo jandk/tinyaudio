@@ -1,5 +1,7 @@
 package be.twofold.tinyogg;
 
+import be.twofold.tinyaudio.core.CRC;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
@@ -47,12 +49,13 @@ public record OggPage(
 
         byte[] payload = IOUtils.readBytes(in, payloadSize);
 
-        int crc = 0;
-        crc = OggCrc32.update(crc, fixed);
-        crc = OggCrc32.update(crc, segments);
-        crc = OggCrc32.update(crc, payload);
+        CRC crc = CRC.OGG_PAGE.get();
+        crc.update(fixed);
+        crc.update(segments);
+        crc.update(payload);
+        int crcValue = (int) crc.getValue();
 
-        if (crc != crcChecksum) {
+        if (crcValue != crcChecksum) {
             throw new OggException("Invalid CRC checksum");
         }
 

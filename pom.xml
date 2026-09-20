@@ -9,10 +9,10 @@
     <packaging>pom</packaging>
 
     <modules>
+        <module>tinyaudio-core</module>
         <module>tinyflac</module>
         <module>tinyogg</module>
         <module>tinyvorbis</module>
-        <module>tinyaudio-core</module>
     </modules>
 
     <properties>
@@ -23,6 +23,11 @@
 
     <dependencyManagement>
         <dependencies>
+            <dependency>
+                <groupId>be.twofold</groupId>
+                <artifactId>tinyaudio-core</artifactId>
+                <version>${project.version}</version>
+            </dependency>
             <dependency>
                 <groupId>be.twofold</groupId>
                 <artifactId>tinyflac</artifactId>

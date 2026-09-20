@@ -9,6 +9,7 @@
     </parent>
 
     <artifactId>tinyvorbis</artifactId>
+
     <dependencies>
         <dependency>
             <groupId>be.twofold</groupId>

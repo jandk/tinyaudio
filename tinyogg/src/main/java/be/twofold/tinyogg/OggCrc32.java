@@ -1,11 +1,10 @@
 package be.twofold.tinyogg;
 
 import java.util.Objects;
-import java.util.zip.Checksum;
 
 // Basically CRC-32/CKSUM, but XorOut is 0
 // Check: 0x89A1897F, Poly: 0x04C11DB7, Init: 0x00000000, RefIn: false, RefOut: false, XorOut: 0x00000000
-final class OggCrc32 implements Checksum {
+final class OggCrc32 {
     private static final int[] TABLE = {
         0x00000000, 0x04C11DB7, 0x09823B6E, 0x0D4326D9, 0x130476DC, 0x17C56B6B, 0x1A864DB2, 0x1E475005,
         0x2608EDB8, 0x22C9F00F, 0x2F8AD6D6, 0x2B4BCB61, 0x350C9B64, 0x31CD86D3, 0x3C8EA00A, 0x384FBDBD,
@@ -41,29 +40,16 @@ final class OggCrc32 implements Checksum {
         0xAFB010B1, 0xAB710D06, 0xA6322BDF, 0xA2F33668, 0xBCB4666D, 0xB8757BDA, 0xB5365D03, 0xB1F740B4,
     };
 
-    private int crc;
-
-    @Override
-    public void update(int b) {
-        int i = ((crc >>> 24) ^ (b & 0xFF)) & 0xFF;
-        crc = TABLE[i] ^ (crc << 8);
+    public static int update(int crc, byte[] b) {
+        return update(crc, b, 0, b.length);
     }
 
-    @Override
-    public void update(byte[] b, int off, int len) {
+    public static int update(int crc, byte[] b, int off, int len) {
         Objects.checkFromIndexSize(off, len, b.length);
         for (int i = off, lim = off + len; i < lim; i++) {
-            update(b[i]);
+            int t = ((crc >>> 24) ^ (b[i] & 0xFF)) & 0xFF;
+            crc = TABLE[t] ^ (crc << 8);
         }
-    }
-
-    @Override
-    public long getValue() {
-        return Integer.toUnsignedLong(crc);
-    }
-
-    @Override
-    public void reset() {
-        crc = 0;
+        return crc;
     }
 }

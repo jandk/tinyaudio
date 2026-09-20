@@ -1,82 +1,136 @@
 package be.twofold.tinyogg;
 
+import be.twofold.tinyaudio.core.Packet;
+import be.twofold.tinyaudio.core.PacketSource;
+
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 
-public final class OggPacketReader {
+public final class OggPacketReader implements PacketSource {
+    private final List<byte[]> chunks = new ArrayList<>();
     private final OggPageReader pages;
-    private final int serialNumber;
+    private Integer serialNumber;
     private OggPage page;
     private int segment;
-    private int expectedSequence;
-    private boolean discard;
-    private long packetNumber;
+    private int sequence;
+    private boolean gap;
+    private boolean finished;
+
+    public OggPacketReader(OggPageReader pages) {
+        this.pages = Objects.requireNonNull(pages);
+    }
 
     public OggPacketReader(OggPageReader pages, int serialNumber) {
-        this.pages = Objects.requireNonNull(pages);
+        this(pages);
         this.serialNumber = serialNumber;
     }
 
-    public boolean next(OggPacket out) throws IOException {
-        out.reset();
+    public Integer serialNumber() {
+        return serialNumber;
+    }
+
+    @Override
+    public Packet next() throws IOException {
+        if (finished) {
+            return null;
+        }
+        chunks.clear();
         while (true) {
             if (page == null || segment == page.segmentCount()) {
-                if (!nextPage(out)) {
-                    return false;
+                if (!nextPage()) {
+                    return null;
                 }
             }
 
-            int start = segment;
-            int end = page.packetEnd(start);
-            if (!discard) {
-                out.append(page.payload(), page.segmentOffset(start), page.packetLength(start));
-            }
+            int end = page.packetEnd(segment);
+            int offset = page.segmentOffset(segment);
+            int length = page.packetLength(segment);
             segment = end;
+
+            // Packet continues on the next page, grab the data
             if (!page.endsPacket(end - 1)) {
-                continue; // Packet continues on the next page
-            }
-            if (discard) {
-                discard = false; // Tail of a packet whose head we never saw
+                chunks.add(Arrays.copyOfRange(page.payload(), offset, offset + length));
                 continue;
             }
 
+            // Packet ends here, so just copy the data
+            byte[] data = chunks.isEmpty()
+                ? Arrays.copyOfRange(page.payload(), offset, offset + length)
+                : combine(page.payload(), offset, length);
+
             boolean last = end - 1 == page.lastPacketEnd();
-            out.complete(
+            finished = last && page.isEndOfStream();
+            Packet packet = new Packet(
+                data,
                 last ? page.granulePosition() : -1,
-                packetNumber++,
-                start == 0 && page.isBeginOfStream(),
-                last && page.isEndOfStream()
+                finished,
+                gap
             );
-            return true;
+            gap = false;
+            return packet;
         }
     }
 
-    private boolean nextPage(OggPacket out) throws IOException {
+    private boolean nextPage() throws IOException {
         while (true) {
+            // Try to read a page, if not, we're done
             page = pages.next();
             if (page == null) {
                 return false;
             }
+            System.out.println(page);
+
+            // If we don't have a serial number yet, grab the first one we can find
+            if (serialNumber == null) {
+                if (!page.isBeginOfStream()) {
+                    continue;
+                }
+                serialNumber = page.bitstreamSerialNumber();
+            }
+
+            // Serial number mismatch, gap this page
             if (page.bitstreamSerialNumber() != serialNumber) {
                 continue;
             }
 
-            boolean gap = page.pageSequenceNumber() != expectedSequence;
-            expectedSequence = page.pageSequenceNumber() + 1;
+            // Sequence gap means pages were lost. Codecs need to know.
+            boolean sequenceGap = page.pageSequenceNumber() != sequence;
+            sequence = page.pageSequenceNumber() + 1;
+            gap |= sequenceGap;
             segment = 0;
 
-            if (!page.isContinuation()) {
-                // Any partial packet we had is garbage
-                out.reset();
-                discard = false;
-            } else if (gap || out.length() == 0) {
-                // Partial across a gap is garbage, and this page starts with a headless tail
-                out.reset();
-                discard = true;
+            // Partial package is trash if sequence gap or not continuation
+            if (sequenceGap || !page.isContinuation()) {
+                chunks.clear();
             }
-            if (page.segmentCount() > 0) {
+
+            // Skip tail if we have nothing to resume
+            if (page.isContinuation() && chunks.isEmpty()) {
+                segment = page.packetEnd(0);
+            }
+
+            if (segment < page.segmentCount()) {
                 return true;
             }
         }
+    }
+
+    private byte[] combine(byte[] payload, int offset, int length) {
+        int total = length;
+        for (byte[] chunk : chunks) {
+            total += chunk.length;
+        }
+
+        byte[] result = new byte[total];
+        int position = 0;
+        for (byte[] chunk : chunks) {
+            System.arraycopy(chunk, 0, result, position, chunk.length);
+            position += chunk.length;
+        }
+        System.arraycopy(payload, offset, result, position, length);
+        return result;
     }
 }

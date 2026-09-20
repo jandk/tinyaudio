@@ -1,4 +1,4 @@
-module tinyflac {
+module be.twofold.tinyflac {
     requires java.desktop;
 
     exports be.twofold.tinyflac;

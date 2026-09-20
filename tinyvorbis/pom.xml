@@ -9,4 +9,10 @@
     </parent>
 
     <artifactId>tinyvorbis</artifactId>
+    <dependencies>
+        <dependency>
+            <groupId>be.twofold</groupId>
+            <artifactId>tinyogg</artifactId>
+        </dependency>
+    </dependencies>
 </project>

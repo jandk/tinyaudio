@@ -7,42 +7,20 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-public final class OggPage {
+public record OggPage(
+    byte headerTypeFlag,
+    long granulePosition,
+    int bitstreamSerialNumber,
+    int pageSequenceNumber,
+    byte[] segments,
+    byte[] payload
+) {
     private static final int FIXED_SIZE = 27;
     private static final int CAPTURE_PATTERN = 'O' | 'g' << 8 | 'g' << 16 | 'S' << 24;
 
-    private final byte headerTypeFlag;
-    private final long granulePosition;
-    private final int bitstreamSerialNumber;
-    private final int pageSequenceNumber;
-    private final byte[] segments;
-    private final byte[] payload;
-
-    private OggPage(
-        byte headerTypeFlag,
-        long granulePosition,
-        int bitstreamSerialNumber,
-        int pageSequenceNumber,
-        byte[] segments,
-        byte[] payload
-    ) {
-        this.headerTypeFlag = headerTypeFlag;
-        this.granulePosition = granulePosition;
-        this.bitstreamSerialNumber = bitstreamSerialNumber;
-        this.pageSequenceNumber = pageSequenceNumber;
-        this.segments = Objects.requireNonNull(segments);
-        this.payload = Objects.requireNonNull(payload);
-    }
-
-    public OggPage copy() {
-        return new OggPage(
-            headerTypeFlag,
-            granulePosition,
-            bitstreamSerialNumber,
-            pageSequenceNumber,
-            segments.clone(),
-            payload.clone()
-        );
+    public OggPage {
+        Objects.requireNonNull(segments);
+        Objects.requireNonNull(payload);
     }
 
     public static OggPage read(InputStream in) throws IOException {
@@ -86,22 +64,6 @@ public final class OggPage {
             segments,
             payload
         );
-    }
-
-    public long granulePosition() {
-        return granulePosition;
-    }
-
-    public int bitstreamSerialNumber() {
-        return bitstreamSerialNumber;
-    }
-
-    public int pageSequenceNumber() {
-        return pageSequenceNumber;
-    }
-
-    public byte[] payload() {
-        return payload;
     }
 
     public boolean isContinuation() {

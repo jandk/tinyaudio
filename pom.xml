@@ -12,6 +12,7 @@
         <module>tinyflac</module>
         <module>tinyogg</module>
         <module>tinyvorbis</module>
+        <module>tinyaudio-core</module>
     </modules>
 
     <properties>

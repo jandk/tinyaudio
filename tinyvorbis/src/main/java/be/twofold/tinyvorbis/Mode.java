@@ -6,7 +6,7 @@ record Mode(
     boolean blockFlag,
     int mapping
 ) {
-    static Mode read(BitInputStream bits, int mappingCount) throws IOException {
+    static Mode unpack(BitInputStream bits, int mappingCount) throws IOException {
         boolean blockFlag = bits.read(1) == 1;
         int windowType = bits.read(16);
         if (windowType != 0) {
@@ -24,7 +24,7 @@ record Mode(
         return new Mode(blockFlag, mapping);
     }
 
-    void write(BitOutputStream bits) throws IOException {
+    void pack(BitOutputStream bits) throws IOException {
         bits.writeBool(blockFlag);
         bits.write(16, 0);
         bits.write(16, 0);

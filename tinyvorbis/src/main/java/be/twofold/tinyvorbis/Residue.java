@@ -13,7 +13,7 @@ record Residue(
     int[] cascade,
     int[][] books
 ) {
-    static Residue read(BitInputStream bits, List<Codebook> codebooks) throws IOException {
+    static Residue unpack(BitInputStream bits, List<Codebook> codebooks) throws IOException {
         int type = bits.read(16);
         if (type > 2) {
             throw new VorbisException("Invalid residue type: " + type);
@@ -77,7 +77,7 @@ record Residue(
         );
     }
 
-    void write(BitOutputStream bits) throws IOException {
+    void pack(BitOutputStream bits) throws IOException {
         bits.write(16, type);
         bits.write(24, begin);
         bits.write(24, end);

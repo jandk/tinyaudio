@@ -3,7 +3,7 @@ package be.twofold.tinyvorbis;
 import java.io.IOException;
 
 public sealed interface Floor permits Floor1 {
-    static Floor read(BitInputStream bits, int codebookCount) throws IOException {
+    static Floor unpack(BitInputStream bits, int codebookCount) throws IOException {
         int floorType = bits.read(16);
         if (floorType == 0) {
             throw new UnsupportedOperationException("Floor 0");
@@ -14,7 +14,7 @@ public sealed interface Floor permits Floor1 {
         }
     }
 
-    default void write(BitOutputStream bits) throws IOException {
+    default void pack(BitOutputStream bits) throws IOException {
         int floorType;
         if (this instanceof Floor1) {
             floorType = 1;
@@ -23,8 +23,8 @@ public sealed interface Floor permits Floor1 {
         }
 
         bits.write(16, floorType);
-        write0(bits);
+        packBody(bits);
     }
 
-    void write0(BitOutputStream bits) throws IOException;
+    void packBody(BitOutputStream bits) throws IOException;
 }

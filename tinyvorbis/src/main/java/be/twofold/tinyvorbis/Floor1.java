@@ -92,7 +92,7 @@ record Floor1(
         );
     }
 
-    public void write0(BitOutputStream bits) throws IOException {
+    public void packBody(BitOutputStream bits) throws IOException {
         bits.write(5, partitionClassList.length);
         for (int partitionClass : partitionClassList) {
             bits.write(4, partitionClass);

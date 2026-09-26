@@ -18,7 +18,7 @@ record Codebook(
 ) {
     public static final int MAGIC = 0x56_4342;
 
-    static Codebook read(BitInputStream bits) throws IOException {
+    static Codebook unpack(BitInputStream bits) throws IOException {
         if (bits.read(24) != MAGIC) {
             throw new VorbisException("Invalid Vorbis codebook");
         }
@@ -148,7 +148,7 @@ record Codebook(
         return Util.float32Unpack(deltaValue);
     }
 
-    void write(BitOutputStream bits) throws IOException {
+    void pack(BitOutputStream bits) throws IOException {
         bits.write(24, MAGIC);
         bits.write(16, dimensions);
         bits.write(24, entries);

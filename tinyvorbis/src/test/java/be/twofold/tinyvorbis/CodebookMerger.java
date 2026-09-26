@@ -56,7 +56,7 @@ final class CodebookMerger {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         int written;
         try (BitOutputStream bits = new BitOutputStream(out, ByteOrder.LITTLE_ENDIAN)) {
-            codebook.write(bits);
+            codebook.pack(bits);
             bits.flush();
             written = bits.getBitsWritten();
         }

@@ -20,12 +20,12 @@ public record SetupHeader(
     }
 
     public static SetupHeader read(BitInputStream bits, int audioChannels) throws IOException {
-        List<Codebook> codebooks = readList(bits, 8, Codebook::read);
-        readList(bits, 6, SetupHeader::readTimeValue);
-        List<Floor> floors = readList(bits, 6, in -> Floor.read(in, codebooks.size()));
-        List<Residue> residues = readList(bits, 6, in -> Residue.read(in, codebooks));
-        List<Mapping> mappings = readList(bits, 6, in -> Mapping.read(in, audioChannels, floors.size(), residues.size()));
-        List<Mode> modes = readList(bits, 6, in -> Mode.read(in, mappings.size()));
+        List<Codebook> codebooks = readList(bits, 8, Codebook::unpack);
+        readList(bits, 6, SetupHeader::unpackTimeValue);
+        List<Floor> floors = readList(bits, 6, in -> Floor.unpack(in, codebooks.size()));
+        List<Residue> residues = readList(bits, 6, in -> Residue.unpack(in, codebooks));
+        List<Mapping> mappings = readList(bits, 6, in -> Mapping.unpack(in, audioChannels, floors.size(), residues.size()));
+        List<Mode> modes = readList(bits, 6, in -> Mode.unpack(in, mappings.size()));
 
         int framingFlag = bits.read(1);
         if (framingFlag != 1) {
@@ -50,7 +50,7 @@ public record SetupHeader(
         return list;
     }
 
-    private static Void readTimeValue(BitInputStream in) throws IOException {
+    private static Void unpackTimeValue(BitInputStream in) throws IOException {
         if (in.read(16) != 0) {
             throw new VorbisException("Invalid time domain transform");
         }
@@ -58,12 +58,12 @@ public record SetupHeader(
     }
 
     public void write(BitOutputStream bits, int audioChannels) throws IOException {
-        writeList(bits, 8, codebooks, Codebook::write);
+        writeList(bits, 8, codebooks, Codebook::pack);
         writeList(bits, 6, List.of(0), (value, out) -> out.write(16, value));
-        writeList(bits, 6, floors, Floor::write);
-        writeList(bits, 6, residues, Residue::write);
-        writeList(bits, 6, mappings, (mapping, out) -> mapping.write(out, audioChannels));
-        writeList(bits, 6, modes, Mode::write);
+        writeList(bits, 6, floors, Floor::pack);
+        writeList(bits, 6, residues, Residue::pack);
+        writeList(bits, 6, mappings, (mapping, out) -> mapping.pack(out, audioChannels));
+        writeList(bits, 6, modes, Mode::pack);
 
         // Framing flag
         bits.write(1, 1);

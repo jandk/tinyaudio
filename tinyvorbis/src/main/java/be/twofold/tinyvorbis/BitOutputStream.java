@@ -1,20 +1,27 @@
 package be.twofold.tinyvorbis;
 
 import java.io.Closeable;
+import java.io.Flushable;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteOrder;
 import java.util.Objects;
 
-public final class BitOutputStream implements Closeable {
+public final class BitOutputStream implements Closeable, Flushable {
     private final OutputStream out;
     private final boolean bigEndian;
+
     private long bitBuf;
     private int bitCount;
+    private int bitsWritten;
 
     public BitOutputStream(OutputStream out, ByteOrder order) {
         this.out = Objects.requireNonNull(out);
         this.bigEndian = Objects.requireNonNull(order) == ByteOrder.BIG_ENDIAN;
+    }
+
+    public int getBitsWritten() {
+        return bitsWritten;
     }
 
     public void write(int count, int value) throws IOException {
@@ -35,18 +42,6 @@ public final class BitOutputStream implements Closeable {
 
     public void writeBool(boolean value) throws IOException {
         write(1, value ? 1 : 0);
-    }
-
-    public void flush() throws IOException {
-        while (bitCount >= 8) {
-            writeByte();
-        }
-        if (bitCount > 0) {
-            writeByte();
-            bitCount = 0;
-        }
-        bitBuf = 0;
-        out.flush();
     }
 
     private void drain(int count) throws IOException {
@@ -81,6 +76,20 @@ public final class BitOutputStream implements Closeable {
     private void advance(int count) {
         assert bitCount + count <= 64;
         bitCount += count;
+        bitsWritten += count;
+    }
+
+    @Override
+    public void flush() throws IOException {
+        while (bitCount >= 8) {
+            writeByte();
+        }
+        if (bitCount > 0) {
+            writeByte();
+            bitCount = 0;
+        }
+        bitBuf = 0;
+        out.flush();
     }
 
     @Override

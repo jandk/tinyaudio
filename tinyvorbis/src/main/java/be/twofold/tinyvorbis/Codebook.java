@@ -1,6 +1,7 @@
 package be.twofold.tinyvorbis;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 record Codebook(
     int dimensions,
@@ -9,8 +10,8 @@ record Codebook(
     boolean sparse,
     int[] codewordLengths,
     int lookupType,
-    int minimumValue,
-    int deltaValue,
+    float minimumValue,
+    float deltaValue,
     int valueBits,
     boolean sequenceP,
     int[] multiplicands
@@ -26,10 +27,10 @@ record Codebook(
         int entries = bits.read(24);
         boolean ordered = bits.readBool();
 
-        boolean sparse;
+        boolean sparse = false;
         int[] codewordLengths = new int[entries];
         if (ordered) {
-            throw new VorbisException("Ordered codebooks are not supported");
+            readOrdered(bits, codewordLengths);
         } else {
             sparse = bits.readBool();
 
@@ -41,8 +42,8 @@ record Codebook(
             }
         }
 
-        int minimumValue = 0;
-        int deltaValue = 0;
+        float minimumValue = 0;
+        float deltaValue = 0;
         int valueBits = 0;
         boolean sequenceP = false;
         int[] multiplicands = null;
@@ -51,8 +52,8 @@ record Codebook(
         if (lookupType == 0) {
             // do nothing
         } else if (lookupType == 1 || lookupType == 2) {
-            minimumValue = bits.read(32);
-            deltaValue = bits.read(32);
+            minimumValue = Util.float32Unpack(bits.read(32));
+            deltaValue = Util.float32Unpack(bits.read(32));
             valueBits = bits.read(4) + 1;
             sequenceP = bits.readBool();
 
@@ -82,7 +83,23 @@ record Codebook(
         );
     }
 
-    private static int lookup1Values(int entries, int dimensions) throws VorbisException {
+    static void readOrdered(BitInputStream bits, int[] codewordLengths) throws IOException {
+        int entries = codewordLengths.length;
+        int length = bits.read(5) + 1;
+
+        int entry = 0;
+        while (entry < entries) {
+            int number = bits.read(Util.ilog(entries - entry));
+            if (entry + number > entries) {
+                throw new VorbisException("Codebook has more codewords than its " + entries + " entries");
+            }
+            Arrays.fill(codewordLengths, entry, entry + number, length);
+            entry += number;
+            length++;
+        }
+    }
+
+    static int lookup1Values(int entries, int dimensions) throws VorbisException {
         if (entries < 1 || dimensions < 1) {
             throw new VorbisException("Invalid codebook: entries=" + entries + ", dimensions=" + dimensions);
         }
@@ -118,7 +135,7 @@ record Codebook(
 
         bits.writeBool(ordered);
         if (ordered) {
-            throw new VorbisException("Ordered codebooks are not supported");
+            writeOrdered(bits, codewordLengths);
         } else {
             bits.writeBool(sparse);
             for (int codewordLength : codewordLengths) {
@@ -134,14 +151,37 @@ record Codebook(
 
         bits.write(4, lookupType);
         if (lookupType == 1 || lookupType == 2) {
-            bits.write(32, minimumValue);
-            bits.write(32, deltaValue);
+            bits.write(32, Util.float32Pack(minimumValue));
+            bits.write(32, Util.float32Pack(deltaValue));
             bits.write(4, valueBits - 1);
             bits.writeBool(sequenceP);
 
             for (int multiplicand : multiplicands) {
                 bits.write(valueBits, multiplicand);
             }
+        }
+    }
+
+    private void writeOrdered(BitOutputStream bits, int[] codewordLengths) throws IOException {
+        int entries = codewordLengths.length;
+        for (int i = 0; i < entries; i++) {
+            if (codewordLengths[i] == 0 || (i > 0 && codewordLengths[i] < codewordLengths[i - 1])) {
+                throw new VorbisException("Ordered codebooks require non-decreasing, non-zero codeword lengths");
+            }
+        }
+
+        int length = entries == 0 ? 1 : codewordLengths[0];
+        bits.write(5, length - 1);
+
+        int entry = 0;
+        while (entry < entries) {
+            int number = 0;
+            while (entry + number < entries && codewordLengths[entry + number] == length) {
+                number++;
+            }
+            bits.write(Util.ilog(entries - entry), number);
+            entry += number;
+            length++;
         }
     }
 }

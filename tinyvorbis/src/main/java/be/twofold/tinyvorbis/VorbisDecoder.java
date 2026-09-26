@@ -146,7 +146,44 @@ public final class VorbisDecoder {
             residue.decode(bits, setup.codebooks(), n / 2, pcmBundle, zeroBundle, count);
         }
 
-        System.out.println(leftWindowStart + "\t" + leftWindowEnd + "\t" + leftN + "\t" + rightWindowStart + "\t" + rightWindowEnd + "\t" + rightN);
+        // 4.3.5 inverse coupling
+        for (int i = mapping.couplingSteps() - 1; i >= 0; i--) {
+            float[] pcmMag = spectrum[mapping.magnitude()[i]];
+            float[] pcmAng = spectrum[mapping.angle()[i]];
+
+            for (int j = 0; j < n / 2; j++) {
+                float mag = pcmMag[j];
+                float ang = pcmAng[j];
+
+                if (mag > 0) {
+                    if (ang > 0) {
+                        pcmAng[j] = mag - ang;
+                    } else {
+                        pcmAng[j] = mag;
+                        pcmMag[j] = mag + ang;
+                    }
+                } else {
+                    if (ang > 0) {
+                        pcmAng[j] = mag + ang;
+                    } else {
+                        pcmAng[j] = mag;
+                        pcmMag[j] = mag - ang;
+                    }
+                }
+            }
+        }
+
+        // 4.3.6 dot product
+        for (int ch = 0; ch < identification.audioChannels(); ch++) {
+            if (floorUnused[ch]) {
+                Arrays.fill(spectrum[ch], 0, n / 2, 0.0f);
+            } else {
+                int submap = mapping.mux()[ch];
+                Floor floor = setup.floors().get(mapping.submapFloor()[submap]);
+                floor.synthesize(floorY[ch], spectrum[ch], n / 2);
+            }
+        }
+
         return DecodeType.GOOD;
     }
 

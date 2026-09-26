@@ -81,7 +81,6 @@ public final class OggPacketReader implements PacketSource {
             if (page == null) {
                 return false;
             }
-            System.out.println(page);
 
             // If we don't have a serial number yet, grab the first one we can find
             if (serialNumber == null) {

@@ -17,6 +17,8 @@ sealed interface Floor permits Floor1 {
 
     boolean decode(BitReader bits, List<Codebook> codebooks, int[] floorY);
 
+    void synthesize(int[] floorY, float[] spectrum, int n2);
+
     default void pack(BitOutputStream bits) throws IOException {
         int floorType;
         if (this instanceof Floor1) {

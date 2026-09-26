@@ -1,16 +1,10 @@
 package be.twofold.tinyvorbis;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 
-record Floor1(
-    int[] partitionClassList,
-    int[] classDimensions,
-    int[] classMasterBooks,
-    int[][] subclassBooks,
-    int multiplier,
-    int[] xList
-) implements Floor {
+final class Floor1 implements Floor {
     private static final int[] RANGES = {256, 128, 86, 64};
 
     private static final float[] INVERSE_DB_TABLE = {
@@ -79,6 +73,58 @@ record Floor1(
         6.4356697e-1f, 6.8538958e-1f, 7.2993004e-1f, 7.7736503e-1f,
         8.2788259e-1f, 8.8168305e-1f, 9.3897980e-1f, 1.0000000e+0f,
     };
+    private final int[] partitionClassList;
+    private final int[] classDimensions;
+    private final int[] classMasterBooks;
+    private final int[][] subclassBooks;
+    private final int multiplier;
+    private final int[] xList;
+    private final int[] order;
+    private final int[] lowNeighbors;
+    private final int[] highNeighbors;
+
+    Floor1(
+        int[] partitionClassList,
+        int[] classDimensions,
+        int[] classMasterBooks,
+        int[][] subclassBooks,
+        int multiplier,
+        int[] xList
+    ) {
+        this.partitionClassList = partitionClassList;
+        this.classDimensions = classDimensions;
+        this.classMasterBooks = classMasterBooks;
+        this.subclassBooks = subclassBooks;
+        this.multiplier = multiplier;
+        this.xList = xList;
+
+        int posts = xList.length;
+        this.order = sortOrder();
+        this.lowNeighbors = new int[posts];
+        this.highNeighbors = new int[posts];
+        for (int i = 2; i < posts; i++) {
+            lowNeighbors[i] = lowNeighbor(xList, i);
+            highNeighbors[i] = highNeighbor(xList, i);
+        }
+    }
+
+    private int[] sortOrder() {
+        int posts = xList.length;
+        int[] order = new int[posts];
+        for (int i = 0; i < posts; i++) {
+            order[i] = i;
+        }
+        for (int i = 1; i < posts; i++) {
+            int p = order[i];
+            int j = i - 1;
+            while (j >= 0 && xList[order[j]] > xList[p]) {
+                order[j + 1] = order[j];
+                j--;
+            }
+            order[j + 1] = p;
+        }
+        return order;
+    }
 
     static Floor1 unpack(BitReader bits, int codebookCount) throws IOException {
         int partitions = bits.read(5);
@@ -206,6 +252,81 @@ record Floor1(
         return bits.isOverrun();
     }
 
+    @Override
+    public void synthesize(int[] floorY, float[] spectrum, int n2) {
+        int range = RANGES[multiplier - 1];
+        int posts = xList.length;
+
+        boolean[] step2Flag = new boolean[posts];
+        step2Flag[0] = true;
+        step2Flag[1] = true;
+
+        int[] finalY = new int[posts];
+        finalY[0] = floorY[0];
+        finalY[1] = floorY[1];
+
+        for (int i = 2; i < posts; i++) {
+            int lowNeighborOffset = lowNeighbors[i];
+            int highNeighborOffset = highNeighbors[i];
+            int predicted = renderPoint(
+                xList[lowNeighborOffset], finalY[lowNeighborOffset],
+                xList[highNeighborOffset], finalY[highNeighborOffset],
+                xList[i]
+            );
+            int val = floorY[i];
+            int highRoom = range - predicted;
+            int lowRoom = predicted;
+
+            int room = highRoom < lowRoom ? highRoom * 2 : lowRoom * 2;
+            if (val != 0) {
+                step2Flag[lowNeighborOffset] = true;
+                step2Flag[highNeighborOffset] = true;
+                step2Flag[i] = true;
+
+                if (val >= room) {
+                    if (highRoom > lowRoom) {
+                        finalY[i] = val - lowRoom + predicted;
+                    } else {
+                        finalY[i] = predicted - val + highRoom - 1;
+                    }
+                } else {
+                    if (val % 2 != 0) {
+                        finalY[i] = predicted - ((val + 1) >> 1);
+                    } else {
+                        finalY[i] = predicted + (val >> 1);
+                    }
+                }
+            } else {
+                step2Flag[i] = false;
+                finalY[i] = predicted;
+            }
+        }
+
+        for (int i = 0; i < posts; i++) {
+            finalY[i] = Math.max(0, Math.min(range - 1, finalY[i]));
+        }
+
+        int lx = 0;
+        int ly = finalY[0] * multiplier;
+        int hx = 0;
+        int hy = ly;
+        for (int k = 1; k < posts; k++) {
+            int p = order[k];
+            if (step2Flag[p]) {
+                hx = xList[p];
+                hy = finalY[p] * multiplier;
+                renderLine(lx, ly, hx, hy, spectrum, n2);
+                lx = hx;
+                ly = hy;
+            }
+        }
+
+        if (hx < n2) {
+            renderLine(hx, hy, n2, hy, spectrum, n2);
+        }
+    }
+
+    @Override
     public void packBody(BitOutputStream bits) throws IOException {
         bits.write(5, partitionClassList.length);
         for (int partitionClass : partitionClassList) {
@@ -232,5 +353,70 @@ record Floor1(
         for (int i = 2; i < xList.length; i++) {
             bits.write(rangeBits, xList[i]);
         }
+    }
+
+    private static int lowNeighbor(int[] v, int x) {
+        int index = 0;
+        for (int i = 1; i < x; i++) {
+            if (v[i] < v[x] && v[i] > v[index]) {
+                index = i;
+            }
+        }
+        return index;
+    }
+
+    private static int highNeighbor(int[] v, int x) {
+        int index = 1;
+        for (int i = 2; i < x; i++) {
+            if (v[i] > v[x] && v[i] < v[index]) {
+                index = i;
+            }
+        }
+        return index;
+    }
+
+    private static int renderPoint(int x0, int y0, int x1, int y1, int x) {
+        int dy = y1 - y0;
+        int off = Math.abs(dy) * (x - x0) / (x1 - x0);
+        return dy < 0 ? y0 - off : y0 + off;
+    }
+
+    private static void renderLine(int x0, int y0, int x1, int y1, float[] v, int n) {
+        int dy = y1 - y0;
+        int adx = x1 - x0;
+        int base = dy / adx;
+        int ady = Math.abs(dy) - Math.abs(base) * adx;
+        int end = Math.min(x1, n);
+        int y = y0;
+        int err = 0;
+
+        int sy = dy < 0 ? base - 1 : base + 1;
+
+        if (x0 < end) {
+            v[x0] *= INVERSE_DB_TABLE[y];
+        }
+
+        for (int x = x0 + 1; x <= end - 1; x++) {
+            err += ady;
+            if (err >= adx) {
+                err -= adx;
+                y += sy;
+            } else {
+                y += base;
+            }
+            v[x] *= INVERSE_DB_TABLE[y];
+        }
+    }
+
+    @Override
+    public String toString() {
+        return "Floor1(" +
+            "partitionClassList=" + Arrays.toString(partitionClassList) + ", " +
+            "classDimensions=" + Arrays.toString(classDimensions) + ", " +
+            "classMasterBooks=" + Arrays.toString(classMasterBooks) + ", " +
+            "subclassBooks=" + Arrays.deepToString(subclassBooks) + ", " +
+            "multiplier=" + multiplier + ", " +
+            "xList=" + Arrays.toString(xList) +
+            ")";
     }
 }

@@ -11,7 +11,7 @@ record Mapping(
     int[] magnitude,
     int[] angle
 ) {
-    static Mapping read(BitInputStream bits, int audioChannels) throws IOException {
+    static Mapping read(BitInputStream bits, int audioChannels, int floorCount, int residueCount) throws IOException {
         int type = bits.read(16);
         if (type != 0) {
             throw new VorbisException("Invalid mapping type: " + type);
@@ -31,28 +31,46 @@ record Mapping(
             magnitude = new int[couplingSteps];
             angle = new int[couplingSteps];
             for (int i = 0; i < couplingSteps; i++) {
-                magnitude[i] = bits.read(audioChannelLog);
-                angle[i] = bits.read(audioChannelLog);
+                int mag = bits.read(audioChannelLog);
+                int ang = bits.read(audioChannelLog);
+                if (mag == ang || mag >= audioChannels || ang >= audioChannels) {
+                    throw new VorbisException("Invalid coupling step: magnitude=" + mag + ", angle=" + ang);
+                }
+                magnitude[i] = mag;
+                angle[i] = ang;
             }
         }
 
-        if (bits.read(2) != 0) { /* 2,3:reserved */
-            throw new VorbisException("Invalid reserved value");
+        int reserved = bits.read(2);
+        if (reserved != 0) { /* 2,3:reserved */
+            throw new VorbisException("Invalid reserved value: " + reserved);
         }
 
         int[] mux = new int[audioChannels];
         if (submaps > 1) {
             for (int i = 0; i < audioChannels; i++) {
-                mux[i] = bits.read(4);
+                int submap = bits.read(4);
+                if (submap >= submaps) {
+                    throw new VorbisException("Channel multiplex out of range: " + submap);
+                }
+                mux[i] = submap;
             }
         }
 
         int[] submapFloor = new int[submaps];
         int[] submapResidue = new int[submaps];
         for (int i = 0; i < submaps; i++) {
-            bits.read(8);
-            submapFloor[i] = bits.read(8);
-            submapResidue[i] = bits.read(8);
+            bits.read(8); // unused time configuration placeholder
+            int floor = bits.read(8);
+            if (floor >= floorCount) {
+                throw new VorbisException("Submap floor out of range: " + floor);
+            }
+            int residue = bits.read(8);
+            if (residue >= residueCount) {
+                throw new VorbisException("Submap residue out of range: " + residue);
+            }
+            submapFloor[i] = floor;
+            submapResidue[i] = residue;
         }
 
         return new Mapping(

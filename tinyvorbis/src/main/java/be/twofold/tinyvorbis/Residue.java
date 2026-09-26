@@ -1,6 +1,7 @@
 package be.twofold.tinyvorbis;
 
 import java.io.IOException;
+import java.util.List;
 
 record Residue(
     int type,
@@ -8,11 +9,11 @@ record Residue(
     int end,
     int partitionSize,
     int classifications,
-    int classbook,
+    int classBook,
     int[] cascade,
     int[][] books
 ) {
-    static Residue read(BitInputStream bits) throws IOException {
+    static Residue read(BitInputStream bits, List<Codebook> codebooks) throws IOException {
         int type = bits.read(16);
         if (type > 2) {
             throw new VorbisException("Invalid residue type: " + type);
@@ -20,9 +21,20 @@ record Residue(
 
         int begin = bits.read(24);
         int end = bits.read(24);
+        if (begin > end) {
+            throw new VorbisException("Residue begin " + begin + " is greater than end " + end);
+        }
+
         int partitionSize = bits.read(24) + 1;
         int classifications = bits.read(6) + 1;
-        int classbook = bits.read(8);
+        int classBook = bits.read(8);
+        if (classBook >= codebooks.size()) {
+            throw new VorbisException("Residue class book out of range: " + classBook);
+        }
+        Codebook book = codebooks.get(classBook);
+        if (!Codebook.powAtMost(classifications, book.dimensions(), book.entries())) {
+            throw new VorbisException("Residue class book cannot encode " + classifications + " classifications");
+        }
 
         int[] cascade = new int[classifications];
         for (int i = 0; i < classifications; i++) {
@@ -39,7 +51,14 @@ record Residue(
         for (int i = 0; i < classifications; i++) {
             for (int j = 0; j < 8; j++) {
                 if ((cascade[i] & (1 << j)) != 0) {
-                    books[i][j] = bits.read(8);
+                    int number = bits.read(8);
+                    if (number >= codebooks.size()) {
+                        throw new VorbisException("Residue book out of range: " + number);
+                    }
+                    if (codebooks.get(number).lookupType() == 0) {
+                        throw new VorbisException("Residue book " + number + " has no value mapping");
+                    }
+                    books[i][j] = number;
                 } else {
                     books[i][j] = -1;
                 }
@@ -52,7 +71,7 @@ record Residue(
             end,
             partitionSize,
             classifications,
-            classbook,
+            classBook,
             cascade,
             books
         );
@@ -64,7 +83,7 @@ record Residue(
         bits.write(24, end);
         bits.write(24, partitionSize - 1);
         bits.write(6, classifications - 1);
-        bits.write(8, classbook);
+        bits.write(8, classBook);
 
         for (int c : cascade) {
             bits.write(3, c);

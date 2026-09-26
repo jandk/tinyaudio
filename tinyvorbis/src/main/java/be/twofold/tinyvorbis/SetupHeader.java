@@ -20,48 +20,12 @@ public record SetupHeader(
     }
 
     public static SetupHeader read(BitInputStream bits, int audioChannels) throws IOException {
-        // Codebooks
-        int codebookCount = bits.read(8) + 1;
-        List<Codebook> codebooks = new ArrayList<>(codebookCount);
-        for (int i = 0; i < codebookCount; i++) {
-            codebooks.add(Codebook.read(bits));
-        }
-
-        // Time domain transforms
-        int timeCount = bits.read(6) + 1;
-        for (int i = 0; i < timeCount; i++) {
-            if (bits.read(16) != 0) {
-                throw new VorbisException("Invalid time domain transform");
-            }
-        }
-
-        // Floors
-        int floorCount = bits.read(6) + 1;
-        List<Floor> floors = new ArrayList<>(floorCount);
-        for (int i = 0; i < floorCount; i++) {
-            floors.add(Floor.read(bits));
-        }
-
-        // Residues
-        int residueCount = bits.read(6) + 1;
-        List<Residue> residues = new ArrayList<>(residueCount);
-        for (int i = 0; i < residueCount; i++) {
-            residues.add(Residue.read(bits));
-        }
-
-        // Mappings
-        int mappingCount = bits.read(6) + 1;
-        List<Mapping> mappings = new ArrayList<>(mappingCount);
-        for (int i = 0; i < mappingCount; i++) {
-            mappings.add(Mapping.read(bits, audioChannels));
-        }
-
-        // Modes
-        int modeCount = bits.read(6) + 1;
-        List<Mode> modes = new ArrayList<>(modeCount);
-        for (int i = 0; i < modeCount; i++) {
-            modes.add(Mode.read(bits));
-        }
+        List<Codebook> codebooks = readList(bits, 8, Codebook::read);
+        readList(bits, 6, SetupHeader::readTimeValue);
+        List<Floor> floors = readList(bits, 6, in -> Floor.read(in, codebooks.size()));
+        List<Residue> residues = readList(bits, 6, in -> Residue.read(in, codebooks));
+        List<Mapping> mappings = readList(bits, 6, in -> Mapping.read(in, audioChannels, floors.size(), residues.size()));
+        List<Mode> modes = readList(bits, 6, in -> Mode.read(in, mappings.size()));
 
         int framingFlag = bits.read(1);
         if (framingFlag != 1) {
@@ -77,42 +41,49 @@ public record SetupHeader(
         );
     }
 
+    private static <T> List<T> readList(BitInputStream bits, int countBits, Reader<T> reader) throws IOException {
+        int count = bits.read(countBits) + 1;
+        List<T> list = new ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            list.add(reader.read(bits));
+        }
+        return list;
+    }
+
+    private static Void readTimeValue(BitInputStream in) throws IOException {
+        if (in.read(16) != 0) {
+            throw new VorbisException("Invalid time domain transform");
+        }
+        return null;
+    }
+
     public void write(BitOutputStream bits, int audioChannels) throws IOException {
-        // Codebooks
-        bits.write(8, codebooks.size() - 1);
-        for (Codebook codebook : codebooks) {
-            codebook.write(bits);
-        }
-
-        // Time domain transform
-        bits.write(6, 0);
-        bits.write(16, 0);
-
-        // Floors
-        bits.write(6, floors.size() - 1);
-        for (Floor floor : floors) {
-            floor.write(bits);
-        }
-
-        // Residues
-        bits.write(6, residues.size() - 1);
-        for (Residue residue : residues) {
-            residue.write(bits);
-        }
-
-        // Mappings
-        bits.write(6, mappings.size() - 1);
-        for (Mapping mapping : mappings) {
-            mapping.write(bits, audioChannels);
-        }
-
-        // Modes
-        bits.write(6, modes.size() - 1);
-        for (Mode mode : modes) {
-            mode.write(bits);
-        }
+        writeList(bits, 8, codebooks, Codebook::write);
+        writeList(bits, 6, List.of(0), (value, out) -> out.write(16, value));
+        writeList(bits, 6, floors, Floor::write);
+        writeList(bits, 6, residues, Residue::write);
+        writeList(bits, 6, mappings, (mapping, out) -> mapping.write(out, audioChannels));
+        writeList(bits, 6, modes, Mode::write);
 
         // Framing flag
         bits.write(1, 1);
+    }
+
+    private <T> void writeList(BitOutputStream bits, int countBits, List<T> list, Writer<T> writer) throws IOException {
+        if (list.isEmpty() || list.size() > 1 << countBits) {
+            throw new IllegalArgumentException("Too many elements");
+        }
+        bits.write(countBits, list.size() - 1);
+        for (T value : list) {
+            writer.write(value, bits);
+        }
+    }
+
+    private interface Reader<T> {
+        T read(BitInputStream bits) throws IOException;
+    }
+
+    private interface Writer<T> {
+        void write(T value, BitOutputStream bits) throws IOException;
     }
 }

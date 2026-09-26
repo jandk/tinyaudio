@@ -1,9 +1,6 @@
 package be.twofold.tinyvorbis;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.file.Files;
@@ -17,13 +14,13 @@ final class CodebookMerger {
     );
 
     public static void main(String[] args) throws IOException {
-        var codebooks = new LinkedHashMap<Bytes, Integer>();
-        var libraries = new LinkedHashMap<String, int[]>();
-        for (var codebook : CODEBOOKS) {
-            var packedLibrary = readPackedLibrary(codebook.getValue());
-            var indices = new int[packedLibrary.size()];
+        Map<Bytes, Integer> codebooks = new LinkedHashMap<>();
+        Map<String, int[]> libraries = new LinkedHashMap<>();
+        for (Map.Entry<String, String> codebook : CODEBOOKS) {
+            List<Bytes> packedLibrary = readPackedLibrary(codebook.getValue());
+            int[] indices = new int[packedLibrary.size()];
             for (int i = 0; i < packedLibrary.size(); i++) {
-                var packedCodebook = packedLibrary.get(i);
+                Bytes packedCodebook = packedLibrary.get(i);
                 codebooks.putIfAbsent(packedCodebook, codebooks.size());
                 indices[i] = codebooks.get(packedCodebook);
             }
@@ -31,21 +28,21 @@ final class CodebookMerger {
             libraries.put(codebook.getKey(), indices);
         }
 
-        var bytes = new ByteArrayOutputStream();
-        var out = new DataOutputStream(bytes);
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        DataOutputStream out = new DataOutputStream(bytes);
         out.writeBytes("CDBK");
         out.writeShort(1 << 8 | 0);
         out.writeShort(libraries.size());
         out.writeShort(codebooks.size());
-        for (var library : libraries.entrySet()) {
+        for (Map.Entry<String, int[]> library : libraries.entrySet()) {
             out.writeUTF(library.getKey());
             out.writeShort(library.getValue().length);
-            for (var index : library.getValue()) {
+            for (int index : library.getValue()) {
                 out.writeShort(index);
             }
         }
-        for (var packedCodebook : codebooks.keySet()) {
-            var repacked = repack(packedCodebook);
+        for (Bytes packedCodebook : codebooks.keySet()) {
+            Map.Entry<Integer, byte[]> repacked = repack(packedCodebook);
             out.writeShort(repacked.getKey());
             out.write(repacked.getValue());
         }
@@ -55,10 +52,10 @@ final class CodebookMerger {
     }
 
     private static Map.Entry<Integer, byte[]> repack(Bytes packedCodebook) throws IOException {
-        var codebook = readPackedCodebook(packedCodebook);
-        var out = new ByteArrayOutputStream();
-        var written = 0;
-        try (var bits = new BitOutputStream(out, ByteOrder.LITTLE_ENDIAN)) {
+        Codebook codebook = readPackedCodebook(packedCodebook);
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        int written;
+        try (BitOutputStream bits = new BitOutputStream(out, ByteOrder.LITTLE_ENDIAN)) {
             codebook.write(bits);
             bits.flush();
             written = bits.getBitsWritten();
@@ -71,27 +68,27 @@ final class CodebookMerger {
 
     private static List<Bytes> readPackedLibrary(String name) throws IOException {
         byte[] bytes;
-        try (var in = CodebookMerger.class.getResourceAsStream("/" + name)) {
+        try (InputStream in = CodebookMerger.class.getResourceAsStream("/" + name)) {
             bytes = in.readAllBytes();
         }
 
-        var buffer = ByteBuffer.wrap(bytes)
+        ByteBuffer buffer = ByteBuffer.wrap(bytes)
             .order(ByteOrder.LITTLE_ENDIAN);
 
-        var start = buffer.getInt(buffer.limit() - 4);
-        var count = (buffer.limit() - start - 4) / 4;
+        int start = buffer.getInt(buffer.limit() - 4);
+        int count = (buffer.limit() - start - 4) / 4;
 
-        var offsets = new int[count + 1];
+        int[] offsets = new int[count + 1];
         buffer.slice(start, buffer.limit() - start)
             .order(ByteOrder.LITTLE_ENDIAN)
             .asIntBuffer().get(offsets);
 
         List<Bytes> codebooks = new ArrayList<>();
-        for (var i = 0; i < offsets.length - 1; i++) {
-            var lo = offsets[i];
-            var hi = offsets[i + 1];
+        for (int i = 0; i < offsets.length - 1; i++) {
+            int lo = offsets[i];
+            int hi = offsets[i + 1];
 
-            var codebook = new byte[hi - lo];
+            byte[] codebook = new byte[hi - lo];
             buffer.position(lo).get(codebook);
             codebooks.add(new Bytes(codebook));
         }
@@ -99,53 +96,53 @@ final class CodebookMerger {
     }
 
     private static Codebook readPackedCodebook(Bytes bytes) throws IOException {
-        var bits = new BitInputStream(new ByteArrayInputStream(bytes.array), ByteOrder.LITTLE_ENDIAN);
-        var dimensions = bits.read(4);
-        var entries = bits.read(14);
+        BitInputStream bits = new BitInputStream(new ByteArrayInputStream(bytes.array), ByteOrder.LITTLE_ENDIAN);
+        int dimensions = bits.read(4);
+        int entries = bits.read(14);
 
-        var codewordLengths = new int[entries];
-        var ordered = bits.readBool();
-        var sparse = false;
+        int[] codewordLengths = new int[entries];
+        boolean ordered = bits.readBool();
+        boolean sparse = false;
         if (ordered) {
             // Whoo, it's the same!
             Codebook.readOrdered(bits, codewordLengths);
         } else {
-            var codewordLengthLength = bits.read(3);
+            int codewordLengthLength = bits.read(3);
             sparse = bits.readBool();
             if (codewordLengthLength < 1 || codewordLengthLength > 5) {
                 throw new VorbisException("Invalid packed codeword length length: " + codewordLengthLength);
             }
 
-            for (var i = 0; i < entries; i++) {
+            for (int i = 0; i < entries; i++) {
                 if (!sparse || bits.readBool()) {
                     codewordLengths[i] = bits.read(codewordLengthLength) + 1;
                 }
             }
         }
 
-        float minimumValue = 0;
-        float deltaValue = 0;
-        var valueBits = 0;
-        var sequenceP = false;
+        int minimumValue = 0;
+        int deltaValue = 0;
+        int valueBits = 0;
+        boolean sequenceP = false;
         int[] multiplicands = null;
 
         // A single bit, so lookup types 2 and up cannot occur
-        var lookupType = bits.read(1);
+        int lookupType = bits.read(1);
         if (lookupType == 1) {
-            minimumValue = Util.float32Unpack(bits.read(32));
-            deltaValue = Util.float32Unpack(bits.read(32));
+            minimumValue = bits.read(32);
+            deltaValue = bits.read(32);
             valueBits = bits.read(4) + 1;
             sequenceP = bits.readBool();
 
-            var lookupValues = Codebook.lookup1Values(entries, dimensions);
+            int lookupValues = Codebook.lookup1Values(entries, dimensions);
             multiplicands = new int[lookupValues];
-            for (var i = 0; i < lookupValues; i++) {
+            for (int i = 0; i < lookupValues; i++) {
                 multiplicands[i] = bits.read(valueBits);
             }
         }
 
         // Weird, end on a byte, write another one...
-        var used = bits.getBitsRead() / 8 + 1;
+        int used = bits.getBitsRead() / 8 + 1;
         if (used != bytes.array.length) {
             throw new VorbisException("Packed codebook used " + used + " of " + bytes.array.length + " bytes");
         }

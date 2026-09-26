@@ -10,8 +10,8 @@ record Codebook(
     boolean sparse,
     int[] codewordLengths,
     int lookupType,
-    float minimumValue,
-    float deltaValue,
+    int minimumValue,
+    int deltaValue,
     int valueBits,
     boolean sequenceP,
     int[] multiplicands
@@ -24,10 +24,18 @@ record Codebook(
         }
 
         int dimensions = bits.read(16);
+        if (dimensions == 0) {
+            throw new VorbisException("Codebook dimensions must be greater than zero");
+        }
         int entries = bits.read(24);
+        if (entries == 0) {
+            throw new VorbisException("Codebook entries must be greater than zero");
+        }
+
         boolean ordered = bits.readBool();
 
         boolean sparse = false;
+        // TODO: Validate array length once we have BitReader that wraps byte[]
         int[] codewordLengths = new int[entries];
         if (ordered) {
             readOrdered(bits, codewordLengths);
@@ -42,8 +50,8 @@ record Codebook(
             }
         }
 
-        float minimumValue = 0;
-        float deltaValue = 0;
+        int minimumValue = 0;
+        int deltaValue = 0;
         int valueBits = 0;
         boolean sequenceP = false;
         int[] multiplicands = null;
@@ -52,14 +60,15 @@ record Codebook(
         if (lookupType == 0) {
             // do nothing
         } else if (lookupType == 1 || lookupType == 2) {
-            minimumValue = Util.float32Unpack(bits.read(32));
-            deltaValue = Util.float32Unpack(bits.read(32));
+            minimumValue = bits.read(32);
+            deltaValue = bits.read(32);
             valueBits = bits.read(4) + 1;
             sequenceP = bits.readBool();
 
+            // TODO: Validate array length once we have BitReader that wraps byte[]
             int lookupValues = lookupType == 1
                 ? lookup1Values(entries, dimensions)
-                : entries * dimensions;
+                : Math.toIntExact((long) entries * (long) dimensions);
 
             multiplicands = new int[lookupValues];
             for (int i = 0; i < lookupValues; i++) {
@@ -89,6 +98,9 @@ record Codebook(
 
         int entry = 0;
         while (entry < entries) {
+            if (length > 32) {
+                throw new VorbisException("Ordered codebook codeword length exceeds 32 bits");
+            }
             int number = bits.read(Util.ilog(entries - entry));
             if (entry + number > entries) {
                 throw new VorbisException("Codebook has more codewords than its " + entries + " entries");
@@ -117,7 +129,7 @@ record Codebook(
         return lo;
     }
 
-    private static boolean powAtMost(int base, int exponent, int limit) {
+    static boolean powAtMost(int base, int exponent, int limit) {
         long acc = 1;
         for (int i = 0; i < exponent; i++) {
             acc *= base;
@@ -126,6 +138,14 @@ record Codebook(
             }
         }
         return true;
+    }
+
+    public float minimum() {
+        return Util.float32Unpack(minimumValue);
+    }
+
+    public float delta() {
+        return Util.float32Unpack(deltaValue);
     }
 
     void write(BitOutputStream bits) throws IOException {
@@ -151,8 +171,8 @@ record Codebook(
 
         bits.write(4, lookupType);
         if (lookupType == 1 || lookupType == 2) {
-            bits.write(32, Util.float32Pack(minimumValue));
-            bits.write(32, Util.float32Pack(deltaValue));
+            bits.write(32, minimumValue);
+            bits.write(32, deltaValue);
             bits.write(4, valueBits - 1);
             bits.writeBool(sequenceP);
 

@@ -8,8 +8,8 @@ record Identification(
     int bitrateMaximum,
     int bitrateNominal,
     int bitrateMinimum,
-    int blockSize0,
-    int blockSize1
+    int blockSize0Log2,
+    int blockSize1Log2
 ) {
     static Identification read(BitInputStream bits) throws IOException {
         int vorbis_version = bits.read(32);
@@ -18,7 +18,7 @@ record Identification(
         }
 
         int audioChannels = bits.read(8);
-        if (audioChannels <= 0) {
+        if (audioChannels == 0) {
             throw new VorbisException("Invalid audio channels: " + audioChannels);
         }
 
@@ -30,10 +30,10 @@ record Identification(
         int bitrateMaximum = bits.read(32);
         int bitrateNominal = bits.read(32);
         int bitrateMinimum = bits.read(32);
-        int blockSize0 = readBlockSize(bits);
-        int blockSize1 = readBlockSize(bits);
-        if (blockSize0 > blockSize1) {
-            throw new VorbisException("Invalid block size: " + blockSize0 + " > " + blockSize1);
+        int blockSize0Log2 = readBlockSize(bits);
+        int blockSize1Log2 = readBlockSize(bits);
+        if (blockSize0Log2 > blockSize1Log2) {
+            throw new VorbisException("Invalid block size: " + blockSize0Log2 + " > " + blockSize1Log2);
         }
 
         int framing_flag = bits.read(1);
@@ -47,8 +47,8 @@ record Identification(
             bitrateMaximum,
             bitrateNominal,
             bitrateMinimum,
-            blockSize0,
-            blockSize1
+            blockSize0Log2,
+            blockSize1Log2
         );
     }
 
@@ -57,17 +57,26 @@ record Identification(
         if (blockSizeLog2 < 6 || blockSizeLog2 > 13) {
             throw new VorbisException("Invalid block size: " + (1 << blockSizeLog2));
         }
-        return 1 << blockSizeLog2;
+        return blockSizeLog2;
+    }
+
+    public int blockSize0() {
+        return 1 << blockSize0Log2;
+    }
+
+    public int blockSize1() {
+        return 1 << blockSize1Log2;
     }
 
     void write(BitOutputStream bits) throws IOException {
-        bits.write(audioChannels, 8);
-        bits.write(audioSampleRate, 32);
-        bits.write(bitrateMaximum, 32);
-        bits.write(bitrateNominal, 32);
-        bits.write(bitrateMinimum, 32);
-        bits.write(Integer.numberOfTrailingZeros(blockSize0), 4);
-        bits.write(Integer.numberOfTrailingZeros(blockSize1), 4);
+        bits.write(32, 0); // version
+        bits.write(8, audioChannels);
+        bits.write(32, audioSampleRate);
+        bits.write(32, bitrateMaximum);
+        bits.write(32, bitrateNominal);
+        bits.write(32, bitrateMinimum);
+        bits.write(4, blockSize0Log2);
+        bits.write(4, blockSize1Log2);
         bits.writeBool(true);
     }
 }

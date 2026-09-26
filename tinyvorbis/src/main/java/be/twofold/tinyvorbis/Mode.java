@@ -6,7 +6,7 @@ record Mode(
     boolean blockFlag,
     int mapping
 ) {
-    static Mode read(BitInputStream bits) throws IOException {
+    static Mode read(BitInputStream bits, int mappingCount) throws IOException {
         boolean blockFlag = bits.read(1) == 1;
         int windowType = bits.read(16);
         if (windowType != 0) {
@@ -17,6 +17,9 @@ record Mode(
             throw new VorbisException("Invalid transform type: " + transformType);
         }
         int mapping = bits.read(8);
+        if (mapping >= mappingCount) {
+            throw new VorbisException("Mode mapping out of range: " + mapping);
+        }
 
         return new Mode(blockFlag, mapping);
     }

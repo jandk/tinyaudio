@@ -165,7 +165,7 @@ record Floor1(
     @Override
     public boolean decode(BitReader bits, List<Codebook> codebooks, int[] floorY) {
         if (!bits.readBool()) {
-            return false;
+            return true;
         }
 
         int range = RANGES[multiplier - 1];
@@ -183,7 +183,7 @@ record Floor1(
             if (cBits > 0) {
                 cVal = codebooks.get(classMasterBooks[cClass]).decode(bits);
                 if (cVal < 0) {
-                    return false;
+                    return true;
                 }
             }
 
@@ -193,7 +193,7 @@ record Floor1(
                 if (book >= 0) {
                     int value = codebooks.get(book).decode(bits);
                     if (value < 0) {
-                        return false;
+                        return true;
                     }
                     floorY[offset + j] = value;
                 } else {
@@ -203,7 +203,7 @@ record Floor1(
             offset += cDim;
         }
 
-        return !bits.isOverrun();
+        return bits.isOverrun();
     }
 
     public void packBody(BitOutputStream bits) throws IOException {

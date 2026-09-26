@@ -15,7 +15,7 @@ sealed interface Floor permits Floor1 {
         }
     }
 
-    boolean decode(BitReader bits, List<Codebook> codebooks, int[] floorY) throws IOException;
+    boolean decode(BitReader bits, List<Codebook> codebooks, int[] floorY);
 
     default void pack(BitOutputStream bits) throws IOException {
         int floorType;

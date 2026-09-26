@@ -18,7 +18,7 @@ public final class VorbisDecoder {
 
     // Floor
     private final int[][] floorY;
-    private final boolean[] floorUsed;
+    private final boolean[] noResidue;
 
     public VorbisDecoder(PacketSource packets) throws IOException {
         this.packets = Objects.requireNonNull(packets);
@@ -28,7 +28,7 @@ public final class VorbisDecoder {
         previous = new float[identification.audioChannels()][];
 
         floorY = new int[identification.audioChannels()][65];
-        floorUsed = new boolean[identification.audioChannels()];
+        noResidue = new boolean[identification.audioChannels()];
     }
 
     private BitReader header(int type) throws IOException {
@@ -105,11 +105,21 @@ public final class VorbisDecoder {
             rightN = n / 2;
         }
 
+        // 4.3.2 floor curve decode
         Mapping mapping = setup.mappings().get(mode.mapping());
         for (int ch = 0; ch < identification.audioChannels(); ch++) {
             int submap = mapping.mux()[ch];
             Floor floor = setup.floors().get(mapping.submapFloor()[submap]);
-            floorUsed[ch] = floor.decode(bits, setup.codebooks(), floorY[ch]);
+            noResidue[ch] = floor.decode(bits, setup.codebooks(), floorY[ch]);
+        }
+
+        // 4.3.3 nonzero vector propagate
+        for (int i = 0; i < mapping.couplingSteps(); i++) {
+            int mag = mapping.magnitude()[i];
+            int ang = mapping.angle()[i];
+            if (!noResidue[mag] || !noResidue[ang]) {
+                noResidue[mag] = noResidue[ang] = false;
+            }
         }
 
         System.out.println(leftWindowStart + "\t" + leftWindowEnd + "\t" + leftN + "\t" + rightWindowStart + "\t" + rightWindowEnd + "\t" + rightN);

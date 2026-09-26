@@ -3,7 +3,6 @@ package be.twofold.tinyvorbis;
 import be.twofold.tinyaudio.core.Packet;
 import be.twofold.tinyaudio.core.PacketSource;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.ByteOrder;
 import java.util.Arrays;
@@ -32,7 +31,7 @@ public final class VorbisDecoder {
         floorUsed = new boolean[identification.audioChannels()];
     }
 
-    private BitInputStream header(int type) throws IOException {
+    private BitReader header(int type) throws IOException {
         Packet packet = packets.next();
         if (packet == null) {
             throw new VorbisException("Stream ended before header packet of type " + type);
@@ -43,7 +42,7 @@ public final class VorbisDecoder {
             throw new VorbisException("Expected header packet of type " + type + ", got " + Util.describe(data));
         }
 
-        return new BitInputStream(new ByteArrayInputStream(data, 7, data.length - 7), ByteOrder.LITTLE_ENDIAN);
+        return new BitReader(data, 7, data.length - 7, ByteOrder.LITTLE_ENDIAN);
     }
 
     DecodeType decode() throws IOException {
@@ -52,7 +51,7 @@ public final class VorbisDecoder {
             return DecodeType.END;
         }
 
-        var bits = new BitInputStream(new ByteArrayInputStream(packet.data()), ByteOrder.LITTLE_ENDIAN);
+        var bits = new BitReader(packet.data(), ByteOrder.LITTLE_ENDIAN);
         if (bits.read(1) != 0) {
             return DecodeType.BAD;
         }

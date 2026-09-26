@@ -11,7 +11,7 @@ record Residue(
     int classBook,
     int[][] books
 ) {
-    static Residue unpack(BitInputStream bits, List<Codebook> codebooks) throws IOException {
+    static Residue unpack(BitReader bits, List<Codebook> codebooks) throws IOException {
         int type = bits.read(16);
         if (type > 2) {
             throw new VorbisException("Invalid residue type: " + type);

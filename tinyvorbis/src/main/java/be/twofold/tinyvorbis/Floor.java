@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.util.List;
 
 sealed interface Floor permits Floor1 {
-    static Floor unpack(BitInputStream bits, int codebookCount) throws IOException {
+    static Floor unpack(BitReader bits, int codebookCount) throws IOException {
         int floorType = bits.read(16);
         if (floorType == 0) {
             throw new UnsupportedOperationException("Floor 0");
@@ -15,7 +15,7 @@ sealed interface Floor permits Floor1 {
         }
     }
 
-    boolean decode(BitInputStream bits, List<Codebook> codebooks, int[] floorY) throws IOException;
+    boolean decode(BitReader bits, List<Codebook> codebooks, int[] floorY) throws IOException;
 
     default void pack(BitOutputStream bits) throws IOException {
         int floorType;

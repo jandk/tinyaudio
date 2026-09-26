@@ -45,7 +45,7 @@ record Codebook(
 
     public static final int MAGIC = 0x56_4342;
 
-    static Codebook unpack(BitInputStream bits) throws IOException {
+    static Codebook unpack(BitReader bits) throws IOException {
         if (bits.read(24) != MAGIC) {
             throw new VorbisException("Invalid Vorbis codebook");
         }
@@ -119,7 +119,7 @@ record Codebook(
         );
     }
 
-    static void unpackOrdered(BitInputStream bits, int[] codewordLengths) throws IOException {
+    static void unpackOrdered(BitReader bits, int[] codewordLengths) throws IOException {
         int entries = codewordLengths.length;
         int length = bits.read(5) + 1;
 

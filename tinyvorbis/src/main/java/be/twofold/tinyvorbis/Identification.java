@@ -11,7 +11,7 @@ record Identification(
     int blockSize0Log2,
     int blockSize1Log2
 ) {
-    static Identification read(BitInputStream bits) throws IOException {
+    static Identification read(BitReader bits) throws IOException {
         int vorbis_version = bits.read(32);
         if (vorbis_version != 0) {
             throw new VorbisException("Invalid vorbis version: " + vorbis_version);
@@ -52,7 +52,7 @@ record Identification(
         );
     }
 
-    private static int readBlockSize(BitInputStream bits) throws IOException {
+    private static int readBlockSize(BitReader bits) throws IOException {
         int blockSizeLog2 = bits.read(4);
         if (blockSizeLog2 < 6 || blockSizeLog2 > 13) {
             throw new VorbisException("Invalid block size: " + (1 << blockSizeLog2));

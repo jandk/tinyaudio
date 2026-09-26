@@ -9,7 +9,7 @@ record Mapping(
     int[] magnitude,
     int[] angle
 ) {
-    static Mapping unpack(BitInputStream bits, int audioChannels, int floorCount, int residueCount) throws IOException {
+    static Mapping unpack(BitReader bits, int audioChannels, int floorCount, int residueCount) throws IOException {
         int type = bits.read(16);
         if (type != 0) {
             throw new VorbisException("Invalid mapping type: " + type);

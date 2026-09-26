@@ -2,7 +2,6 @@ package be.twofold.tinyvorbis;
 
 import org.junit.jupiter.api.Test;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -22,15 +21,12 @@ class SetupHeaderTest {
 
         byte[] expected = Arrays.copyOfRange(packet, PACKET_HEADER.length, packet.length);
 
-        SetupHeader setupHeader;
-        ByteArrayInputStream in = new ByteArrayInputStream(expected);
-        try (BitInputStream bits = new BitInputStream(in, ByteOrder.LITTLE_ENDIAN)) {
-            setupHeader = SetupHeader.read(bits, AUDIO_CHANNELS);
-        }
+        BitReader bits = new BitReader(expected, ByteOrder.LITTLE_ENDIAN);
+        SetupHeader setupHeader = SetupHeader.read(bits, AUDIO_CHANNELS);
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        try (BitOutputStream bits = new BitOutputStream(out, ByteOrder.LITTLE_ENDIAN)) {
-            setupHeader.write(bits, AUDIO_CHANNELS);
+        try (BitOutputStream bitsOut = new BitOutputStream(out, ByteOrder.LITTLE_ENDIAN)) {
+            setupHeader.write(bitsOut, AUDIO_CHANNELS);
         }
 
         assertThat(out.toByteArray()).isEqualTo(expected);

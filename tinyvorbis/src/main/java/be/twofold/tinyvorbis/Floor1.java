@@ -80,7 +80,7 @@ record Floor1(
         8.2788259e-1f, 8.8168305e-1f, 9.3897980e-1f, 1.0000000e+0f,
     };
 
-    static Floor1 unpack(BitInputStream bits, int codebookCount) throws IOException {
+    static Floor1 unpack(BitReader bits, int codebookCount) throws IOException {
         int partitions = bits.read(5);
 
         int maximumClass = -1;
@@ -163,7 +163,7 @@ record Floor1(
     }
 
     @Override
-    public boolean decode(BitInputStream bits, List<Codebook> codebooks, int[] floorY) throws IOException {
+    public boolean decode(BitReader bits, List<Codebook> codebooks, int[] floorY) throws IOException {
         if (!bits.readBool()) {
             return false;
         }

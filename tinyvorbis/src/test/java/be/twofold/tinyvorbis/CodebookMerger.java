@@ -1,6 +1,9 @@
 package be.twofold.tinyvorbis;
 
-import java.io.*;
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.file.Files;
@@ -96,7 +99,7 @@ final class CodebookMerger {
     }
 
     private static Codebook readPackedCodebook(Bytes bytes) throws IOException {
-        BitInputStream bits = new BitInputStream(new ByteArrayInputStream(bytes.array), ByteOrder.LITTLE_ENDIAN);
+        BitReader bits = new BitReader(bytes.array, ByteOrder.LITTLE_ENDIAN);
         int dimensions = bits.read(4);
         int entries = bits.read(14);
 
@@ -142,7 +145,7 @@ final class CodebookMerger {
         }
 
         // Weird, end on a byte, write another one...
-        int used = bits.getBitsRead() / 8 + 1;
+        int used = bits.bitsRead() / 8 + 1;
         if (used != bytes.array.length) {
             throw new VorbisException("Packed codebook used " + used + " of " + bytes.array.length + " bytes");
         }

@@ -19,7 +19,7 @@ public record SetupHeader(
         modes = List.copyOf(modes);
     }
 
-    public static SetupHeader read(BitInputStream bits, int audioChannels) throws IOException {
+    public static SetupHeader read(BitReader bits, int audioChannels) throws IOException {
         List<Codebook> codebooks = readList(bits, 8, Codebook::unpack);
         readList(bits, 6, SetupHeader::unpackTimeValue);
         List<Floor> floors = readList(bits, 6, in -> Floor.unpack(in, codebooks.size()));
@@ -41,7 +41,7 @@ public record SetupHeader(
         );
     }
 
-    private static <T> List<T> readList(BitInputStream bits, int countBits, Reader<T> reader) throws IOException {
+    private static <T> List<T> readList(BitReader bits, int countBits, Reader<T> reader) throws IOException {
         int count = bits.read(countBits) + 1;
         List<T> list = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
@@ -50,8 +50,8 @@ public record SetupHeader(
         return list;
     }
 
-    private static Void unpackTimeValue(BitInputStream in) throws IOException {
-        if (in.read(16) != 0) {
+    private static Void unpackTimeValue(BitReader bits) throws IOException {
+        if (bits.read(16) != 0) {
             throw new VorbisException("Invalid time domain transform");
         }
         return null;
@@ -80,7 +80,7 @@ public record SetupHeader(
     }
 
     private interface Reader<T> {
-        T read(BitInputStream bits) throws IOException;
+        T read(BitReader bits) throws IOException;
     }
 
     private interface Writer<T> {

@@ -2,6 +2,7 @@ package be.twofold.tinyvorbis;
 
 import be.twofold.tinyaudio.core.Packet;
 import be.twofold.tinyaudio.core.PacketSource;
+import be.twofold.tinyvorbis.mdct.MDCT;
 
 import java.io.IOException;
 import java.nio.ByteOrder;
@@ -24,19 +25,23 @@ public final class VorbisDecoder {
     private final boolean[] noResidue;
     private final float[][] pcmBundle;
     private final boolean[] zeroBundle;
+    private final MDCT mdct0;
+    private final MDCT mdct1;
 
     public VorbisDecoder(PacketSource packets) throws IOException {
         this.packets = Objects.requireNonNull(packets);
         this.identification = Identification.read(header(1));
         header(3);
         setup = SetupHeader.read(header(5), identification.audioChannels());
-        spectrum = new float[identification.audioChannels()][identification.blockSize1() / 2];
+        spectrum = new float[identification.audioChannels()][identification.blockSize1()];
 
         floorY = new int[identification.audioChannels()][65];
         floorUnused = new boolean[identification.audioChannels()];
         noResidue = new boolean[identification.audioChannels()];
         pcmBundle = new float[identification.audioChannels()][];
         zeroBundle = new boolean[identification.audioChannels()];
+        mdct0 = new MDCT(identification.blockSize0());
+        mdct1 = new MDCT(identification.blockSize1());
     }
 
     private BitReader header(int type) throws IOException {
@@ -182,6 +187,12 @@ public final class VorbisDecoder {
                 Floor floor = setup.floors().get(mapping.submapFloor()[submap]);
                 floor.synthesize(floorY[ch], spectrum[ch], n / 2);
             }
+        }
+
+        // 4.3.7 inverse mdct
+        MDCT mdct = mode.blockFlag() ? mdct1 : mdct0;
+        for (int ch = 0; ch < identification.audioChannels(); ch++) {
+            mdct.backward(spectrum[ch], spectrum[ch]);
         }
 
         return DecodeType.GOOD;

@@ -24,7 +24,7 @@ public final class DCT4 {
     static float[] buildTwiddle(int n) {
         float[] twiddle = new float[n];
         for (int i = 0, lim = n / 2; i < lim; i++) {
-            double angle = Math.TAU * (i + 0.125) / (2 * n);
+            double angle = 2 * Math.PI * (i + 0.125) / (2 * n);
             twiddle[i * 2/**/] = (float) Math.cos(angle);
             twiddle[i * 2 + 1] = (float) -Math.sin(angle);
         }
@@ -39,7 +39,7 @@ public final class DCT4 {
         if (in.length != n || out.length != n) {
             throw new IllegalArgumentException("array length must be equal to n");
         }
-        preTwiddle(twiddle, in, scratch);
+        preTwiddle(twiddle, in, scratch, n);
         fft.forward(scratch, out);
         postTwiddle(twiddle, out);
     }
@@ -47,8 +47,7 @@ public final class DCT4 {
     /**
      * Pair + pre-twiddle: z[k] = (u[2k] + i*u[n-1-2k]) * w[k], in → out.
      */
-    static void preTwiddle(float[] w, float[] in, float[] out) {
-        int n = in.length;
+    static void preTwiddle(float[] w, float[] in, float[] out, int n) {
         for (int a = 0, b = n - 1; a < n; a += 2, b -= 2) {
             float xr = in[a], xi = in[b];
             float wr = w[a], wi = w[a + 1];

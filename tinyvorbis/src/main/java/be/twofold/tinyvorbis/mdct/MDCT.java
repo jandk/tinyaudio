@@ -33,10 +33,10 @@ public final class MDCT {
      * n/2 coefficients in, n samples out, unscaled.
      */
     public void backward(float[] in, float[] out) {
-        if (in.length != n / 2 || out.length < n) {
+        if (in.length < n / 2 || out.length < n) {
             throw new IllegalArgumentException("in must have n/2 coefficients and out room for n samples");
         }
-        DCT4.preTwiddle(twiddle, in, bufA);
+        DCT4.preTwiddle(twiddle, in, bufA, n / 2);
         fft.forward(bufA, bufB);
         postTwiddleUnfold(bufB, out);
     }

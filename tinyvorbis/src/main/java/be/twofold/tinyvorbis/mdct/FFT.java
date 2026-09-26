@@ -74,7 +74,7 @@ public final class FFT {
     private static float[] buildTwiddle(int n) {
         float[] twiddle = new float[n * 2];
         for (int i = 0; i < n; i++) {
-            double jth = Math.TAU * i / n;
+            double jth = 2 * Math.PI * i / n;
             twiddle[i * 2/**/] = (float) Math.cos(jth);
             twiddle[i * 2 + 1] = (float) -Math.sin(jth);
         }

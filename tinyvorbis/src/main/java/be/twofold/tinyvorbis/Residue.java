@@ -113,7 +113,7 @@ record Residue(
 
     public void decode(BitReader bits, List<Codebook> codebooks, int n2, float[][] pcmBundle, boolean[] zeroBundle, int count) {
         for (int i = 0; i < count; i++) {
-            Arrays.fill(pcmBundle[i], 0.0f);
+            Arrays.fill(pcmBundle[i], 0, n2, 0.0f);
         }
 
         int actualSize = n2;

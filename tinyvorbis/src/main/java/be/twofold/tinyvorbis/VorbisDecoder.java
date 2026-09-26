@@ -73,6 +73,9 @@ public final class VorbisDecoder {
         } else {
             n = identification.blockSize0();
         }
+        if (bits.isOverrun()) {
+            return DecodeType.BAD;
+        }
 
         int windowCenter = n / 2;
         int leftWindowStart;

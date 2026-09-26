@@ -295,4 +295,17 @@ record Codebook(
         Arrays.sort(words);
         return words;
     }
+
+    public int decode(BitReader bits) {
+        if (words.length == 0) {
+            return -1;
+        }
+        int peek = Integer.reverse(bits.peek(32));             // first stream bit -> bit 31
+        long key = (peek ^ 0x8000_0000L) << 32 | 0xFFFF_FFFFL;
+
+        int index = -Arrays.binarySearch(words, key) - 2;
+        long word = words[index];
+        bits.skip((int) word & 0xFF);
+        return bits.isOverrun() ? -1 : (int) word >>> 8;
+    }
 }

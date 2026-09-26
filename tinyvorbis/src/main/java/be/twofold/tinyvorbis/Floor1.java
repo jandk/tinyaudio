@@ -163,7 +163,7 @@ record Floor1(
     }
 
     @Override
-    public boolean decode(BitReader bits, List<Codebook> codebooks, int[] floorY) throws IOException {
+    public boolean decode(BitReader bits, List<Codebook> codebooks, int[] floorY) {
         if (!bits.readBool()) {
             return false;
         }
@@ -174,17 +174,36 @@ record Floor1(
         floorY[1] = bits.read(rangeLog2);
 
         int offset = 2;
-        for (int i = 0; i < partitionClassList.length; i++) {
-            int cClass = partitionClassList[i];
+        for (int cClass : partitionClassList) {
             int cDim = classDimensions[cClass];
             int cBits = classSubclasses(cClass);
             int cSub = (1 << cBits) - 1;
             int cVal = 0;
 
-            throw new UnsupportedOperationException();
+            if (cBits > 0) {
+                cVal = codebooks.get(classMasterBooks[cClass]).decode(bits);
+                if (cVal < 0) {
+                    return false;
+                }
+            }
+
+            for (int j = 0; j < cDim; j++) {
+                int book = subclassBooks[cClass][cVal & cSub];
+                cVal >>>= cBits;
+                if (book >= 0) {
+                    int value = codebooks.get(book).decode(bits);
+                    if (value < 0) {
+                        return false;
+                    }
+                    floorY[offset + j] = value;
+                } else {
+                    floorY[offset + j] = 0;
+                }
+            }
+            offset += cDim;
         }
 
-        return true;
+        return !bits.isOverrun();
     }
 
     public void packBody(BitOutputStream bits) throws IOException {

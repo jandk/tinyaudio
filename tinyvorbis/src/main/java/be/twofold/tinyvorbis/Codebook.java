@@ -3,20 +3,22 @@ package be.twofold.tinyvorbis;
 import java.io.IOException;
 import java.util.Arrays;
 
-record Codebook(
-    int dimensions,
-    boolean ordered,
-    boolean sparse,
-    int[] codewordLengths,
-    int lookupType,
-    int minimumValue,
-    int deltaValue,
-    int valueBits,
-    boolean sequenceP,
-    int[] multiplicands,
-    long[] words
-) {
-    public Codebook(
+final class Codebook {
+    public static final int MAGIC = 0x56_4342;
+    private final int dimensions;
+    private final boolean ordered;
+    private final boolean sparse;
+    private final int[] codewordLengths;
+    private final int lookupType;
+    private final int minimumValue;
+    private final int deltaValue;
+    private final int valueBits;
+    private final boolean sequenceP;
+    private final int[] multiplicands;
+    private final long[] words;
+    private final float[] vectors;
+
+    Codebook(
         int dimensions,
         boolean ordered,
         boolean sparse,
@@ -28,22 +30,20 @@ record Codebook(
         boolean sequenceP,
         int[] multiplicands
     ) throws VorbisException {
-        this(
-            dimensions,
-            ordered,
-            sparse,
-            codewordLengths,
-            lookupType,
-            minimumValue,
-            deltaValue,
-            valueBits,
-            sequenceP,
-            multiplicands,
-            makeWords(codewordLengths)
-        );
-    }
+        this.dimensions = dimensions;
+        this.ordered = ordered;
+        this.sparse = sparse;
+        this.codewordLengths = codewordLengths;
+        this.lookupType = lookupType;
+        this.minimumValue = minimumValue;
+        this.deltaValue = deltaValue;
+        this.valueBits = valueBits;
+        this.sequenceP = sequenceP;
+        this.multiplicands = multiplicands;
 
-    public static final int MAGIC = 0x56_4342;
+        this.words = makeWords();
+        this.vectors = makeVectors();
+    }
 
     static Codebook unpack(BitReader bits) throws IOException {
         if (bits.read(24) != MAGIC) {
@@ -105,17 +105,8 @@ record Codebook(
             throw new VorbisException("Reserved codebook lookup type: " + lookupType);
         }
         return new Codebook(
-            dimensions,
-            ordered,
-            sparse,
-            codewordLengths,
-            lookupType,
-            minimumValue,
-            deltaValue,
-            valueBits,
-            sequenceP,
-            multiplicands,
-            makeWords(codewordLengths)
+            dimensions, ordered, sparse, codewordLengths, lookupType,
+            minimumValue, deltaValue, valueBits, sequenceP, multiplicands
         );
     }
 
@@ -167,22 +158,58 @@ record Codebook(
         return true;
     }
 
-    int entries() {
-        return codewordLengths.length;
+    public int dimensions() {
+        return dimensions;
     }
 
-    public float minimum() {
-        return Util.float32Unpack(minimumValue);
+    public boolean ordered() {
+        return ordered;
     }
 
-    public float delta() {
-        return Util.float32Unpack(deltaValue);
+    public boolean sparse() {
+        return sparse;
+    }
+
+    public int[] codewordLengths() {
+        return codewordLengths;
+    }
+
+    public int lookupType() {
+        return lookupType;
+    }
+
+    public int minimumValue() {
+        return minimumValue;
+    }
+
+    public int deltaValue() {
+        return deltaValue;
+    }
+
+    public int valueBits() {
+        return valueBits;
+    }
+
+    public boolean sequenceP() {
+        return sequenceP;
+    }
+
+    public int[] multiplicands() {
+        return multiplicands;
+    }
+
+    public long[] words() {
+        return words;
+    }
+
+    public float[] vectors() {
+        return vectors;
     }
 
     void pack(BitOutputStream bits) throws IOException {
         bits.write(24, MAGIC);
         bits.write(16, dimensions);
-        bits.write(24, entries());
+        bits.write(24, codewordLengths.length);
 
         bits.writeBool(ordered);
         if (ordered) {
@@ -236,12 +263,22 @@ record Codebook(
         }
     }
 
-    /**
-     * Ported from libvorbis' dec_make_words.
-     */
-    private static long[] makeWords(int[] lengths) throws VorbisException {
+    public int decode(BitReader bits) {
+        if (words.length == 0) {
+            return -1;
+        }
+        int peek = Integer.reverse(bits.peek(32));             // first stream bit -> bit 31
+        long key = (peek ^ 0x8000_0000L) << 32 | 0xFFFF_FFFFL;
+
+        int index = -Arrays.binarySearch(words, key) - 2;
+        long word = words[index];
+        bits.skip((int) word & 0xFF);
+        return bits.isOverrun() ? -1 : (int) word >>> 8;
+    }
+
+    private long[] makeWords() throws VorbisException {
         int usedEntries = 0;
-        for (int length : lengths) {
+        for (int length : codewordLengths) {
             if (length > 0) {
                 usedEntries++;
             }
@@ -251,8 +288,8 @@ record Codebook(
         long[] words = new long[usedEntries];
 
         int count = 0;
-        for (int i = 0; i < lengths.length; i++) {
-            int length = lengths[i];
+        for (int i = 0; i < codewordLengths.length; i++) {
+            int length = codewordLengths[i];
             if (length > 0) {
                 int code = marker[length];
 
@@ -296,16 +333,48 @@ record Codebook(
         return words;
     }
 
-    public int decode(BitReader bits) {
-        if (words.length == 0) {
-            return -1;
+    private float[] makeVectors() {
+        if (lookupType == 0) {
+            return null;
         }
-        int peek = Integer.reverse(bits.peek(32));             // first stream bit -> bit 31
-        long key = (peek ^ 0x8000_0000L) << 32 | 0xFFFF_FFFFL;
 
-        int index = -Arrays.binarySearch(words, key) - 2;
-        long word = words[index];
-        bits.skip((int) word & 0xFF);
-        return bits.isOverrun() ? -1 : (int) word >>> 8;
+        float minimum = Util.float32Unpack(minimumValue);
+        float delta = Util.float32Unpack(deltaValue);
+        float[] values = new float[dimensions * codewordLengths.length];
+        for (int e = 0; e < codewordLengths.length; e++) {
+            float last = 0;
+            int divisor = 1;
+            for (int i = 0; i < dimensions; i++) {
+                int m;
+                if (lookupType == 1) {
+                    m = multiplicands[(e / divisor) % multiplicands.length];
+                    divisor *= multiplicands.length;
+                } else {
+                    m = multiplicands[e * dimensions + i];
+                }
+                float value = m * delta + minimum + last;
+                if (sequenceP) {
+                    last = value;
+                }
+                values[e * dimensions + i] = value;
+            }
+        }
+        return values;
+    }
+
+    @Override
+    public String toString() {
+        return "Codebook(" +
+            "multiplicands=" + Arrays.toString(multiplicands) + ", " +
+            "sequenceP=" + sequenceP + ", " +
+            "valueBits=" + valueBits + ", " +
+            "deltaValue=" + deltaValue + ", " +
+            "minimumValue=" + minimumValue + ", " +
+            "lookupType=" + lookupType + ", " +
+            "codewordLengths=" + Arrays.toString(codewordLengths) + ", " +
+            "sparse=" + sparse + ", " +
+            "ordered=" + ordered + ", " +
+            "dimensions=" + dimensions +
+            ")";
     }
 }

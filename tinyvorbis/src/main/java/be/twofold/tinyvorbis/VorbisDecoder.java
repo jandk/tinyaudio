@@ -14,21 +14,29 @@ public final class VorbisDecoder {
     private final PacketSource packets;
     private final Identification identification;
     private final SetupHeader setup;
-    private final float[][] previous;
+    private final float[][] spectrum;
 
     // Floor
     private final int[][] floorY;
+    private final boolean[] floorUnused;
+
+    // Residue
     private final boolean[] noResidue;
+    private final float[][] pcmBundle;
+    private final boolean[] zeroBundle;
 
     public VorbisDecoder(PacketSource packets) throws IOException {
         this.packets = Objects.requireNonNull(packets);
         this.identification = Identification.read(header(1));
         header(3);
         setup = SetupHeader.read(header(5), identification.audioChannels());
-        previous = new float[identification.audioChannels()][];
+        spectrum = new float[identification.audioChannels()][identification.blockSize1() / 2];
 
         floorY = new int[identification.audioChannels()][65];
+        floorUnused = new boolean[identification.audioChannels()];
         noResidue = new boolean[identification.audioChannels()];
+        pcmBundle = new float[identification.audioChannels()][];
+        zeroBundle = new boolean[identification.audioChannels()];
     }
 
     private BitReader header(int type) throws IOException {
@@ -110,16 +118,32 @@ public final class VorbisDecoder {
         for (int ch = 0; ch < identification.audioChannels(); ch++) {
             int submap = mapping.mux()[ch];
             Floor floor = setup.floors().get(mapping.submapFloor()[submap]);
-            noResidue[ch] = floor.decode(bits, setup.codebooks(), floorY[ch]);
+            floorUnused[ch] = floor.decode(bits, setup.codebooks(), floorY[ch]);
         }
 
         // 4.3.3 nonzero vector propagate
+        System.arraycopy(floorUnused, 0, noResidue, 0, identification.audioChannels());
         for (int i = 0; i < mapping.couplingSteps(); i++) {
             int mag = mapping.magnitude()[i];
             int ang = mapping.angle()[i];
             if (!noResidue[mag] || !noResidue[ang]) {
                 noResidue[mag] = noResidue[ang] = false;
             }
+        }
+
+        // 4.3.4 residue decode
+        for (int i = 0; i < mapping.submaps(); i++) {
+            int count = 0;
+            for (int j = 0; j < identification.audioChannels(); j++) {
+                if (mapping.mux()[j] == i) {
+                    pcmBundle[count] = spectrum[j];
+                    zeroBundle[count] = noResidue[j];
+                    count++;
+                }
+            }
+
+            Residue residue = setup.residues().get(mapping.submapResidue()[i]);
+            residue.decode(bits, setup.codebooks(), n / 2, pcmBundle, zeroBundle, count);
         }
 
         System.out.println(leftWindowStart + "\t" + leftWindowEnd + "\t" + leftN + "\t" + rightWindowStart + "\t" + rightWindowEnd + "\t" + rightN);

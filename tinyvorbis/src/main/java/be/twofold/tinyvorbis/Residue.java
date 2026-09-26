@@ -1,6 +1,7 @@
 package be.twofold.tinyvorbis;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 
 record Residue(
@@ -30,7 +31,7 @@ record Residue(
             throw new VorbisException("Residue class book out of range: " + classBook);
         }
         Codebook book = codebooks.get(classBook);
-        if (!Codebook.powAtMost(classifications, book.dimensions(), book.entries())) {
+        if (!Codebook.powAtMost(classifications, book.dimensions(), book.codewordLengths().length)) {
             throw new VorbisException("Residue class book cannot encode " + classifications + " classifications");
         }
 
@@ -108,5 +109,104 @@ record Residue(
                 }
             }
         }
+    }
+
+    public void decode(BitReader bits, List<Codebook> codebooks, int n2, float[][] pcmBundle, boolean[] zeroBundle, int count) {
+        for (int i = 0; i < count; i++) {
+            Arrays.fill(pcmBundle[i], 0.0f);
+        }
+
+        int actualSize = n2;
+        int vectorCount = count;
+
+        if (type == 2) {
+            if (allSkipped(zeroBundle, count)) {
+                return;
+            }
+            actualSize = n2 * count;
+            vectorCount = 1;
+        }
+
+        int limitBegin = Math.min(begin, actualSize);
+        int limitEnd = Math.min(end, actualSize);
+        int toRead = limitEnd - limitBegin;
+        if (toRead <= 0) {
+            return;
+        }
+
+        Codebook classBook = codebooks.get(this.classBook);
+        int classWords = classBook.dimensions();
+        int partitionsToRead = toRead / partitionSize;
+        int[][] classes = new int[vectorCount][partitionsToRead + classWords - 1];
+
+        for (int pass = 0; pass < 8; pass++) {
+            int partition = 0;
+            while (partition < partitionsToRead) {
+                if (pass == 0) {
+                    for (int j = 0; j < vectorCount; j++) {
+                        if (type != 2 && zeroBundle[j]) {
+                            continue;
+                        }
+                        int temp = classBook.decode(bits);
+                        if (temp < 0) {
+                            return;
+                        }
+                        for (int i = classWords - 1; i >= 0; i--) {
+                            classes[j][partition + i] = temp % classifications();
+                            temp /= classifications();
+                        }
+                    }
+                }
+                for (int i = 0; i < classWords && partition < partitionsToRead; i++, partition++) {
+                    for (int j = 0; j < vectorCount; j++) {
+                        if (type != 2 && zeroBundle[j]) {
+                            continue;
+                        }
+                        int book = books[classes[j][partition]][pass];
+                        if (book >= 0) {
+                            int offset = limitBegin + partition * partitionSize;
+                            if (!decodePartition(bits, codebooks.get(book), pcmBundle, j, count, offset)) {
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private boolean allSkipped(boolean[] skip, int count) {
+        for (int i = 0; i < count; i++) {
+            if (!skip[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean decodePartition(BitReader bits, Codebook codebook, float[][] pcmBundle, int j, int count, int offset) {
+        int dim = codebook.dimensions();
+        float[] values = codebook.vectors();
+        int rows = partitionSize / dim;
+
+        for (int r = 0; r < rows; r++) {
+            int entry = codebook.decode(bits);
+            if (entry < 0) {
+                return false;
+            }
+            int base = entry * dim;
+            for (int d = 0; d < dim; d++) {
+                float value = values[base + d];
+                switch (type) {
+                    case 0 -> pcmBundle[j][offset + r + d * rows] += value;
+                    case 1 -> pcmBundle[j][offset + r * dim + d] += value;
+                    default -> {
+                        int t = offset + r * dim + d;
+                        pcmBundle[t % count][t / count] += value;
+                    }
+                }
+            }
+        }
+        return true;
     }
 }

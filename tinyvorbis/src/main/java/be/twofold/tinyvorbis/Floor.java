@@ -8,7 +8,7 @@ public sealed interface Floor permits Floor1 {
         if (floorType == 0) {
             throw new UnsupportedOperationException("Floor 0");
         } else if (floorType == 1) {
-            return Floor1.read(bits, codebookCount);
+            return Floor1.unpack(bits, codebookCount);
         } else {
             throw new VorbisException("Invalid floor type");
         }

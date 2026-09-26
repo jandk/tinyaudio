@@ -105,7 +105,7 @@ final class CodebookMerger {
         boolean sparse = false;
         if (ordered) {
             // Whoo, it's the same!
-            Codebook.readOrdered(bits, codewordLengths);
+            Codebook.unpackOrdered(bits, codewordLengths);
         } else {
             int codewordLengthLength = bits.read(3);
             sparse = bits.readBool();

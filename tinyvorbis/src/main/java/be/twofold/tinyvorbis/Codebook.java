@@ -38,7 +38,7 @@ record Codebook(
         // TODO: Validate array length once we have BitReader that wraps byte[]
         int[] codewordLengths = new int[entries];
         if (ordered) {
-            readOrdered(bits, codewordLengths);
+            unpackOrdered(bits, codewordLengths);
         } else {
             sparse = bits.readBool();
 
@@ -92,7 +92,7 @@ record Codebook(
         );
     }
 
-    static void readOrdered(BitInputStream bits, int[] codewordLengths) throws IOException {
+    static void unpackOrdered(BitInputStream bits, int[] codewordLengths) throws IOException {
         int entries = codewordLengths.length;
         int length = bits.read(5) + 1;
 
@@ -155,7 +155,7 @@ record Codebook(
 
         bits.writeBool(ordered);
         if (ordered) {
-            writeOrdered(bits, codewordLengths);
+            packOrdered(bits, codewordLengths);
         } else {
             bits.writeBool(sparse);
             for (int codewordLength : codewordLengths) {
@@ -182,7 +182,7 @@ record Codebook(
         }
     }
 
-    private void writeOrdered(BitOutputStream bits, int[] codewordLengths) throws IOException {
+    private void packOrdered(BitOutputStream bits, int[] codewordLengths) throws IOException {
         int entries = codewordLengths.length;
         for (int i = 0; i < entries; i++) {
             if (codewordLengths[i] == 0 || (i > 0 && codewordLengths[i] < codewordLengths[i - 1])) {

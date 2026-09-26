@@ -11,7 +11,7 @@ record Floor1(
     int multiplier,
     int[] xList
 ) implements Floor {
-    static Floor1 read(BitInputStream bits, int codebookCount) throws IOException {
+    static Floor1 unpack(BitInputStream bits, int codebookCount) throws IOException {
         int partitions = bits.read(5);
 
         int maximumClass = -1;

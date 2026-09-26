@@ -149,7 +149,6 @@ final class CodebookMerger {
 
         return new Codebook(
             dimensions,
-            entries,
             ordered,
             sparse,
             codewordLengths,

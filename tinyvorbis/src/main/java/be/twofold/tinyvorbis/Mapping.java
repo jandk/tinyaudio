@@ -3,11 +3,9 @@ package be.twofold.tinyvorbis;
 import java.io.IOException;
 
 record Mapping(
-    int submaps,
     int[] mux,
     int[] submapFloor,
     int[] submapResidue,
-    int couplingSteps,
     int[] magnitude,
     int[] angle
 ) {
@@ -74,16 +72,25 @@ record Mapping(
         }
 
         return new Mapping(
-            submaps,
             mux,
             submapFloor,
             submapResidue,
-            couplingSteps,
             magnitude,
             angle);
     }
 
+    int submaps() {
+        return submapFloor.length;
+    }
+
+    int couplingSteps() {
+        return magnitude.length;
+    }
+
     void pack(BitOutputStream bits, int audioChannels) throws IOException {
+        int submaps = submaps();
+        int couplingSteps = couplingSteps();
+
         bits.write(16, 0);
 
         bits.writeBool(submaps > 1);

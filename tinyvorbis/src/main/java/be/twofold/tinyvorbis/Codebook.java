@@ -5,7 +5,6 @@ import java.util.Arrays;
 
 record Codebook(
     int dimensions,
-    int entries,
     boolean ordered,
     boolean sparse,
     int[] codewordLengths,
@@ -14,8 +13,36 @@ record Codebook(
     int deltaValue,
     int valueBits,
     boolean sequenceP,
-    int[] multiplicands
+    int[] multiplicands,
+    long[] words
 ) {
+    public Codebook(
+        int dimensions,
+        boolean ordered,
+        boolean sparse,
+        int[] codewordLengths,
+        int lookupType,
+        int minimumValue,
+        int deltaValue,
+        int valueBits,
+        boolean sequenceP,
+        int[] multiplicands
+    ) throws VorbisException {
+        this(
+            dimensions,
+            ordered,
+            sparse,
+            codewordLengths,
+            lookupType,
+            minimumValue,
+            deltaValue,
+            valueBits,
+            sequenceP,
+            multiplicands,
+            makeWords(codewordLengths)
+        );
+    }
+
     public static final int MAGIC = 0x56_4342;
 
     static Codebook unpack(BitInputStream bits) throws IOException {
@@ -79,7 +106,6 @@ record Codebook(
         }
         return new Codebook(
             dimensions,
-            entries,
             ordered,
             sparse,
             codewordLengths,
@@ -88,7 +114,8 @@ record Codebook(
             deltaValue,
             valueBits,
             sequenceP,
-            multiplicands
+            multiplicands,
+            makeWords(codewordLengths)
         );
     }
 
@@ -140,6 +167,10 @@ record Codebook(
         return true;
     }
 
+    int entries() {
+        return codewordLengths.length;
+    }
+
     public float minimum() {
         return Util.float32Unpack(minimumValue);
     }
@@ -151,7 +182,7 @@ record Codebook(
     void pack(BitOutputStream bits) throws IOException {
         bits.write(24, MAGIC);
         bits.write(16, dimensions);
-        bits.write(24, entries);
+        bits.write(24, entries());
 
         bits.writeBool(ordered);
         if (ordered) {
@@ -203,5 +234,65 @@ record Codebook(
             entry += number;
             length++;
         }
+    }
+
+    /**
+     * Ported from libvorbis' dec_make_words.
+     */
+    private static long[] makeWords(int[] lengths) throws VorbisException {
+        int usedEntries = 0;
+        for (int length : lengths) {
+            if (length > 0) {
+                usedEntries++;
+            }
+        }
+
+        int[] marker = new int[33];
+        long[] words = new long[usedEntries];
+
+        int count = 0;
+        for (int i = 0; i < lengths.length; i++) {
+            int length = lengths[i];
+            if (length > 0) {
+                int code = marker[length];
+
+                if (length < 32 && code >>> length != 0) {
+                    throw new VorbisException("Overpopulated tree");
+                }
+                words[count++] = (((long) code << (32 - length) ^ 0x8000_0000L) << 32) | (long) i << 8 | length;
+
+                for (int j = length; j > 0; j--) {
+                    if ((marker[j] & 1) != 0) {
+                        if (j == 1) {
+                            marker[1]++;
+                        } else {
+                            marker[j] = marker[j - 1] << 1;
+                        }
+                        break;
+                    }
+                    marker[j]++;
+                }
+
+                for (int j = length + 1; j < 33; j++) {
+                    if (marker[j] >>> 1 == code) {
+                        code = marker[j];
+                        marker[j] = marker[j - 1] << 1;
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (usedEntries != 1 || marker[2] != 2) {
+            for (int i = 1; i < 33; i++) {
+                if ((marker[i] & (0xFFFF_FFFF >>> (32 - i))) != 0) {
+                    throw new VorbisException("Underpopulated tree");
+                }
+            }
+        }
+
+        Arrays.sort(words);
+        return words;
     }
 }

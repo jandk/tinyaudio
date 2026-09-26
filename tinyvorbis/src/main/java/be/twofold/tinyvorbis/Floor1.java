@@ -1,16 +1,85 @@
 package be.twofold.tinyvorbis;
 
 import java.io.IOException;
+import java.util.List;
 
 record Floor1(
     int[] partitionClassList,
     int[] classDimensions,
-    int[] classSubclasses,
     int[] classMasterBooks,
     int[][] subclassBooks,
     int multiplier,
     int[] xList
 ) implements Floor {
+    private static final int[] RANGES = {256, 128, 86, 64};
+
+    private static final float[] INVERSE_DB_TABLE = {
+        1.0649863e-7f, 1.1341951e-7f, 1.2079015e-7f, 1.2863978e-7f,
+        1.3699950e-7f, 1.4590250e-7f, 1.5538409e-7f, 1.6548181e-7f,
+        1.7623574e-7f, 1.8768856e-7f, 1.9988560e-7f, 2.1287531e-7f,
+        2.2670913e-7f, 2.4144197e-7f, 2.5713223e-7f, 2.7384212e-7f,
+        2.9163792e-7f, 3.1059022e-7f, 3.3077410e-7f, 3.5226967e-7f,
+        3.7516213e-7f, 3.9954230e-7f, 4.2550681e-7f, 4.5315863e-7f,
+        4.8260745e-7f, 5.1397001e-7f, 5.4737063e-7f, 5.8294188e-7f,
+        6.2082472e-7f, 6.6116939e-7f, 7.0413591e-7f, 7.4989464e-7f,
+        7.9862701e-7f, 8.5052631e-7f, 9.0579829e-7f, 9.6466215e-7f,
+        1.0273513e-6f, 1.0941144e-6f, 1.1652161e-6f, 1.2409384e-6f,
+        1.3215816e-6f, 1.4074654e-6f, 1.4989305e-6f, 1.5963394e-6f,
+        1.7000785e-6f, 1.8105592e-6f, 1.9282195e-6f, 2.0535260e-6f,
+        2.1869757e-6f, 2.3290977e-6f, 2.4804558e-6f, 2.6416496e-6f,
+        2.8133190e-6f, 2.9961443e-6f, 3.1908505e-6f, 3.3982101e-6f,
+        3.6190449e-6f, 3.8542307e-6f, 4.1047006e-6f, 4.3714472e-6f,
+        4.6555283e-6f, 4.9580708e-6f, 5.2802739e-6f, 5.6234162e-6f,
+        5.9888571e-6f, 6.3780467e-6f, 6.7925284e-6f, 7.2339453e-6f,
+        7.7040477e-6f, 8.2047000e-6f, 8.7378876e-6f, 9.3057251e-6f,
+        9.9104636e-6f, 1.0554501e-5f, 1.1240392e-5f, 1.1970856e-5f,
+        1.2748789e-5f, 1.3577278e-5f, 1.4459606e-5f, 1.5399271e-5f,
+        1.6400005e-5f, 1.7465769e-5f, 1.8600793e-5f, 1.9809577e-5f,
+        2.1096914e-5f, 2.2467912e-5f, 2.3928002e-5f, 2.5482977e-5f,
+        2.7139005e-5f, 2.8902650e-5f, 3.0780910e-5f, 3.2781227e-5f,
+        3.4911533e-5f, 3.7180282e-5f, 3.9596467e-5f, 4.2169668e-5f,
+        4.4910092e-5f, 4.7828602e-5f, 5.0936775e-5f, 5.4246932e-5f,
+        5.7772202e-5f, 6.1526567e-5f, 6.5524910e-5f, 6.9783084e-5f,
+        7.4317984e-5f, 7.9147583e-5f, 8.4291038e-5f, 8.9768750e-5f,
+        9.5602423e-5f, 1.0181521e-4f, 1.0843174e-4f, 1.1547824e-4f,
+        1.2298267e-4f, 1.3097477e-4f, 1.3948625e-4f, 1.4855085e-4f,
+        1.5820454e-4f, 1.6848555e-4f, 1.7943469e-4f, 1.9109536e-4f,
+        2.0351382e-4f, 2.1673930e-4f, 2.3082423e-4f, 2.4582449e-4f,
+        2.6179955e-4f, 2.7881275e-4f, 2.9693157e-4f, 3.1622787e-4f,
+        3.3677815e-4f, 3.5866388e-4f, 3.8197188e-4f, 4.0679457e-4f,
+        4.3323037e-4f, 4.6138410e-4f, 4.9136748e-4f, 5.2329927e-4f,
+        5.5730622e-4f, 5.9352309e-4f, 6.3209358e-4f, 6.7317061e-4f,
+        7.1691698e-4f, 7.6350628e-4f, 8.1312325e-4f, 8.6596457e-4f,
+        9.2223985e-4f, 9.8217221e-4f, 1.0459992e-3f, 1.1139743e-3f,
+        1.1863665e-3f, 1.2634633e-3f, 1.3455702e-3f, 1.4330129e-3f,
+        1.5261382e-3f, 1.6253153e-3f, 1.7309374e-3f, 1.8434235e-3f,
+        1.9632196e-3f, 2.0908006e-3f, 2.2266726e-3f, 2.3713743e-3f,
+        2.5254795e-3f, 2.6895993e-3f, 2.8643848e-3f, 3.0505287e-3f,
+        3.2487691e-3f, 3.4598925e-3f, 3.6847359e-3f, 3.9241905e-3f,
+        4.1792067e-3f, 4.4507948e-3f, 4.7400328e-3f, 5.0480668e-3f,
+        5.3761187e-3f, 5.7254890e-3f, 6.0975635e-3f, 6.4938175e-3f,
+        6.9158226e-3f, 7.3652514e-3f, 7.8438874e-3f, 8.3536273e-3f,
+        8.8964924e-3f, 9.4746370e-3f, 1.0090352e-2f, 1.0746080e-2f,
+        1.1444421e-2f, 1.2188144e-2f, 1.2980198e-2f, 1.3823725e-2f,
+        1.4722068e-2f, 1.5678791e-2f, 1.6697686e-2f, 1.7782796e-2f,
+        1.8938422e-2f, 2.0169148e-2f, 2.1479854e-2f, 2.2875736e-2f,
+        2.4362329e-2f, 2.5945531e-2f, 2.7631618e-2f, 2.9427277e-2f,
+        3.1339627e-2f, 3.3376250e-2f, 3.5545226e-2f, 3.7855156e-2f,
+        4.0315200e-2f, 4.2935107e-2f, 4.5725275e-2f, 4.8696756e-2f,
+        5.1861349e-2f, 5.5231590e-2f, 5.8820851e-2f, 6.2643364e-2f,
+        6.6714279e-2f, 7.1049750e-2f, 7.5666964e-2f, 8.0584228e-2f,
+        8.5821047e-2f, 9.1398180e-2f, 9.7337745e-2f, 1.0366330e-1f,
+        1.1039993e-1f, 1.1757434e-1f, 1.2521498e-1f, 1.3335215e-1f,
+        1.4201812e-1f, 1.5124726e-1f, 1.6107617e-1f, 1.7154381e-1f,
+        1.8269168e-1f, 1.9456401e-1f, 2.0720787e-1f, 2.2067343e-1f,
+        2.3501402e-1f, 2.5028655e-1f, 2.6655158e-1f, 2.8387362e-1f,
+        3.0232131e-1f, 3.2196787e-1f, 3.4289113e-1f, 3.6517414e-1f,
+        3.8890520e-1f, 4.1417846e-1f, 4.4109413e-1f, 4.6975890e-1f,
+        5.0028646e-1f, 5.3279793e-1f, 5.6742209e-1f, 6.0429639e-1f,
+        6.4356697e-1f, 6.8538958e-1f, 7.2993004e-1f, 7.7736503e-1f,
+        8.2788259e-1f, 8.8168305e-1f, 9.3897980e-1f, 1.0000000e+0f,
+    };
+
     static Floor1 unpack(BitInputStream bits, int codebookCount) throws IOException {
         int partitions = bits.read(5);
 
@@ -23,14 +92,12 @@ record Floor1(
         }
 
         int[] classDimensions = new int[maximumClass + 1];
-        int[] classSubclasses = new int[maximumClass + 1];
         int[] classMasterBooks = new int[maximumClass + 1];
         int[][] subclassBooks = new int[maximumClass + 1][];
 
         for (int i = 0; i < maximumClass + 1; i++) {
             classDimensions[i] = bits.read(3) + 1;
             int classSubclass = bits.read(2);
-            classSubclasses[i] = classSubclass;
             if (classSubclass != 0) {
                 int book = bits.read(8);
                 if (book >= codebookCount) {
@@ -84,12 +151,40 @@ record Floor1(
         return new Floor1(
             partitionClassList,
             classDimensions,
-            classSubclasses,
             classMasterBooks,
             subclassBooks,
             multiplier,
             xList
         );
+    }
+
+    private int classSubclasses(int classNumber) {
+        return Integer.numberOfTrailingZeros(subclassBooks[classNumber].length);
+    }
+
+    @Override
+    public boolean decode(BitInputStream bits, List<Codebook> codebooks, int[] floorY) throws IOException {
+        if (!bits.readBool()) {
+            return false;
+        }
+
+        int range = RANGES[multiplier - 1];
+        int rangeLog2 = Util.ilog(range - 1);
+        floorY[0] = bits.read(rangeLog2);
+        floorY[1] = bits.read(rangeLog2);
+
+        int offset = 2;
+        for (int i = 0; i < partitionClassList.length; i++) {
+            int cClass = partitionClassList[i];
+            int cDim = classDimensions[cClass];
+            int cBits = classSubclasses(cClass);
+            int cSub = (1 << cBits) - 1;
+            int cVal = 0;
+
+            throw new UnsupportedOperationException();
+        }
+
+        return true;
     }
 
     public void packBody(BitOutputStream bits) throws IOException {
@@ -101,7 +196,7 @@ record Floor1(
         int numClasses = classDimensions.length;
         for (int i = 0; i < numClasses; i++) {
             bits.write(3, classDimensions[i] - 1);
-            int classSubclass = classSubclasses[i];
+            int classSubclass = classSubclasses(i);
             bits.write(2, classSubclass);
             if (classSubclass != 0) {
                 bits.write(8, classMasterBooks[i]);

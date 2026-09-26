@@ -1,8 +1,9 @@
 package be.twofold.tinyvorbis;
 
 import java.io.IOException;
+import java.util.List;
 
-public sealed interface Floor permits Floor1 {
+sealed interface Floor permits Floor1 {
     static Floor unpack(BitInputStream bits, int codebookCount) throws IOException {
         int floorType = bits.read(16);
         if (floorType == 0) {
@@ -13,6 +14,8 @@ public sealed interface Floor permits Floor1 {
             throw new VorbisException("Invalid floor type");
         }
     }
+
+    boolean decode(BitInputStream bits, List<Codebook> codebooks, int[] floorY) throws IOException;
 
     default void pack(BitOutputStream bits) throws IOException {
         int floorType;

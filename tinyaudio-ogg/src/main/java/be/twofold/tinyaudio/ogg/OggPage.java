@@ -1,4 +1,4 @@
-package be.twofold.tinyogg;
+package be.twofold.tinyaudio.ogg;
 
 import be.twofold.tinyaudio.core.CRC;
 
@@ -9,20 +9,47 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-public record OggPage(
-    byte headerTypeFlag,
-    long granulePosition,
-    int bitstreamSerialNumber,
-    int pageSequenceNumber,
-    byte[] segments,
-    byte[] payload
-) {
+public final class OggPage {
     private static final int FIXED_SIZE = 27;
     private static final int CAPTURE_PATTERN = 'O' | 'g' << 8 | 'g' << 16 | 'S' << 24;
 
-    public OggPage {
-        Objects.requireNonNull(segments);
-        Objects.requireNonNull(payload);
+    private final byte headerTypeFlag;
+    private final long granulePosition;
+    private final int bitstreamSerialNumber;
+    private final int pageSequenceNumber;
+    private final byte[] segments;
+    private final byte[] payload;
+
+    public OggPage(
+        byte headerTypeFlag,
+        long granulePosition,
+        int bitstreamSerialNumber,
+        int pageSequenceNumber,
+        byte[] segments,
+        byte[] payload
+    ) {
+        this.headerTypeFlag = headerTypeFlag;
+        this.granulePosition = granulePosition;
+        this.bitstreamSerialNumber = bitstreamSerialNumber;
+        this.pageSequenceNumber = pageSequenceNumber;
+        this.segments = Objects.requireNonNull(segments);
+        this.payload = Objects.requireNonNull(payload);
+    }
+
+    public long getGranulePosition() {
+        return granulePosition;
+    }
+
+    public int getBitstreamSerialNumber() {
+        return bitstreamSerialNumber;
+    }
+
+    public int getPageSequenceNumber() {
+        return pageSequenceNumber;
+    }
+
+    public byte[] getPayload() {
+        return payload;
     }
 
     public static OggPage read(InputStream in) throws IOException {

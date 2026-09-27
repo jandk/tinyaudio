@@ -11,7 +11,7 @@
     <modules>
         <module>tinyaudio-core</module>
         <module>tinyflac</module>
-        <module>tinyogg</module>
+        <module>tinyaudio-ogg</module>
         <module>tinyvorbis</module>
     </modules>
 
@@ -34,7 +34,7 @@
             </dependency>
             <dependency>
                 <groupId>be.twofold</groupId>
-                <artifactId>tinyogg</artifactId>
+                <artifactId>tinyaudio-ogg</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

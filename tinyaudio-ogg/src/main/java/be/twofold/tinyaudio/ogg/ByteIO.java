@@ -1,4 +1,4 @@
-package be.twofold.tinyogg;
+package be.twofold.tinyaudio.ogg;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
@@ -6,11 +6,9 @@ import java.nio.ByteOrder;
 
 final class ByteIO {
     private static final VarHandle VH_INT_LE = MethodHandles
-        .byteArrayViewVarHandle(int[].class, ByteOrder.LITTLE_ENDIAN)
-        .withInvokeExactBehavior();
+        .byteArrayViewVarHandle(int[].class, ByteOrder.LITTLE_ENDIAN);
     private static final VarHandle VH_LONG_LE = MethodHandles
-        .byteArrayViewVarHandle(long[].class, ByteOrder.LITTLE_ENDIAN)
-        .withInvokeExactBehavior();
+        .byteArrayViewVarHandle(long[].class, ByteOrder.LITTLE_ENDIAN);
 
     private ByteIO() {
     }

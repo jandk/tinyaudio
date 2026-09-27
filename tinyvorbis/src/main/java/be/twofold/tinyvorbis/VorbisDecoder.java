@@ -71,7 +71,7 @@ public final class VorbisDecoder {
             throw new VorbisException("Stream ended before header packet of type " + type);
         }
 
-        byte[] data = packet.data();
+        byte[] data = packet.getData();
         if (data.length < 7 || data[0] != type || !Arrays.equals(data, 1, 7, VORBIS, 0, 6)) {
             throw new VorbisException("Expected header packet of type " + type + ", got " + Util.describe(data));
         }
@@ -92,7 +92,7 @@ public final class VorbisDecoder {
             }
         }
 
-        var bits = new BitReader(packet.data(), ByteOrder.LITTLE_ENDIAN);
+        var bits = new BitReader(packet.getData(), ByteOrder.LITTLE_ENDIAN);
         if (bits.read(1) != 0) {
             return DecodeType.BAD;
         }

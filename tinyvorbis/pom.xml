@@ -13,7 +13,7 @@
     <dependencies>
         <dependency>
             <groupId>be.twofold</groupId>
-            <artifactId>tinyogg</artifactId>
+            <artifactId>tinyaudio-ogg</artifactId>
         </dependency>
     </dependencies>
 </project>

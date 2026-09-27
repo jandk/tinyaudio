@@ -1,4 +1,4 @@
-package be.twofold.tinyogg;
+package be.twofold.tinyaudio.ogg;
 
 import be.twofold.tinyaudio.core.Packet;
 import be.twofold.tinyaudio.core.PacketSource;
@@ -28,7 +28,7 @@ public final class OggPacketReader implements PacketSource {
         this.serialNumber = serialNumber;
     }
 
-    public Integer serialNumber() {
+    public Integer getSerialNumber() {
         return serialNumber;
     }
 
@@ -52,20 +52,20 @@ public final class OggPacketReader implements PacketSource {
 
             // Packet continues on the next page, grab the data
             if (!page.endsPacket(end - 1)) {
-                chunks.add(Arrays.copyOfRange(page.payload(), offset, offset + length));
+                chunks.add(Arrays.copyOfRange(page.getPayload(), offset, offset + length));
                 continue;
             }
 
             // Packet ends here, so just copy the data
             byte[] data = chunks.isEmpty()
-                ? Arrays.copyOfRange(page.payload(), offset, offset + length)
-                : combine(page.payload(), offset, length);
+                ? Arrays.copyOfRange(page.getPayload(), offset, offset + length)
+                : combine(page.getPayload(), offset, length);
 
             boolean last = end - 1 == page.lastPacketEnd();
             finished = last && page.isEndOfStream();
             Packet packet = new Packet(
                 data,
-                last ? page.granulePosition() : -1,
+                last ? page.getGranulePosition() : -1,
                 finished,
                 gap
             );
@@ -87,17 +87,17 @@ public final class OggPacketReader implements PacketSource {
                 if (!page.isBeginOfStream()) {
                     continue;
                 }
-                serialNumber = page.bitstreamSerialNumber();
+                serialNumber = page.getBitstreamSerialNumber();
             }
 
             // Serial number mismatch, gap this page
-            if (page.bitstreamSerialNumber() != serialNumber) {
+            if (page.getBitstreamSerialNumber() != serialNumber) {
                 continue;
             }
 
             // Sequence gap means pages were lost. Codecs need to know.
-            boolean sequenceGap = page.pageSequenceNumber() != sequence;
-            sequence = page.pageSequenceNumber() + 1;
+            boolean sequenceGap = page.getPageSequenceNumber() != sequence;
+            sequence = page.getPageSequenceNumber() + 1;
             gap |= sequenceGap;
             segment = 0;
 

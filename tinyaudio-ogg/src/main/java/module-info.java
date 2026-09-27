@@ -1,0 +1,10 @@
+module be.twofold.tinyaudio.ogg {
+    requires be.twofold.tinyaudio.core;
+
+    exports be.twofold.tinyaudio.ogg;
+
+    uses be.twofold.tinyaudio.ogg.OggCodec;
+
+    // For testing in IJ
+    opens be.twofold.tinyaudio.ogg to org.junit.platform.commons;
+}

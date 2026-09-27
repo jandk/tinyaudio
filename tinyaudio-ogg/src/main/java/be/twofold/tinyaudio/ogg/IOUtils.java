@@ -1,4 +1,4 @@
-package be.twofold.tinyogg;
+package be.twofold.tinyaudio.ogg;
 
 import java.io.EOFException;
 import java.io.IOException;

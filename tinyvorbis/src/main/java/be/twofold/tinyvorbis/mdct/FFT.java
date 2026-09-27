@@ -1,6 +1,7 @@
 package be.twofold.tinyvorbis.mdct;
 
 import java.util.Arrays;
+import java.util.Objects;
 
 public final class FFT {
     private static final float COS_1_3 = 0.50000000000000000000000000000000f;
@@ -82,63 +83,63 @@ public final class FFT {
     }
 
     public void forward(float[] x) {
-        forward(x, scratch);
+        if (x.length != 2 * n) {
+            throw new IllegalArgumentException("x must hold exactly n complex values");
+        }
+        forward(x, 0, scratch, 0);
         System.arraycopy(scratch, 0, x, 0, x.length);
     }
 
-    public void forward(float[] in, float[] out) {
-        if (in == out) {
-            throw new IllegalArgumentException("in and out must not be the same array");
+    public void forward(float[] src, int srcOff, float[] dst, int dstOff) {
+        int len = 2 * n;
+        Objects.checkFromIndexSize(srcOff, len, src.length);
+        Objects.checkFromIndexSize(dstOff, len, dst.length);
+        if (src == dst && srcOff < dstOff + len && dstOff < srcOff + len) {
+            throw new IllegalArgumentException("src and dst ranges must not overlap");
         }
-        if (in.length != out.length || in.length != n * 2) {
-            throw new IllegalArgumentException("array length must be equal to n * 2");
-        }
-        passes(out, firstStage(in, out));
+        passes(dst, dstOff, firstStage(src, srcOff, dst, dstOff));
     }
 
-    int firstStage(float[] in, float[] out) {
-        return switch (factors[0]) {
-            case 2 -> {
-                radix2First(in, out);
-                yield 1;
-            }
-            case 4 -> {
-                radix4First(in, out);
-                yield 1;
-            }
-            default -> {
-                gather(in, out);
-                yield 0;
-            }
-        };
+    int firstStage(float[] src, int srcOff, float[] dst, int dstOff) {
+        switch (factors[0]) {
+            case 2:
+                radix2First(src, srcOff, dst, dstOff);
+                return 1;
+            case 4:
+                radix4First(src, srcOff, dst, dstOff);
+                return 1;
+            default:
+                gather(src, srcOff, dst, dstOff);
+                return 0;
+        }
     }
 
-    private void radix2First(float[] x, float[] y) {
-        for (int i = 0, o = 0; i < reorder.length; i += 2, o += 4) {
-            int i0 = 2 * reorder[i/**/];
-            int i1 = 2 * reorder[i + 1];
+    private void radix2First(float[] src, int srcOff, float[] dst, int dstOff) {
+        for (int i = 0, o = dstOff; i < reorder.length; i += 2, o += 4) {
+            int i0 = srcOff + 2 * reorder[i/**/];
+            int i1 = srcOff + 2 * reorder[i + 1];
 
-            float x0r = x[i0], x0i = x[i0 + 1];
-            float x1r = x[i1], x1i = x[i1 + 1];
+            float x0r = src[i0], x0i = src[i0 + 1];
+            float x1r = src[i1], x1i = src[i1 + 1];
 
             // @formatter:off
-            y[o/**/] = x0r + x1r; y[o + 1] = x0i + x1i; // x0 + x1
-            y[o + 2] = x0r - x1r; y[o + 3] = x0i - x1i; // x0 - x1
+            dst[o/**/] = x0r + x1r; dst[o + 1] = x0i + x1i; // x0 + x1
+            dst[o + 2] = x0r - x1r; dst[o + 3] = x0i - x1i; // x0 - x1
             // @formatter:on
         }
     }
 
-    private void radix4First(float[] x, float[] y) {
-        for (int i = 0, o = 0; i < reorder.length; i += 4, o += 8) {
-            int i0 = 2 * reorder[i/**/];
-            int i1 = 2 * reorder[i + 1];
-            int i2 = 2 * reorder[i + 2];
-            int i3 = 2 * reorder[i + 3];
+    private void radix4First(float[] src, int srcOff, float[] dst, int dstOff) {
+        for (int i = 0, o = dstOff; i < reorder.length; i += 4, o += 8) {
+            int i0 = srcOff + 2 * reorder[i/**/];
+            int i1 = srcOff + 2 * reorder[i + 1];
+            int i2 = srcOff + 2 * reorder[i + 2];
+            int i3 = srcOff + 2 * reorder[i + 3];
 
-            float x0r = x[i0], x0i = x[i0 + 1];
-            float x1r = x[i1], x1i = x[i1 + 1];
-            float x2r = x[i2], x2i = x[i2 + 1];
-            float x3r = x[i3], x3i = x[i3 + 1];
+            float x0r = src[i0], x0i = src[i0 + 1];
+            float x1r = src[i1], x1i = src[i1 + 1];
+            float x2r = src[i2], x2i = src[i2 + 1];
+            float x3r = src[i3], x3i = src[i3 + 1];
 
             float a0r = x0r + x2r, a0i = x0i + x2i; // (x0 + x2)
             float a1r = x1r + x3r, a1i = x1i + x3i; // (x1 + x3)
@@ -146,43 +147,50 @@ public final class FFT {
             float b1r = x1i - x3i, b1i = x3r - x1r; // (x1 - x3) * -i
 
             // @formatter:off
-            y[o/**/] = a0r + a1r; y[o + 1] = a0i + a1i; // a0 + a1
-            y[o + 2] = b0r + b1r; y[o + 3] = b0i + b1i; // b0 + b1
-            y[o + 4] = a0r - a1r; y[o + 5] = a0i - a1i; // a0 - a1
-            y[o + 6] = b0r - b1r; y[o + 7] = b0i - b1i; // b0 - b1
+            dst[o/**/] = a0r + a1r; dst[o + 1] = a0i + a1i; // a0 + a1
+            dst[o + 2] = b0r + b1r; dst[o + 3] = b0i + b1i; // b0 + b1
+            dst[o + 4] = a0r - a1r; dst[o + 5] = a0i - a1i; // a0 - a1
+            dst[o + 6] = b0r - b1r; dst[o + 7] = b0i - b1i; // b0 - b1
             // @formatter:on
         }
     }
 
-    void gather(float[] in, float[] out) {
-        for (int i = 0, o = 0; i < reorder.length; i++, o += 2) {
-            int r = 2 * reorder[i];
-            out[o/**/] = in[r/**/];
-            out[o + 1] = in[r + 1];
+    void gather(float[] src, int srcOff, float[] dst, int dstOff) {
+        for (int i = 0, o = dstOff; i < reorder.length; i++, o += 2) {
+            int i0 = srcOff + 2 * reorder[i];
+            dst[o/**/] = src[i0/**/];
+            dst[o + 1] = src[i0 + 1];
         }
     }
 
-    void passes(float[] in, int start) {
+    void passes(float[] x, int off, int start) {
         int span = 2;
         for (int i = 0; i < start; i++) {
             span *= factors[i];
         }
         for (int i = start; i < factors.length; i++) {
             int factor = factors[i];
-            int step = 2 * in.length / (factor * span);
+            int step = 4 * n / (factor * span);
             switch (factor) {
-                case 3 -> radix3(in, span, step);
-                case 4 -> radix4(in, span, step);
-                case 5 -> radix5(in, span, step);
-                default -> throw new UnsupportedOperationException();
+                case 3:
+                    radix3(x, off, span, step);
+                    break;
+                case 4:
+                    radix4(x, off, span, step);
+                    break;
+                case 5:
+                    radix5(x, off, span, step);
+                    break;
+                default:
+                    throw new UnsupportedOperationException();
             }
             span *= factor;
         }
     }
 
-    private void radix3(float[] x, int span, int step) {
+    private void radix3(float[] x, int off, int span, int step) {
         float[] w = twiddle;
-        for (int base = 0; base < x.length; base += 3 * span) {
+        for (int base = off, end = off + 2 * n; base < end; base += 3 * span) {
             for (int i0 = base, t1 = 0; i0 < base + span; i0 += 2, t1 += step) {
                 int i1 = i0 + span;
                 int i2 = i1 + span;
@@ -212,9 +220,9 @@ public final class FFT {
         }
     }
 
-    private void radix4(float[] x, int span, int step) {
+    private void radix4(float[] x, int off, int span, int step) {
         float[] w = twiddle;
-        for (int base = 0; base < x.length; base += 4 * span) {
+        for (int base = off, end = off + 2 * n; base < end; base += 4 * span) {
             for (int i0 = base, t1 = 0; i0 < base + span; i0 += 2, t1 += step) {
                 int i1 = i0 + span;
                 int i2 = i1 + span;
@@ -248,9 +256,9 @@ public final class FFT {
         }
     }
 
-    private void radix5(float[] x, int span, int step) {
+    private void radix5(float[] x, int off, int span, int step) {
         float[] w = twiddle;
-        for (int base = 0; base < x.length; base += 5 * span) {
+        for (int base = off, end = off + 2 * n; base < end; base += 5 * span) {
             for (int i0 = base, t1 = 0; i0 < base + span; i0 += 2, t1 += step) {
                 int i1 = i0 + span;
                 int i2 = i1 + span;

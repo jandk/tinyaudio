@@ -1,87 +1,97 @@
 package be.twofold.tinyvorbis.mdct;
 
-/**
- * Inverse modified discrete cosine transform of size n, in the Vorbis
- * convention and unscaled as in libvorbis:
- * <pre>
- *   y[k] = sum_m X[m] * cos(pi/(n/2) * (k + 1/2 + n/4) * (m + 1/2))
- * </pre>
- * Computed as DCT-IV → unfold. The DCT-IV is the same pre-twiddle →
- * n/4-point FFT → post-twiddle as {@link DCT4}, sharing its table and
- * pre-twiddle; the post-twiddle here writes straight into the unfolded
- * positions instead of back into a coefficient array.
- */
+import java.util.Objects;
+
 public final class MDCT {
     private final int n;
     private final FFT fft;
     private final float[] twiddle;
-    private final float[] bufA;
-    private final float[] bufB;
+    private final float[] scratch;
 
     public MDCT(int n) {
         if (n < 8 || n > 131072 || n % 8 != 0) {
             throw new IllegalArgumentException("n must be a multiple of 8 between 8 and 131072");
         }
         this.n = n;
-        this.fft = new FFT(n / 4);
-        this.twiddle = DCT4.buildTwiddle(n / 2);
-        this.bufA = new float[n / 2];
-        this.bufB = new float[n / 2];
+        int n2 = n >>> 1;
+        int n4 = n >>> 2;
+        this.fft = new FFT(n4);
+        this.twiddle = buildTwiddle();
+        this.scratch = new float[n2];
     }
 
-    /**
-     * n/2 coefficients in, n samples out, unscaled.
-     */
-    public void backward(float[] in, float[] out) {
-        if (in.length < n / 2 || out.length < n) {
-            throw new IllegalArgumentException("in must have n/2 coefficients and out room for n samples");
+    private float[] buildTwiddle() {
+        int n2 = n >>> 1;
+        int n4 = n >>> 2;
+        float[] twiddle = new float[n2];
+        for (int i = 0; i < n4; i++) {
+            double angle = 2 * Math.PI * (i + 0.125) / n;
+            twiddle[i * 2/**/] = (float) +Math.cos(angle);
+            twiddle[i * 2 + 1] = (float) -Math.sin(angle);
         }
-        DCT4.preTwiddle(twiddle, in, bufA, n / 2);
-        fft.forward(bufA, bufB);
-        postTwiddleUnfold(bufB, out);
+        return twiddle;
     }
 
-    /**
-     * DCT-IV post-twiddle and unfold in one pass. The post-twiddle would put
-     * Re W at v[2k] and -Im W at v[2q-1-2k]; the unfold [a' b'] → [b', -b'_r,
-     * -a'_r, -a'] sends every v[j] to y[3q-1-j] negated, and to y[j-q] as is
-     * (j >= q) or y[3q+j] negated (j < q). Substituting gives two regimes,
-     * split at k = q/2, each writing four samples per twiddled point.
-     */
-    private void postTwiddleUnfold(float[] x, float[] y) {
+    public void backward(float[] x, int off) {
+        backward(x, off, x, off);
+    }
+
+    public void backward(float[] src, int srcOff, float[] dst, int dstOff) {
+        int n2 = n >>> 1;
+        Objects.checkFromIndexSize(srcOff, n2, src.length);
+        Objects.checkFromIndexSize(dstOff, n, dst.length);
+
+        int dstMid = dstOff + n2;
+        if (src == dst && srcOff < dstMid + n2 && dstMid < srcOff + n2) {
+            throw new IllegalArgumentException("src must not overlap the dstMid half of dst");
+        }
+
+        preRotate(src, srcOff, dst, dstMid);
+        fft.forward(dst, dstMid, scratch, 0);
+        postRotateAndUnfold(scratch, dst, dstOff);
+    }
+
+    private void preRotate(float[] src, int srcOff, float[] dst, int dstOff) {
         float[] w = twiddle;
-        int q = n / 4;
+        int n2 = n >>> 1;
 
-        int s0 = 0;
-        int s1 = 2 * q - 2;
-        int p1 = /**/q - 2;
-        int p2 = /**/q;
-        int p3 = 3 * q - 2;
-        int p4 = 3 * q;
-        while (s0 < q) {
-            float x0r = x[s0], x0i = x[s0 + 1];
-            float w0r = w[s0], w0i = w[s0 + 1];
-            float re0 = Math.fma(x0r, w0r, -x0i * w0i);
-            float im0 = Math.fma(x0r, w0i, +x0i * w0r);
+        for (int p0 = 0, p1 = n2 - 1; p0 < n2; p0 += 2, p1 -= 2) {
+            float xr = src[srcOff + p0];
+            float xi = src[srcOff + p1];
+            float wr = w[p0];
+            float wi = w[p0 + 1];
+            dst[dstOff + p0/**/] = xr * wr - xi * wi;
+            dst[dstOff + p0 + 1] = xr * wi + xi * wr;
+        }
+    }
 
-            float x1r = x[s1], x1i = x[s1 + 1];
-            float w1r = w[s1], w1i = w[s1 + 1];
-            float re1 = Math.fma(x1r, w1r, -x1i * w1i);
-            float im1 = Math.fma(x1r, w1i, +x1i * w1r);
+    private void postRotateAndUnfold(float[] src, float[] dst, int dstOff) {
+        float[] w = twiddle;
+        int q1 = n >>> 2;
+
+        int y1 = dstOff - q1;
+        int y2 = dstOff + q1;
+        int y4 = dstOff + q1 * 3;
+
+        for (int p0 = 0, p1 = 2 * q1 - 2; p0 < q1; p0 += 2, p1 -= 2) {
+            float xr, xi, wr, wi;
 
             // @formatter:off
-            y[p1] = +re1; y[p1 + 1] = -im0; // quarter 1
-            y[p2] = +im0; y[p2 + 1] = -re1; // quarter 2
-            y[p3] = +im1; y[p3 + 1] = -re0; // quarter 3
-            y[p4] = -re0; y[p4 + 1] = +im1; // quarter 4
-            // @formatter:on
+            xr = src[p0]; xi = src[p0 + 1];
+            wr =   w[p0]; wi =   w[p0 + 1];
+            float x0r = xr * wr - xi * wi;
+            float x0i = xr * wi + xi * wr;
 
-            s0 += 2;
-            s1 -= 2;
-            p1 -= 2;
-            p2 += 2;
-            p3 -= 2;
-            p4 += 2;
+            xr = src[p1]; xi = src[p1 + 1];
+            wr =   w[p1]; wi =   w[p1 + 1];
+            float x1r = xr * wr - xi * wi;
+            float x1i = xr * wi + xi * wr;
+
+            dst[y1 + p1] = +x1r; dst[y1 + p1 + 1] = -x0i; // 1st quarter
+            dst[y2 + p0] = +x0i; dst[y2 + p0 + 1] = -x1r; // 2nd quarter
+            dst[y2 + p1] = +x1i; dst[y2 + p1 + 1] = -x0r; // 3rd quarter
+            dst[y4 + p0] = -x0r; dst[y4 + p0 + 1] = +x1i; // 4th quarter
+            // @formatter:on
         }
     }
 }

@@ -8,7 +8,7 @@
         <version>0.1-SNAPSHOT</version>
     </parent>
 
-    <artifactId>tinyvorbis</artifactId>
+    <artifactId>tinyaudio-vorbis</artifactId>
 
     <dependencies>
         <dependency>

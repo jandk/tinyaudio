@@ -28,6 +28,14 @@ public final class VorbisDecoder {
     private final MDCT mdct0;
     private final MDCT mdct1;
 
+    // Windowing
+    private final float[][] overlap;
+    private final float[] window0;
+    private final float[] window1;
+
+    private int previousBlockSize;
+    private int outputLength;
+
     public VorbisDecoder(PacketSource packets) throws IOException {
         this.packets = Objects.requireNonNull(packets);
         this.identification = Identification.read(header(1));
@@ -42,6 +50,19 @@ public final class VorbisDecoder {
         zeroBundle = new boolean[identification.audioChannels()];
         mdct0 = new MDCT(identification.blockSize0());
         mdct1 = new MDCT(identification.blockSize1());
+
+        overlap = new float[identification.audioChannels()][identification.blockSize1() / 2];
+        window0 = slope(identification.blockSize0() / 2);
+        window1 = slope(identification.blockSize1() / 2);
+    }
+
+    private float[] slope(int n) {
+        float[] w = new float[n];
+        for (int i = 0; i < n; i++) {
+            double s = Math.sin((i + 0.5) / n * (Math.PI / 2));
+            w[i] = (float) Math.sin((Math.PI / 2) * s * s);
+        }
+        return w;
     }
 
     private BitReader header(int type) throws IOException {
@@ -64,6 +85,13 @@ public final class VorbisDecoder {
             return DecodeType.END;
         }
 
+        outputLength = 0;
+        if (previousBlockSize != 0) {
+            for (int ch = 0; ch < identification.audioChannels(); ch++) {
+                System.arraycopy(spectrum[ch], previousBlockSize / 2, overlap[ch], 0, previousBlockSize / 2);
+            }
+        }
+
         var bits = new BitReader(packet.data(), ByteOrder.LITTLE_ENDIAN);
         if (bits.read(1) != 0) {
             return DecodeType.BAD;
@@ -77,45 +105,16 @@ public final class VorbisDecoder {
         Mode mode = setup.modes().get(modeNumber);
 
         int n;
-        boolean previousWindowFlag = false;
-        boolean nextWindowFlag = false;
         if (mode.blockFlag()) {
             n = identification.blockSize1();
-            previousWindowFlag = bits.readBool();
-            nextWindowFlag = bits.readBool();
+            // Previous and next window flags. Like libvorbis, the window follows
+            // the actual neighbouring block sizes, so the values aren't needed.
+            bits.skip(2);
         } else {
             n = identification.blockSize0();
         }
         if (bits.isOverrun()) {
             return DecodeType.BAD;
-        }
-
-        int windowCenter = n / 2;
-        int leftWindowStart;
-        int leftWindowEnd;
-        int leftN;
-        if (mode.blockFlag() && !previousWindowFlag) {
-            leftWindowStart = n / 4 - identification.blockSize0() / 4;
-            leftWindowEnd = n / 4 + identification.blockSize0() / 4;
-            leftN = identification.blockSize0() / 2;
-        } else {
-            leftWindowStart = 0;
-            leftWindowEnd = windowCenter;
-            leftN = n / 2;
-        }
-
-
-        int rightWindowStart;
-        int rightWindowEnd;
-        int rightN;
-        if (mode.blockFlag() && !nextWindowFlag) {
-            rightWindowStart = n * 3 / 4 - identification.blockSize0() / 4;
-            rightWindowEnd = n * 3 / 4 + identification.blockSize0() / 4;
-            rightN = identification.blockSize0() / 2;
-        } else {
-            rightWindowStart = windowCenter;
-            rightWindowEnd = n;
-            rightN = n / 2;
         }
 
         // 4.3.2 floor curve decode
@@ -192,10 +191,41 @@ public final class VorbisDecoder {
         // 4.3.7 inverse mdct
         MDCT mdct = mode.blockFlag() ? mdct1 : mdct0;
         for (int ch = 0; ch < identification.audioChannels(); ch++) {
-            mdct.backward(spectrum[ch], spectrum[ch]);
+            mdct.backward(spectrum[ch], 0);
         }
 
+        // 4.3.8 overlap add, in place in the overlap buffer. The first packet only primes it.
+        if (previousBlockSize != 0) {
+            for (int ch = 0; ch < identification.audioChannels(); ch++) {
+                overlapAdd(overlap[ch], spectrum[ch], previousBlockSize, n);
+            }
+            outputLength = previousBlockSize / 4 + n / 4;
+        }
+        previousBlockSize = n;
+
         return DecodeType.GOOD;
+    }
+
+    private void overlapAdd(float[] previous, float[] current, int previousN, int currentN) {
+        int slope = Math.min(previousN, currentN) / 2;
+        float[] window = slope == identification.blockSize0() / 2 ? window0 : window1;
+        int o = previousN / 4 - slope / 2; // [0, o) is the previous block's flat part, already in place
+        int currentStart = currentN / 4 - slope / 2;
+
+        for (int i = 0; i < slope; i++, o++) {
+            previous[o] = previous[o] * window[slope - 1 - i] + current[currentStart + i] * window[i];
+        }
+        for (int i = currentStart + slope; i < currentN / 2; i++) {
+            previous[o++] = current[i];
+        }
+    }
+
+    int outputLength() {
+        return outputLength;
+    }
+
+    float[] output(int channel) {
+        return overlap[channel];
     }
 
     enum DecodeType {

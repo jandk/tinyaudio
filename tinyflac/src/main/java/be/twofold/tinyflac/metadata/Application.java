@@ -3,12 +3,16 @@ package be.twofold.tinyflac.metadata;
 import java.io.DataInputStream;
 import java.io.IOException;
 
-public record Application(
-    int id,
-    byte[] data
-) implements MetadataBlock {
-    public Application {
-        data = data.clone();
+public final class Application implements MetadataBlock {
+    private final int id;
+    private final byte[] data;
+
+    public Application(
+        int id,
+        byte[] data
+    ) {
+        this.id = id;
+        this.data = data.clone();
     }
 
     public static Application read(DataInputStream dis) throws IOException {
@@ -21,8 +25,11 @@ public record Application(
         );
     }
 
-    @Override
-    public byte[] data() {
+    public int getId() {
+        return id;
+    }
+
+    public byte[] getData() {
         return data.clone();
     }
 }

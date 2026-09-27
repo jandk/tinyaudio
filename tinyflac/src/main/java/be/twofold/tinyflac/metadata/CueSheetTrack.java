@@ -8,17 +8,28 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public record CueSheetTrack(
-    long offset,
-    byte number,
-    String isrc,
-    boolean type,
-    boolean preEmphasis,
-    List<CueSheetIndex> indices
-) {
-    public CueSheetTrack {
-        Objects.requireNonNull(isrc);
-        indices = List.copyOf(indices);
+public final class CueSheetTrack {
+    private final long offset;
+    private final byte number;
+    private final String isrc;
+    private final boolean type;
+    private final boolean preEmphasis;
+    private final List<CueSheetIndex> indices;
+
+    public CueSheetTrack(
+        long offset,
+        byte number,
+        String isrc,
+        boolean type,
+        boolean preEmphasis,
+        List<CueSheetIndex> indices
+    ) {
+        this.offset = offset;
+        this.number = number;
+        this.isrc = Objects.requireNonNull(isrc);
+        this.type = type;
+        this.preEmphasis = preEmphasis;
+        this.indices = List.copyOf(indices);
     }
 
     public static CueSheetTrack read(DataInputStream dis) throws IOException {
@@ -39,5 +50,29 @@ public record CueSheetTrack(
             indices.add(CueSheetIndex.read(dis));
         }
         return new CueSheetTrack(offset, number, isrc, type, preEmphasis, indices);
+    }
+
+    public long getOffset() {
+        return offset;
+    }
+
+    public byte getNumber() {
+        return number;
+    }
+
+    public String getIsrc() {
+        return isrc;
+    }
+
+    public boolean isType() {
+        return type;
+    }
+
+    public boolean isPreEmphasis() {
+        return preEmphasis;
+    }
+
+    public List<CueSheetIndex> getIndices() {
+        return indices;
     }
 }

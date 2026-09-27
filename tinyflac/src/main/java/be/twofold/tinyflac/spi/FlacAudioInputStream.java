@@ -22,14 +22,14 @@ public final class FlacAudioInputStream extends AudioInputStream {
 
     private static StreamInfo streamInfoOf(AudioInputStream sourceStream) {
         Object value = sourceStream.getFormat().getProperty(FlacAudioFileReader.PROPERTY_STREAM_INFO);
-        if (!(value instanceof StreamInfo streamInfo)) {
+        if (!(value instanceof StreamInfo)) {
             throw new IllegalArgumentException("Source stream has no FLAC StreamInfo property");
         }
-        return streamInfo;
+        return (StreamInfo) value;
     }
 
     private static long frameLengthOf(StreamInfo streamInfo) {
-        long totalSamples = streamInfo.totalSamples();
+        long totalSamples = streamInfo.getTotalSamples();
         return totalSamples == 0 ? AudioSystem.NOT_SPECIFIED : totalSamples;
     }
 

@@ -1,15 +1,22 @@
 package be.twofold.tinyflac.metadata;
 
-public record Unknown(
-    int type,
-    byte[] data
-) implements MetadataBlock {
-    public Unknown {
-        data = data.clone();
+public final class Unknown implements MetadataBlock {
+    private final int type;
+    private final byte[] data;
+
+    public Unknown(
+        int type,
+        byte[] data
+    ) {
+        this.type = type;
+        this.data = data.clone();
     }
 
-    @Override
-    public byte[] data() {
+    public int getType() {
+        return type;
+    }
+
+    public byte[] getData() {
         return data.clone();
     }
 }

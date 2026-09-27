@@ -7,15 +7,33 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.zip.CheckedInputStream;
 
-public record FlacFrameHeader(
-    boolean variableBlockSize,
-    int blockSize,
-    int sampleRate,
-    int numberOfChannels,
-    ChannelType channelCorrelation,
-    int bitsPerSample,
-    long codedNumber
-) {
+public final class FlacFrameHeader {
+    private final boolean variableBlockSize;
+    private final int blockSize;
+    private final int sampleRate;
+    private final int numberOfChannels;
+    private final ChannelType channelCorrelation;
+    private final int bitsPerSample;
+    private final long codedNumber;
+
+    public FlacFrameHeader(
+        boolean variableBlockSize,
+        int blockSize,
+        int sampleRate,
+        int numberOfChannels,
+        ChannelType channelCorrelation,
+        int bitsPerSample,
+        long codedNumber
+    ) {
+        this.variableBlockSize = variableBlockSize;
+        this.blockSize = blockSize;
+        this.sampleRate = sampleRate;
+        this.numberOfChannels = numberOfChannels;
+        this.channelCorrelation = channelCorrelation;
+        this.bitsPerSample = bitsPerSample;
+        this.codedNumber = codedNumber;
+    }
+
     public static FlacFrameHeader read(InputStream is) throws IOException {
         CheckedInputStream checked = new CheckedInputStream(is, CRC.FLAC_HEADER.get());
         DataInputStream dis = new DataInputStream(checked);
@@ -69,26 +87,39 @@ public record FlacFrameHeader(
     }
 
     private static ChannelType channelCorrelation(int channelBits) throws IOException {
-        return switch (channelBits) {
-            case 1 -> ChannelType.LEFT_RIGHT;
-            case 8 -> ChannelType.LEFT_SIDE;
-            case 9 -> ChannelType.SIDE_RIGHT;
-            case 10 -> ChannelType.MID_SIDE;
-            default -> null;
-        };
+        switch (channelBits) {
+            case 1:
+                return ChannelType.LEFT_RIGHT;
+            case 8:
+                return ChannelType.LEFT_SIDE;
+            case 9:
+                return ChannelType.SIDE_RIGHT;
+            case 10:
+                return ChannelType.MID_SIDE;
+            default:
+                return null;
+        }
     }
 
     private static int bitsPerSample(int bitsPerSampleBits) throws IOException {
-        return switch (bitsPerSampleBits) {
-            case 0 -> -1;
-            case 1 -> 8;
-            case 2 -> 12;
-            case 4 -> 16;
-            case 5 -> 20;
-            case 6 -> 24;
-            case 7 -> 32;
-            default -> throw new IOException("Invalid bit depth bits: " + bitsPerSampleBits);
-        };
+        switch (bitsPerSampleBits) {
+            case 0:
+                return -1;
+            case 1:
+                return 8;
+            case 2:
+                return 12;
+            case 4:
+                return 16;
+            case 5:
+                return 20;
+            case 6:
+                return 24;
+            case 7:
+                return 32;
+            default:
+                throw new IOException("Invalid bit depth bits: " + bitsPerSampleBits);
+        }
     }
 
     private static long codedNumber(DataInputStream dis) throws IOException {
@@ -120,35 +151,95 @@ public record FlacFrameHeader(
     }
 
     private static int blockSize(int blockSizeBits, DataInputStream dis) throws IOException {
-        return switch (blockSizeBits) {
-            case 1 -> 192;
-            case 2, 3, 4, 5 -> 144 << blockSizeBits;
-            case 6 -> dis.readUnsignedByte() + 1;
-            case 7 -> dis.readUnsignedShort() + 1;
-            case 8, 9, 10, 11, 12, 13, 14, 15 -> 1 << blockSizeBits;
-            default -> throw new IOException("Invalid block size bits: " + blockSizeBits);
-        };
+        switch (blockSizeBits) {
+            case 1:
+                return 192;
+            case 2:
+            case 3:
+            case 4:
+            case 5:
+                return 144 << blockSizeBits;
+            case 6:
+                return dis.readUnsignedByte() + 1;
+            case 7:
+                return dis.readUnsignedShort() + 1;
+            case 8:
+            case 9:
+            case 10:
+            case 11:
+            case 12:
+            case 13:
+            case 14:
+            case 15:
+                return 1 << blockSizeBits;
+            default:
+                throw new IOException("Invalid block size bits: " + blockSizeBits);
+        }
     }
 
     private static int sampleRate(int sampleRateBits, DataInputStream dis) throws IOException {
-        return switch (sampleRateBits) {
-            case 0 -> -1;
-            case 1 -> 88200;
-            case 2 -> 176400;
-            case 3 -> 192000;
-            case 4 -> 8000;
-            case 5 -> 16000;
-            case 6 -> 22050;
-            case 7 -> 24000;
-            case 8 -> 32000;
-            case 9 -> 44100;
-            case 10 -> 48000;
-            case 11 -> 96000;
-            case 12 -> dis.readUnsignedByte() * 1000;
-            case 13 -> dis.readUnsignedShort();
-            case 14 -> dis.readUnsignedShort() * 10;
-            default -> throw new IOException("Invalid sample rate bits: " + sampleRateBits);
-        };
+        switch (sampleRateBits) {
+            case 0:
+                return -1;
+            case 1:
+                return 88200;
+            case 2:
+                return 176400;
+            case 3:
+                return 192000;
+            case 4:
+                return 8000;
+            case 5:
+                return 16000;
+            case 6:
+                return 22050;
+            case 7:
+                return 24000;
+            case 8:
+                return 32000;
+            case 9:
+                return 44100;
+            case 10:
+                return 48000;
+            case 11:
+                return 96000;
+            case 12:
+                return dis.readUnsignedByte() * 1000;
+            case 13:
+                return dis.readUnsignedShort();
+            case 14:
+                return dis.readUnsignedShort() * 10;
+            default:
+                throw new IOException("Invalid sample rate bits: " + sampleRateBits);
+        }
+    }
+
+    public boolean isVariableBlockSize() {
+        return variableBlockSize;
+    }
+
+    public int getBlockSize() {
+        return blockSize;
+    }
+
+    public int getSampleRate() {
+        return sampleRate;
+    }
+
+    public int getNumberOfChannels() {
+        return numberOfChannels;
+    }
+
+    public ChannelType getChannelCorrelation() {
+        return channelCorrelation;
+    }
+
+    public int getBitsPerSample() {
+        return bitsPerSample;
+    }
+
+    public long getCodedNumber() {
+        return codedNumber;
     }
 
     public int getBytesPerFrame() {

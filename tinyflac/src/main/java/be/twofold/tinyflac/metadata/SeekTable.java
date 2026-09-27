@@ -5,9 +5,13 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public record SeekTable(
-    List<SeekPoint> points
-) implements MetadataBlock {
+public final class SeekTable implements MetadataBlock {
+    private final List<SeekPoint> points;
+
+    public SeekTable(List<SeekPoint> points) {
+        this.points = List.copyOf(points);
+    }
+
     public static SeekTable read(DataInputStream dis) throws IOException {
         if (dis.available() % SeekPoint.BYTES != 0) {
             throw new IOException("Seek table size is not a multiple of " + SeekPoint.BYTES);
@@ -20,5 +24,9 @@ public record SeekTable(
         }
 
         return new SeekTable(points);
+    }
+
+    public List<SeekPoint> getPoints() {
+        return points;
     }
 }

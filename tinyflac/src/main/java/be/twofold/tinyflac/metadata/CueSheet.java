@@ -8,15 +8,22 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public record CueSheet(
-    String mediaCatalogNumber,
-    long leadIn,
-    boolean isCd,
-    List<CueSheetTrack> tracks
-) implements MetadataBlock {
-    public CueSheet {
-        Objects.requireNonNull(mediaCatalogNumber);
-        tracks = List.copyOf(tracks);
+public final class CueSheet implements MetadataBlock {
+    private final String mediaCatalogNumber;
+    private final long leadIn;
+    private final boolean cd;
+    private final List<CueSheetTrack> tracks;
+
+    public CueSheet(
+        String mediaCatalogNumber,
+        long leadIn,
+        boolean cd,
+        List<CueSheetTrack> tracks
+    ) {
+        this.mediaCatalogNumber = Objects.requireNonNull(mediaCatalogNumber);
+        this.leadIn = leadIn;
+        this.cd = cd;
+        this.tracks = List.copyOf(tracks);
     }
 
     public static CueSheet read(DataInputStream dis) throws IOException {
@@ -43,5 +50,21 @@ public record CueSheet(
             isCd,
             tracks
         );
+    }
+
+    public String getMediaCatalogNumber() {
+        return mediaCatalogNumber;
+    }
+
+    public long getLeadIn() {
+        return leadIn;
+    }
+
+    public boolean isCd() {
+        return cd;
+    }
+
+    public List<CueSheetTrack> getTracks() {
+        return tracks;
     }
 }

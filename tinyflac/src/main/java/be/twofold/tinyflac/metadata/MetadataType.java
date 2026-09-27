@@ -11,15 +11,23 @@ public enum MetadataType {
     UNDEFINED;
 
     public static MetadataType fromCode(int code) {
-        return switch (code) {
-            case 0 -> STREAM_INFO;
-            case 1 -> PADDING;
-            case 2 -> APPLICATION;
-            case 3 -> SEEK_TABLE;
-            case 4 -> VORBIS_COMMENT;
-            case 5 -> CUE_SHEET;
-            case 6 -> PICTURE;
-            default -> UNDEFINED;
-        };
+        switch (code) {
+            case 0:
+                return STREAM_INFO;
+            case 1:
+                return PADDING;
+            case 2:
+                return APPLICATION;
+            case 3:
+                return SEEK_TABLE;
+            case 4:
+                return VORBIS_COMMENT;
+            case 5:
+                return CUE_SHEET;
+            case 6:
+                return PICTURE;
+            default:
+                return UNDEFINED;
+        }
     }
 }

@@ -30,6 +30,6 @@ public final class FlacInputStream extends FilterInputStream {
     }
 
     public StreamInfo streamInfo() {
-        return metadata.streamInfo();
+        return metadata.getStreamInfo();
     }
 }

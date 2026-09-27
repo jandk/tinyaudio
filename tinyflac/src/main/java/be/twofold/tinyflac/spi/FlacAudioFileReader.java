@@ -32,16 +32,16 @@ public final class FlacAudioFileReader extends AbstractAudioFileReader {
 
         AudioFormat audioFormat = new AudioFormat(
             ENCODING,
-            streamInfo.sampleRate(),
-            streamInfo.bitsPerSample(),
-            streamInfo.channels(),
+            streamInfo.getSampleRate(),
+            streamInfo.getBitsPerSample(),
+            streamInfo.getChannels(),
             AudioSystem.NOT_SPECIFIED,
             AudioSystem.NOT_SPECIFIED,
             false,
             Map.of(PROPERTY_STREAM_INFO, streamInfo)
         );
 
-        long totalSamples = streamInfo.totalSamples();
+        long totalSamples = streamInfo.getTotalSamples();
         int frameLength = totalSamples <= 0 || totalSamples > Integer.MAX_VALUE
             ? AudioSystem.NOT_SPECIFIED
             : (int) totalSamples;

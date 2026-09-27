@@ -3,13 +3,15 @@ package be.twofold.tinyflac;
 import java.io.IOException;
 import java.util.Objects;
 
-public record FlacSubFrameHeader(
-    Type subframeType,
-    int order,
-    int wastedBits
-) {
-    public FlacSubFrameHeader {
-        Objects.requireNonNull(subframeType);
+public final class FlacSubFrameHeader {
+    private final Type subframeType;
+    private final int order;
+    private final int wastedBits;
+
+    public FlacSubFrameHeader(Type subframeType, int order, int wastedBits) {
+        this.subframeType = Objects.requireNonNull(subframeType);
+        this.order = order;
+        this.wastedBits = wastedBits;
     }
 
     public static FlacSubFrameHeader read(BitInputStream is) throws IOException {
@@ -51,6 +53,18 @@ public record FlacSubFrameHeader(
         } else {
             return 0;
         }
+    }
+
+    public Type getSubframeType() {
+        return subframeType;
+    }
+
+    public int getOrder() {
+        return order;
+    }
+
+    public int getWastedBits() {
+        return wastedBits;
     }
 
     public enum Type {

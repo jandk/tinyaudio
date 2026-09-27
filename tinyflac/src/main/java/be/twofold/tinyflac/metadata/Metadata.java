@@ -11,15 +11,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public record Metadata(
-    StreamInfo streamInfo,
-    List<MetadataBlock> blocks
-) {
+public final class Metadata {
     private static final int MAGIC = 'f' << 24 | 'L' << 16 | 'a' << 8 | 'C';
 
-    public Metadata {
-        Objects.requireNonNull(streamInfo);
-        blocks = List.copyOf(blocks);
+    private final StreamInfo streamInfo;
+    private final List<MetadataBlock> blocks;
+
+    public Metadata(StreamInfo streamInfo, List<MetadataBlock> blocks) {
+        this.streamInfo = Objects.requireNonNull(streamInfo);
+        this.blocks = List.copyOf(blocks);
     }
 
     public static Metadata read(InputStream in) throws IOException {
@@ -27,16 +27,16 @@ public record Metadata(
     }
 
     public static StreamInfo readStreamInfo(InputStream in) throws IOException {
-        return read(in, false).streamInfo();
+        return read(in, false).getStreamInfo();
     }
 
     private static Metadata read(InputStream in, boolean full) throws IOException {
-        int magic = readInt(in);
+        int magic = IOUtils.readInt(in);
         if (magic != MAGIC) {
             throw new FlacException("Not a FLAC stream");
         }
 
-        int header = readInt(in);
+        int header = IOUtils.readInt(in);
         if ((header & 0x7FFF_FFFF) != StreamInfo.BYTES) {
             throw new FlacException("First metadata block must be a StreamInfo block");
         }
@@ -47,7 +47,7 @@ public record Metadata(
 
         if (full) {
             while (header >= 0) {
-                header = readInt(in);
+                header = IOUtils.readInt(in);
                 blocks.add(readBlock(in, header));
             }
         }
@@ -64,26 +64,39 @@ public record Metadata(
         int length = header & 0x00FF_FFFF;
 
         if (type == MetadataType.PADDING) {
-            in.skipNBytes(length);
+            IOUtils.skipBytes(in, length);
             return new Padding(length);
         }
 
         byte[] body = IOUtils.readBytes(in, length);
         DataInputStream dis = new DataInputStream(new ByteArrayInputStream(body));
-        return switch (type) {
-            case STREAM_INFO -> StreamInfo.read(dis);
-            case PADDING -> throw new AssertionError();
-            case APPLICATION -> Application.read(dis);
-            case SEEK_TABLE -> SeekTable.read(dis);
-            case VORBIS_COMMENT -> VorbisComment.read(dis);
-            case CUE_SHEET -> new Unknown(code, body);
-            case PICTURE -> Picture.read(dis);
-            case UNDEFINED -> new Unknown(code, body);
-        };
+        switch (type) {
+            case STREAM_INFO:
+                return StreamInfo.read(dis);
+            case PADDING:
+                throw new AssertionError();
+            case APPLICATION:
+                return Application.read(dis);
+            case SEEK_TABLE:
+                return SeekTable.read(dis);
+            case VORBIS_COMMENT:
+                return VorbisComment.read(dis);
+            case CUE_SHEET:
+                return new Unknown(code, body);
+            case PICTURE:
+                return Picture.read(dis);
+            case UNDEFINED:
+                return new Unknown(code, body);
+            default:
+                throw new IllegalArgumentException();
+        }
     }
 
-    public static int readInt(InputStream in) throws IOException {
-        byte[] b = IOUtils.readBytes(in, 4);
-        return (b[0] & 0xFF) << 24 | (b[1] & 0xFF) << 16 | (b[2] & 0xFF) << 8 | b[3] & 0xFF;
+    public StreamInfo getStreamInfo() {
+        return streamInfo;
+    }
+
+    public List<MetadataBlock> getBlocks() {
+        return blocks;
     }
 }

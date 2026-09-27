@@ -6,15 +6,15 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.util.*;
 
-public record VorbisComment(
-    String vendor,
-    Map<String, List<String>> comments
-) implements MetadataBlock {
-    public VorbisComment {
-        vendor = Objects.requireNonNull(vendor);
+public final class VorbisComment implements MetadataBlock {
+    private final String vendor;
+    private final Map<String, List<String>> comments;
+
+    public VorbisComment(String vendor, Map<String, List<String>> comments) {
+        this.vendor = Objects.requireNonNull(vendor);
         comments = new LinkedHashMap<>(comments);
         comments.replaceAll((key, value) -> List.copyOf(value));
-        comments = Collections.unmodifiableMap(comments);
+        this.comments = Collections.unmodifiableMap(comments);
     }
 
     public static VorbisComment read(DataInputStream dis) throws IOException {
@@ -48,5 +48,13 @@ public record VorbisComment(
             }
         }
         return name;
+    }
+
+    public String getVendor() {
+        return vendor;
+    }
+
+    public Map<String, List<String>> getComments() {
+        return comments;
     }
 }

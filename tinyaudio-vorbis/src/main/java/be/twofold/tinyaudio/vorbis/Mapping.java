@@ -1,14 +1,28 @@
-package be.twofold.tinyvorbis;
+package be.twofold.tinyaudio.vorbis;
 
 import java.io.IOException;
 
-record Mapping(
-    int[] mux,
-    int[] submapFloor,
-    int[] submapResidue,
-    int[] magnitude,
-    int[] angle
-) {
+final class Mapping {
+    private final int[] mux;
+    private final int[] submapFloor;
+    private final int[] submapResidue;
+    private final int[] magnitude;
+    private final int[] angle;
+
+    Mapping(
+        int[] mux,
+        int[] submapFloor,
+        int[] submapResidue,
+        int[] magnitude,
+        int[] angle
+    ) {
+        this.mux = mux;
+        this.submapFloor = submapFloor;
+        this.submapResidue = submapResidue;
+        this.magnitude = magnitude;
+        this.angle = angle;
+    }
+
     static Mapping unpack(BitReader bits, int audioChannels, int floorCount, int residueCount) throws IOException {
         int type = bits.read(16);
         if (type != 0) {
@@ -77,6 +91,26 @@ record Mapping(
             submapResidue,
             magnitude,
             angle);
+    }
+
+    int[] mux() {
+        return mux;
+    }
+
+    int[] submapFloor() {
+        return submapFloor;
+    }
+
+    int[] submapResidue() {
+        return submapResidue;
+    }
+
+    int[] magnitude() {
+        return magnitude;
+    }
+
+    int[] angle() {
+        return angle;
     }
 
     int submaps() {

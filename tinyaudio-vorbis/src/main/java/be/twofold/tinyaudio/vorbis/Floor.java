@@ -1,9 +1,9 @@
-package be.twofold.tinyvorbis;
+package be.twofold.tinyaudio.vorbis;
 
 import java.io.IOException;
 import java.util.List;
 
-sealed interface Floor permits Floor1 {
+interface Floor {
     static Floor unpack(BitReader bits, int codebookCount) throws IOException {
         int floorType = bits.read(16);
         if (floorType == 0) {

@@ -1,4 +1,4 @@
-package be.twofold.tinyvorbis;
+package be.twofold.tinyaudio.vorbis;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
@@ -10,8 +10,7 @@ import java.util.Objects;
  */
 public final class BitReader {
     private static final VarHandle VH_LONG_LE = MethodHandles
-        .byteArrayViewVarHandle(long[].class, ByteOrder.LITTLE_ENDIAN)
-        .withInvokeExactBehavior();
+        .byteArrayViewVarHandle(long[].class, ByteOrder.LITTLE_ENDIAN);
 
     private final byte[] source;
     private final int offset;

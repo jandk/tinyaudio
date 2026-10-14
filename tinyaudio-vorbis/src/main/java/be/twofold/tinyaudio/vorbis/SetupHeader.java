@@ -1,25 +1,30 @@
-package be.twofold.tinyvorbis;
+package be.twofold.tinyaudio.vorbis;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public record SetupHeader(
-    List<Codebook> codebooks,
-    List<Floor> floors,
-    List<Residue> residues,
-    List<Mapping> mappings,
-    List<Mode> modes
-) {
-    public SetupHeader {
+final class SetupHeader {
+    private final List<Codebook> codebooks;
+    private final List<Floor> floors;
+    private final List<Residue> residues;
+    private final List<Mapping> mappings;
+    private final List<Mode> modes;
+
+    SetupHeader(List<Codebook> codebooks, List<Floor> floors, List<Residue> residues, List<Mapping> mappings, List<Mode> modes) {
         codebooks = List.copyOf(codebooks);
         floors = List.copyOf(floors);
         residues = List.copyOf(residues);
         mappings = List.copyOf(mappings);
         modes = List.copyOf(modes);
+        this.codebooks = codebooks;
+        this.floors = floors;
+        this.residues = residues;
+        this.mappings = mappings;
+        this.modes = modes;
     }
 
-    public static SetupHeader read(BitReader bits, int audioChannels) throws IOException {
+    static SetupHeader read(BitReader bits, int audioChannels) throws IOException {
         List<Codebook> codebooks = readList(bits, 8, Codebook::unpack);
         readList(bits, 6, SetupHeader::unpackTimeValue);
         List<Floor> floors = readList(bits, 6, in -> Floor.unpack(in, codebooks.size()));
@@ -57,7 +62,27 @@ public record SetupHeader(
         return null;
     }
 
-    public void write(BitOutputStream bits, int audioChannels) throws IOException {
+    List<Codebook> codebooks() {
+        return codebooks;
+    }
+
+    List<Floor> floors() {
+        return floors;
+    }
+
+    List<Residue> residues() {
+        return residues;
+    }
+
+    List<Mapping> mappings() {
+        return mappings;
+    }
+
+    List<Mode> modes() {
+        return modes;
+    }
+
+    void write(BitOutputStream bits, int audioChannels) throws IOException {
         writeList(bits, 8, codebooks, Codebook::pack);
         writeList(bits, 6, List.of(0), (value, out) -> out.write(16, value));
         writeList(bits, 6, floors, Floor::pack);

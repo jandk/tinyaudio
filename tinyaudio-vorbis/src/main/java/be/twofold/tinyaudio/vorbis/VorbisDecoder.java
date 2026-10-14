@@ -1,8 +1,8 @@
-package be.twofold.tinyvorbis;
+package be.twofold.tinyaudio.vorbis;
 
 import be.twofold.tinyaudio.core.Packet;
 import be.twofold.tinyaudio.core.PacketSource;
-import be.twofold.tinyvorbis.mdct.MDCT;
+import be.twofold.tinyaudio.vorbis.mdct.MDCT;
 
 import java.io.IOException;
 import java.nio.ByteOrder;

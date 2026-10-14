@@ -1,11 +1,19 @@
-package be.twofold.tinyvorbis;
+package be.twofold.tinyaudio.vorbis;
 
 import java.io.IOException;
 
-record Mode(
-    boolean blockFlag,
-    int mapping
-) {
+final class Mode {
+    private final boolean blockFlag;
+    private final int mapping;
+
+    Mode(
+        boolean blockFlag,
+        int mapping
+    ) {
+        this.blockFlag = blockFlag;
+        this.mapping = mapping;
+    }
+
     static Mode unpack(BitReader bits, int mappingCount) throws IOException {
         boolean blockFlag = bits.read(1) == 1;
         int windowType = bits.read(16);
@@ -22,6 +30,14 @@ record Mode(
         }
 
         return new Mode(blockFlag, mapping);
+    }
+
+    boolean blockFlag() {
+        return blockFlag;
+    }
+
+    int mapping() {
+        return mapping;
     }
 
     void pack(BitOutputStream bits) throws IOException {

@@ -1,17 +1,33 @@
-package be.twofold.tinyvorbis;
+package be.twofold.tinyaudio.vorbis;
 
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 
-record Residue(
-    int type,
-    int begin,
-    int end,
-    int partitionSize,
-    int classBook,
-    int[][] books
-) {
+final class Residue {
+    private final int type;
+    private final int begin;
+    private final int end;
+    private final int partitionSize;
+    private final int classBook;
+    private final int[][] books;
+
+    Residue(
+        int type,
+        int begin,
+        int end,
+        int partitionSize,
+        int classBook,
+        int[][] books
+    ) {
+        this.type = type;
+        this.begin = begin;
+        this.end = end;
+        this.partitionSize = partitionSize;
+        this.classBook = classBook;
+        this.books = books;
+    }
+
     static Residue unpack(BitReader bits, List<Codebook> codebooks) throws IOException {
         int type = bits.read(16);
         if (type > 2) {
@@ -72,6 +88,30 @@ record Residue(
             classBook,
             books
         );
+    }
+
+    int type() {
+        return type;
+    }
+
+    int begin() {
+        return begin;
+    }
+
+    int end() {
+        return end;
+    }
+
+    int partitionSize() {
+        return partitionSize;
+    }
+
+    int classBook() {
+        return classBook;
+    }
+
+    int[][] books() {
+        return books;
     }
 
     int classifications() {
@@ -198,12 +238,16 @@ record Residue(
             for (int d = 0; d < dim; d++) {
                 float value = values[base + d];
                 switch (type) {
-                    case 0 -> pcmBundle[j][offset + r + d * rows] += value;
-                    case 1 -> pcmBundle[j][offset + r * dim + d] += value;
-                    default -> {
+                    case 0:
+                        pcmBundle[j][offset + r + d * rows] += value;
+                        break;
+                    case 1:
+                        pcmBundle[j][offset + r * dim + d] += value;
+                        break;
+                    default:
                         int t = offset + r * dim + d;
                         pcmBundle[t % count][t / count] += value;
-                    }
+                        break;
                 }
             }
         }

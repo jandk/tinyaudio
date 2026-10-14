@@ -1,16 +1,34 @@
-package be.twofold.tinyvorbis;
+package be.twofold.tinyaudio.vorbis;
 
 import java.io.IOException;
 
-record Identification(
-    int audioChannels,
-    int audioSampleRate,
-    int bitrateMaximum,
-    int bitrateNominal,
-    int bitrateMinimum,
-    int blockSize0Log2,
-    int blockSize1Log2
-) {
+final class Identification {
+    private final int audioChannels;
+    private final int audioSampleRate;
+    private final int bitrateMaximum;
+    private final int bitrateNominal;
+    private final int bitrateMinimum;
+    private final int blockSize0Log2;
+    private final int blockSize1Log2;
+
+    Identification(
+        int audioChannels,
+        int audioSampleRate,
+        int bitrateMaximum,
+        int bitrateNominal,
+        int bitrateMinimum,
+        int blockSize0Log2,
+        int blockSize1Log2
+    ) {
+        this.audioChannels = audioChannels;
+        this.audioSampleRate = audioSampleRate;
+        this.bitrateMaximum = bitrateMaximum;
+        this.bitrateNominal = bitrateNominal;
+        this.bitrateMinimum = bitrateMinimum;
+        this.blockSize0Log2 = blockSize0Log2;
+        this.blockSize1Log2 = blockSize1Log2;
+    }
+
     static Identification read(BitReader bits) throws IOException {
         int vorbis_version = bits.read(32);
         if (vorbis_version != 0) {
@@ -60,11 +78,39 @@ record Identification(
         return blockSizeLog2;
     }
 
-    public int blockSize0() {
+    int audioChannels() {
+        return audioChannels;
+    }
+
+    int audioSampleRate() {
+        return audioSampleRate;
+    }
+
+    int bitrateMaximum() {
+        return bitrateMaximum;
+    }
+
+    int bitrateNominal() {
+        return bitrateNominal;
+    }
+
+    int bitrateMinimum() {
+        return bitrateMinimum;
+    }
+
+    int blockSize0Log2() {
+        return blockSize0Log2;
+    }
+
+    int blockSize1Log2() {
+        return blockSize1Log2;
+    }
+
+    int blockSize0() {
         return 1 << blockSize0Log2;
     }
 
-    public int blockSize1() {
+    int blockSize1() {
         return 1 << blockSize1Log2;
     }
 

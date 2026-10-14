@@ -1,4 +1,4 @@
-package be.twofold.tinyvorbis;
+package be.twofold.tinyaudio.vorbis;
 
 final class Util {
     private static final int VQ_FEXP = 10;

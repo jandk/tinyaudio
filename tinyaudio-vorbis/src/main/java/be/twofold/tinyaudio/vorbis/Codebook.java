@@ -1,4 +1,4 @@
-package be.twofold.tinyvorbis;
+package be.twofold.tinyaudio.vorbis;
 
 import java.io.IOException;
 import java.util.Arrays;

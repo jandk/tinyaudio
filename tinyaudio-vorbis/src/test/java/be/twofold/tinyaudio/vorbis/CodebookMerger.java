@@ -1,4 +1,4 @@
-package be.twofold.tinyvorbis;
+package be.twofold.tinyaudio.vorbis;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -82,7 +82,7 @@ final class CodebookMerger {
         int count = (buffer.limit() - start - 4) / 4;
 
         int[] offsets = new int[count + 1];
-        buffer.slice(start, buffer.limit() - start)
+        buffer.duplicate().position(start).slice()
             .order(ByteOrder.LITTLE_ENDIAN)
             .asIntBuffer().get(offsets);
 
@@ -164,16 +164,27 @@ final class CodebookMerger {
         );
     }
 
-    private record Bytes(byte[] array) {
+    private static final class Bytes {
+        private final byte[] array;
+
+        private Bytes(byte[] array) {
+            this.array = array;
+        }
+
         @Override
-        public boolean equals(Object o) {
-            return o instanceof Bytes bytes
-                && Arrays.equals(array, bytes.array);
+        public boolean equals(Object obj) {
+            return obj instanceof Bytes
+                && Arrays.equals(array, ((Bytes) obj).array);
         }
 
         @Override
         public int hashCode() {
             return Arrays.hashCode(array);
+        }
+
+        @Override
+        public String toString() {
+            return "[" + array.length + " bytes]";
         }
     }
 }

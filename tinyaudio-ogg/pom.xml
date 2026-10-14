@@ -10,10 +10,6 @@
 
     <artifactId>tinyaudio-ogg</artifactId>
 
-    <properties>
-        <maven.compiler.release>11</maven.compiler.release>
-    </properties>
-
     <dependencies>
         <dependency>
             <groupId>be.twofold</groupId>

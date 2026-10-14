@@ -25,20 +25,6 @@ final class Util {
         return Math.scalb(mant, exp);
     }
 
-    static long float32Pack(float val) {
-        int sign = 0;
-        if (val < 0) {
-            sign = 0x80000000;
-            val = -val;
-        }
-
-        int exp = (int) Math.floor(Math.log(val) / Math.log(2.0) + 0.001);
-        int mant = (int) Math.rint(Math.scalb(val, (VQ_FMAN - 1) - exp));
-        exp = (exp + VQ_FEXP_BIAS) << VQ_FMAN;
-
-        return sign | exp | mant;
-    }
-
     static String describe(byte[] data) {
         StringBuilder sb = new StringBuilder(data.length + " bytes");
         if (data.length > 0) {

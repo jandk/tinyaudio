@@ -326,35 +326,6 @@ final class Floor1 implements Floor {
         }
     }
 
-    @Override
-    public void packBody(BitOutputStream bits) throws IOException {
-        bits.write(5, partitionClassList.length);
-        for (int partitionClass : partitionClassList) {
-            bits.write(4, partitionClass);
-        }
-
-        int numClasses = classDimensions.length;
-        for (int i = 0; i < numClasses; i++) {
-            bits.write(3, classDimensions[i] - 1);
-            int classSubclass = classSubclasses(i);
-            bits.write(2, classSubclass);
-            if (classSubclass != 0) {
-                bits.write(8, classMasterBooks[i]);
-            }
-            for (int j = 0; j < 1 << classSubclass; j++) {
-                bits.write(8, subclassBooks[i][j] + 1);
-            }
-        }
-
-        int rangeBits = Integer.numberOfTrailingZeros(xList[1]);
-        bits.write(2, multiplier - 1);
-        bits.write(4, rangeBits);
-
-        for (int i = 2; i < xList.length; i++) {
-            bits.write(rangeBits, xList[i]);
-        }
-    }
-
     private static int lowNeighbor(int[] v, int x) {
         int index = 0;
         for (int i = 1; i < x; i++) {

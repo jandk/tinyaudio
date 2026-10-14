@@ -12,16 +12,11 @@ final class SetupHeader {
     private final List<Mode> modes;
 
     SetupHeader(List<Codebook> codebooks, List<Floor> floors, List<Residue> residues, List<Mapping> mappings, List<Mode> modes) {
-        codebooks = List.copyOf(codebooks);
-        floors = List.copyOf(floors);
-        residues = List.copyOf(residues);
-        mappings = List.copyOf(mappings);
-        modes = List.copyOf(modes);
-        this.codebooks = codebooks;
-        this.floors = floors;
-        this.residues = residues;
-        this.mappings = mappings;
-        this.modes = modes;
+        this.codebooks = List.copyOf(codebooks);
+        this.floors = List.copyOf(floors);
+        this.residues = List.copyOf(residues);
+        this.mappings = List.copyOf(mappings);
+        this.modes = List.copyOf(modes);
     }
 
     static SetupHeader read(BitReader bits, int audioChannels) throws IOException {
@@ -82,33 +77,7 @@ final class SetupHeader {
         return modes;
     }
 
-    void write(BitOutputStream bits, int audioChannels) throws IOException {
-        writeList(bits, 8, codebooks, Codebook::pack);
-        writeList(bits, 6, List.of(0), (value, out) -> out.write(16, value));
-        writeList(bits, 6, floors, Floor::pack);
-        writeList(bits, 6, residues, Residue::pack);
-        writeList(bits, 6, mappings, (mapping, out) -> mapping.pack(out, audioChannels));
-        writeList(bits, 6, modes, Mode::pack);
-
-        // Framing flag
-        bits.write(1, 1);
-    }
-
-    private <T> void writeList(BitOutputStream bits, int countBits, List<T> list, Writer<T> writer) throws IOException {
-        if (list.isEmpty() || list.size() > 1 << countBits) {
-            throw new IllegalArgumentException("Too many elements");
-        }
-        bits.write(countBits, list.size() - 1);
-        for (T value : list) {
-            writer.write(value, bits);
-        }
-    }
-
     private interface Reader<T> {
         T read(BitReader bits) throws IOException;
-    }
-
-    private interface Writer<T> {
-        void write(T value, BitOutputStream bits) throws IOException;
     }
 }

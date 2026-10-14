@@ -8,7 +8,7 @@ import java.util.Objects;
 /**
  * Reads variable-width bit fields from a {@code byte[]}. Supports both little and big endian bit readers.
  */
-public final class BitReader {
+final class BitReader {
     private static final VarHandle VH_LONG_LE = MethodHandles
         .byteArrayViewVarHandle(long[].class, ByteOrder.LITTLE_ENDIAN);
 
@@ -20,11 +20,11 @@ public final class BitReader {
     private long buffer;
     private int bitCount;
 
-    public BitReader(byte[] source, ByteOrder order) {
+    BitReader(byte[] source, ByteOrder order) {
         this(source, 0, source.length, order);
     }
 
-    public BitReader(byte[] source, int offset, int length, ByteOrder order) {
+    BitReader(byte[] source, int offset, int length, ByteOrder order) {
         Objects.checkFromIndexSize(offset, length, source.length);
         this.source = source;
         this.offset = offset;
@@ -36,7 +36,7 @@ public final class BitReader {
     /**
      * Discards any unread bits within the current byte, advancing to the next byte boundary.
      */
-    public void alignToByte() {
+    void alignToByte() {
         consume(bitCount & 7);
     }
 
@@ -45,21 +45,21 @@ public final class BitReader {
      * <p>
      * Unaffected by {@link #peek} and {@link #peekLong}.
      */
-    public int bitsRead() {
+    int bitsRead() {
         return (position - offset) * 8 - bitCount;
     }
 
     /**
      * Returns the number of bits still available to read.
      */
-    public int bitsRemaining() {
+    int bitsRemaining() {
         return bitCount + (end - position) * 8;
     }
 
     /**
      * Returns {@code true} if we read past the end of the source.
      */
-    public boolean isOverrun() {
+    boolean isOverrun() {
         return bitCount < 0;
     }
 
@@ -68,7 +68,7 @@ public final class BitReader {
      *
      * @param count number of bits to read, in {@code [0, 32]}
      */
-    public int read(int count) {
+    int read(int count) {
         if (count < 0 || count > 32) {
             throw new IllegalArgumentException("count must be between 0 and 32 inclusive");
         }
@@ -80,7 +80,7 @@ public final class BitReader {
      *
      * @param count number of bits to read, in {@code [0, 57]}
      */
-    public long readLong(int count) {
+    long readLong(int count) {
         if (count < 0 || count > 57) {
             throw new IllegalArgumentException("count must be between 0 and 57 inclusive");
         }
@@ -93,7 +93,7 @@ public final class BitReader {
     /**
      * Consumes and returns the next single bit as {@code true} or {@code false}.
      */
-    public boolean readBool() {
+    boolean readBool() {
         return readLong(1) != 0;
     }
 
@@ -102,7 +102,7 @@ public final class BitReader {
      *
      * @param count number of bits to peek, in {@code [0, 32]}
      */
-    public int peek(int count) {
+    int peek(int count) {
         if (count < 0 || count > 32) {
             throw new IllegalArgumentException("count must be between 0 and 32 inclusive");
         }
@@ -114,7 +114,7 @@ public final class BitReader {
      *
      * @param count number of bits to peek, in {@code [0, 57]}
      */
-    public long peekLong(int count) {
+    long peekLong(int count) {
         if (count < 0 || count > 57) {
             throw new IllegalArgumentException("count must be between 0 and 57 inclusive");
         }
@@ -129,7 +129,7 @@ public final class BitReader {
      *
      * @param count number of bits to skip, in {@code [0, 57]}
      */
-    public void skip(int count) {
+    void skip(int count) {
         if (count < 0 || count > 57) {
             throw new IllegalArgumentException("count must be between 0 and 57 inclusive");
         }

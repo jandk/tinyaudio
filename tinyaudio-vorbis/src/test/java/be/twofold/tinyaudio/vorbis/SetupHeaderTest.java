@@ -2,7 +2,6 @@ package be.twofold.tinyaudio.vorbis;
 
 import org.junit.jupiter.api.Test;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteOrder;
@@ -15,21 +14,21 @@ class SetupHeaderTest {
     private static final byte[] PACKET_HEADER = {0x05, 'v', 'o', 'r', 'b', 'i', 's'};
 
     @Test
-    void testRoundTrip() throws IOException {
+    void testRead() throws IOException {
         byte[] packet = readResource("/setup.bin");
         assertThat(Arrays.copyOf(packet, PACKET_HEADER.length)).isEqualTo(PACKET_HEADER);
 
-        byte[] expected = Arrays.copyOfRange(packet, PACKET_HEADER.length, packet.length);
+        BitReader reader = new BitReader(packet, PACKET_HEADER.length, packet.length - PACKET_HEADER.length, ByteOrder.LITTLE_ENDIAN);
+        SetupHeader setupHeader = SetupHeader.read(reader, AUDIO_CHANNELS);
 
-        BitReader bits = new BitReader(expected, ByteOrder.LITTLE_ENDIAN);
-        SetupHeader setupHeader = SetupHeader.read(bits, AUDIO_CHANNELS);
+        assertThat(reader.isOverrun()).isFalse();
+        assertThat(reader.bitsRemaining()).isLessThan(8);
 
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        try (BitOutputStream bitsOut = new BitOutputStream(out, ByteOrder.LITTLE_ENDIAN)) {
-            setupHeader.write(bitsOut, AUDIO_CHANNELS);
-        }
-
-        assertThat(out.toByteArray()).isEqualTo(expected);
+        assertThat(setupHeader.codebooks()).hasSize(42);
+        assertThat(setupHeader.floors()).hasSize(2);
+        assertThat(setupHeader.residues()).hasSize(2);
+        assertThat(setupHeader.mappings()).hasSize(2);
+        assertThat(setupHeader.modes()).hasSize(2);
     }
 
     private static byte[] readResource(String name) throws IOException {

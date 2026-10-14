@@ -158,112 +158,23 @@ final class Codebook {
         return true;
     }
 
-    public int dimensions() {
+    int dimensions() {
         return dimensions;
     }
 
-    public boolean ordered() {
-        return ordered;
-    }
-
-    public boolean sparse() {
-        return sparse;
-    }
-
-    public int[] codewordLengths() {
+    int[] codewordLengths() {
         return codewordLengths;
     }
 
-    public int lookupType() {
+    int lookupType() {
         return lookupType;
     }
 
-    public int minimumValue() {
-        return minimumValue;
-    }
-
-    public int deltaValue() {
-        return deltaValue;
-    }
-
-    public int valueBits() {
-        return valueBits;
-    }
-
-    public boolean sequenceP() {
-        return sequenceP;
-    }
-
-    public int[] multiplicands() {
-        return multiplicands;
-    }
-
-    public long[] words() {
-        return words;
-    }
-
-    public float[] vectors() {
+    float[] vectors() {
         return vectors;
     }
 
-    void pack(BitOutputStream bits) throws IOException {
-        bits.write(24, MAGIC);
-        bits.write(16, dimensions);
-        bits.write(24, codewordLengths.length);
-
-        bits.writeBool(ordered);
-        if (ordered) {
-            packOrdered(bits, codewordLengths);
-        } else {
-            bits.writeBool(sparse);
-            for (int codewordLength : codewordLengths) {
-                boolean used = codewordLength != 0;
-                if (sparse) {
-                    bits.writeBool(used);
-                }
-                if (used) {
-                    bits.write(5, codewordLength - 1);
-                }
-            }
-        }
-
-        bits.write(4, lookupType);
-        if (lookupType == 1 || lookupType == 2) {
-            bits.write(32, minimumValue);
-            bits.write(32, deltaValue);
-            bits.write(4, valueBits - 1);
-            bits.writeBool(sequenceP);
-
-            for (int multiplicand : multiplicands) {
-                bits.write(valueBits, multiplicand);
-            }
-        }
-    }
-
-    private void packOrdered(BitOutputStream bits, int[] codewordLengths) throws IOException {
-        int entries = codewordLengths.length;
-        for (int i = 0; i < entries; i++) {
-            if (codewordLengths[i] == 0 || (i > 0 && codewordLengths[i] < codewordLengths[i - 1])) {
-                throw new VorbisException("Ordered codebooks require non-decreasing, non-zero codeword lengths");
-            }
-        }
-
-        int length = entries == 0 ? 1 : codewordLengths[0];
-        bits.write(5, length - 1);
-
-        int entry = 0;
-        while (entry < entries) {
-            int number = 0;
-            while (entry + number < entries && codewordLengths[entry + number] == length) {
-                number++;
-            }
-            bits.write(Util.ilog(entries - entry), number);
-            entry += number;
-            length++;
-        }
-    }
-
-    public int decode(BitReader bits) {
+    int decode(BitReader bits) {
         if (words.length == 0) {
             return -1;
         }

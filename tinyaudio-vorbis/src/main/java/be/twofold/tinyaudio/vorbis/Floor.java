@@ -18,18 +18,4 @@ interface Floor {
     boolean decode(BitReader bits, List<Codebook> codebooks, int[] floorY);
 
     void synthesize(int[] floorY, float[] spectrum, int n2);
-
-    default void pack(BitOutputStream bits) throws IOException {
-        int floorType;
-        if (this instanceof Floor1) {
-            floorType = 1;
-        } else {
-            throw new VorbisException("Invalid floor type");
-        }
-
-        bits.write(16, floorType);
-        packBody(bits);
-    }
-
-    void packBody(BitOutputStream bits) throws IOException;
 }

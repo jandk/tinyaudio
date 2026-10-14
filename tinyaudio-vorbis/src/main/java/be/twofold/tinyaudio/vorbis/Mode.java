@@ -39,11 +39,4 @@ final class Mode {
     int mapping() {
         return mapping;
     }
-
-    void pack(BitOutputStream bits) throws IOException {
-        bits.writeBool(blockFlag);
-        bits.write(16, 0);
-        bits.write(16, 0);
-        bits.write(8, mapping);
-    }
 }

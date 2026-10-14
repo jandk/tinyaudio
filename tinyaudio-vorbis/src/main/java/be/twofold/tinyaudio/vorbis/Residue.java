@@ -90,65 +90,8 @@ final class Residue {
         );
     }
 
-    int type() {
-        return type;
-    }
-
-    int begin() {
-        return begin;
-    }
-
-    int end() {
-        return end;
-    }
-
-    int partitionSize() {
-        return partitionSize;
-    }
-
-    int classBook() {
-        return classBook;
-    }
-
-    int[][] books() {
-        return books;
-    }
-
     int classifications() {
         return books.length;
-    }
-
-    void pack(BitOutputStream bits) throws IOException {
-        bits.write(16, type);
-        bits.write(24, begin);
-        bits.write(24, end);
-        bits.write(24, partitionSize - 1);
-        bits.write(6, classifications() - 1);
-        bits.write(8, classBook);
-
-        for (int[] classBooks : books) {
-            int cascade = 0;
-            for (int j = 0; j < 8; j++) {
-                if (classBooks[j] != -1) {
-                    cascade |= 1 << j;
-                }
-            }
-
-            bits.write(3, cascade);
-            boolean hasHigh = cascade > 7;
-            bits.writeBool(hasHigh);
-            if (hasHigh) {
-                bits.write(5, cascade >> 3);
-            }
-        }
-
-        for (int[] classBooks : books) {
-            for (int book : classBooks) {
-                if (book != -1) {
-                    bits.write(8, book);
-                }
-            }
-        }
     }
 
     public void decode(BitReader bits, List<Codebook> codebooks, int n2, float[][] pcmBundle, boolean[] zeroBundle, int count) {

@@ -113,16 +113,4 @@ final class Identification {
     int blockSize1() {
         return 1 << blockSize1Log2;
     }
-
-    void write(BitOutputStream bits) throws IOException {
-        bits.write(32, 0); // version
-        bits.write(8, audioChannels);
-        bits.write(32, audioSampleRate);
-        bits.write(32, bitrateMaximum);
-        bits.write(32, bitrateNominal);
-        bits.write(32, bitrateMinimum);
-        bits.write(4, blockSize0Log2);
-        bits.write(4, blockSize1Log2);
-        bits.writeBool(true);
-    }
 }

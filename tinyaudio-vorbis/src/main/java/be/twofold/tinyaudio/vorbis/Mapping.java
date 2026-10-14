@@ -121,39 +121,4 @@ final class Mapping {
         return magnitude.length;
     }
 
-    void pack(BitOutputStream bits, int audioChannels) throws IOException {
-        int submaps = submaps();
-        int couplingSteps = couplingSteps();
-
-        bits.write(16, 0);
-
-        bits.writeBool(submaps > 1);
-        if (submaps > 1) {
-            bits.write(4, submaps - 1);
-        }
-
-        bits.writeBool(couplingSteps > 0);
-        if (couplingSteps > 0) {
-            int audioChannelLog = Util.ilog(audioChannels - 1);
-            bits.write(8, couplingSteps - 1);
-            for (int i = 0; i < couplingSteps; i++) {
-                bits.write(audioChannelLog, magnitude[i]);
-                bits.write(audioChannelLog, angle[i]);
-            }
-        }
-
-        bits.write(2, 0); // reserved
-
-        if (submaps > 1) {
-            for (int i = 0; i < audioChannels; i++) {
-                bits.write(4, mux[i]);
-            }
-        }
-
-        for (int i = 0; i < submaps; i++) {
-            bits.write(8, 0);
-            bits.write(8, submapFloor[i]);
-            bits.write(8, submapResidue[i]);
-        }
-    }
 }

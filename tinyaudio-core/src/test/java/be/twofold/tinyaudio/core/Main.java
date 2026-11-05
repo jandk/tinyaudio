@@ -1,4 +1,4 @@
-package be.twofold.tinyaudio.flac;
+package be.twofold.tinyaudio.core;
 
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioInputStream;

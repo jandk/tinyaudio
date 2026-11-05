@@ -1,21 +1,17 @@
 package be.twofold.tinyaudio.flac;
 
+import be.twofold.tinyaudio.core.AudioInfo;
+import be.twofold.tinyaudio.core.BlockAudioDecoder;
 import be.twofold.tinyaudio.core.CRC;
 import be.twofold.tinyaudio.flac.metadata.StreamInfo;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.VarHandle;
-import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.zip.CheckedInputStream;
 
-public class FlacDecoder extends InputStream {
-    private static final VarHandle VH_SHORT = MethodHandles
-        .byteArrayViewVarHandle(short[].class, ByteOrder.LITTLE_ENDIAN);
-
+public class FlacDecoder extends BlockAudioDecoder {
     private static final int[][] FIXED = {
         {},
         {1},
@@ -24,14 +20,8 @@ public class FlacDecoder extends InputStream {
         {4, -6, 4, -1}
     };
 
-    private final StreamInfo streamInfo;
-
     private final InputStream in;
-    private final byte[] oneByte = new byte[1];
-
-    private final byte[] pcmBuffer;
-    private int pcmOffset;
-    private int pcmLength;
+    private final StreamInfo streamInfo;
 
     private final int[][] samples;
     private int[] coefficients;
@@ -39,70 +29,36 @@ public class FlacDecoder extends InputStream {
     private long sampleCount;
 
     public FlacDecoder(InputStream in, StreamInfo streamInfo) {
+        super(streamInfo.getChannels(), maximumBlockSize(streamInfo));
+
         this.in = Objects.requireNonNull(in);
         this.streamInfo = Objects.requireNonNull(streamInfo);
+        this.samples = new int[streamInfo.getChannels()][maximumBlockSize(streamInfo)];
+    }
 
-        int bytesPerSampleFrame = streamInfo.getChannels() * ((streamInfo.getBitsPerSample() + 7) / 8);
-        int maximumBlockSize = streamInfo.getMaxBlockSize();
-        if (maximumBlockSize == 0) {
-            maximumBlockSize = 65535;
-        }
-
-        this.pcmBuffer = new byte[bytesPerSampleFrame * maximumBlockSize];
-        this.samples = new int[streamInfo.getChannels()][maximumBlockSize];
+    private static int maximumBlockSize(StreamInfo streamInfo) {
+        int size = streamInfo.getMaxBlockSize();
+        return size == 0 ? 65535 : size;
     }
 
     @Override
-    public int read() throws IOException {
-        int read = read(oneByte, 0, 1);
-        if (read == 1) {
-            return oneByte[0] & 0xFF;
-        }
-        return -1;
+    public AudioInfo info() {
+        long total = streamInfo.getTotalSamples();
+        return new AudioInfo(
+            "flac",
+            streamInfo.getSampleRate(),
+            streamInfo.getChannels(),
+            total == 0 ? -1 : total
+        );
     }
 
     @Override
-    public int read(byte[] b, int off, int len) throws IOException {
-        Objects.checkFromIndexSize(off, len, b.length);
-
-        int totalBytesRead = 0;
-        while (totalBytesRead < len) {
-            if (pcmOffset >= pcmLength) {
-                if (totalBytesRead > 0) {
-                    break;
-                }
-                if (!decodeNextFrame()) {
-                    return -1;
-                }
-            }
-
-            int bytesToCopy = Math.min(pcmLength - pcmOffset, len - totalBytesRead);
-            System.arraycopy(pcmBuffer, pcmOffset, b, off + totalBytesRead, bytesToCopy);
-            pcmOffset += bytesToCopy;
-            totalBytesRead += bytesToCopy;
-        }
-
-        return totalBytesRead;
-    }
-
-    @Override
-    public int available() {
-        return pcmLength - pcmOffset;
-    }
-
-    @Override
-    public void close() throws IOException {
-        in.close();
-    }
-
-    private boolean decodeNextFrame() throws IOException {
-        assert pcmOffset == pcmLength;
-
+    protected int decodeBlock(short[][] pcm) throws IOException {
         CheckedInputStream checked = new CheckedInputStream(in, CRC.FLAC_FRAME.get());
 
         FlacFrameHeader frameHeader = FlacFrameHeader.read(checked);
         if (frameHeader == null) {
-            return false;
+            return -1;
         }
 
         long total = streamInfo.getTotalSamples();
@@ -137,7 +93,6 @@ public class FlacDecoder extends InputStream {
                 applyWastedBits(samples[i], blocksize, subFrameHeader.getWastedBits());
             }
 
-            sampleCount += blocksize;
         }
 
         short actualCrc = (short) checked.getChecksum().getValue();
@@ -146,12 +101,15 @@ public class FlacDecoder extends InputStream {
             throw new IOException("CRC mismatch");
         }
 
+        sampleCount += blocksize;
         decorrelate(frameHeader.getChannelCorrelation(), blocksize);
-        convertToPcm(blocksize);
+        convertToShort(pcm, blocksize);
+        return blocksize;
+    }
 
-        pcmLength = frameHeader.getBytesPerFrame();
-        pcmOffset = 0;
-        return true;
+    @Override
+    public void close() throws IOException {
+        in.close();
     }
 
     private void applyWastedBits(int[] samples, int blockSize, int wastedBits) {
@@ -197,40 +155,18 @@ public class FlacDecoder extends InputStream {
         }
     }
 
-    private void convertToPcm(int blocksize) {
-        int bytesPerSample = (streamInfo.getBitsPerSample() + 7) / 8;
-        if (bytesPerSample == 1) {
-            for (int i = 0, o = 0; i < blocksize; i++) {
-                for (int[] sample : samples) {
-                    pcmBuffer[o] = (byte) sample[i];
-                    o++;
+    private void convertToShort(short[][] pcm, int blocksize) {
+        int shift = streamInfo.getBitsPerSample() - 16;
+        for (int ch = 0; ch < pcm.length; ch++) {
+            int[] src = samples[ch];
+            short[] dst = pcm[ch];
+            if (shift >= 0) {
+                for (int i = 0; i < blocksize; i++) {
+                    dst[i] = (short) (src[i] >> shift);
                 }
-            }
-        } else if (bytesPerSample == 2) {
-            for (int i = 0, o = 0; i < blocksize; i++) {
-                for (int[] sample : samples) {
-                    pcmBuffer[o/**/] = (byte) sample[i];
-                    pcmBuffer[o + 1] = (byte) (sample[i] >> 8);
-                    o += 2;
-                }
-            }
-        } else if (bytesPerSample == 3) {
-            for (int i = 0, o = 0; i < blocksize; i++) {
-                for (int[] sample : samples) {
-                    pcmBuffer[o/**/] = (byte) sample[i];
-                    pcmBuffer[o + 1] = (byte) (sample[i] >> 8);
-                    pcmBuffer[o + 2] = (byte) (sample[i] >> 16);
-                    o += 3;
-                }
-            }
-        } else if (bytesPerSample == 4) {
-            for (int i = 0, o = 0; i < blocksize; i++) {
-                for (int[] sample : samples) {
-                    pcmBuffer[o/**/] = (byte) sample[i];
-                    pcmBuffer[o + 1] = (byte) (sample[i] >> 8);
-                    pcmBuffer[o + 2] = (byte) (sample[i] >> 16);
-                    pcmBuffer[o + 3] = (byte) (sample[i] >> 24);
-                    o += 4;
+            } else {
+                for (int i = 0; i < blocksize; i++) {
+                    dst[i] = (short) (src[i] << -shift);
                 }
             }
         }

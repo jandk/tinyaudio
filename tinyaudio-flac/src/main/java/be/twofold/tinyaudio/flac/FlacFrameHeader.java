@@ -242,11 +242,6 @@ public final class FlacFrameHeader {
         return codedNumber;
     }
 
-    public int getBytesPerFrame() {
-        int bytesPerSample = (bitsPerSample + 7) / 8 * numberOfChannels;
-        return blockSize * bytesPerSample;
-    }
-
     public enum ChannelType {
         LEFT_RIGHT(-1),
         LEFT_SIDE(1),

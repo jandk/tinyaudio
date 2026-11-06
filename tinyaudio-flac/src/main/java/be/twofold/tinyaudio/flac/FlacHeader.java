@@ -1,7 +1,7 @@
-package be.twofold.tinyaudio.flac.metadata;
+package be.twofold.tinyaudio.flac;
 
 import be.twofold.tinyaudio.core.internal.IOUtils;
-import be.twofold.tinyaudio.flac.FlacException;
+import be.twofold.tinyaudio.flac.metadata.*;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -12,38 +12,36 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public final class Metadata {
+public final class FlacHeader {
     private static final int MAGIC = 'f' << 24 | 'L' << 16 | 'a' << 8 | 'C';
 
     private final StreamInfo streamInfo;
     private final List<MetadataBlock> blocks;
 
-    public Metadata(StreamInfo streamInfo, List<MetadataBlock> blocks) {
+    public FlacHeader(StreamInfo streamInfo, List<MetadataBlock> blocks) {
         this.streamInfo = Objects.requireNonNull(streamInfo);
         this.blocks = List.copyOf(blocks);
     }
 
-    public static Metadata read(InputStream in) throws IOException {
-        int magic = IOUtils.readInt(in);
+    public static FlacHeader read(InputStream in) throws IOException {
+        int magic = readInt(in);
         if (magic != MAGIC) {
             throw new FlacException("Not a FLAC stream");
         }
 
-        int header = IOUtils.readInt(in);
+        int header = readInt(in);
         if ((header & 0x7FFF_FFFF) != StreamInfo.BYTES) {
             throw new FlacException("First metadata block must be a StreamInfo block");
         }
         StreamInfo streamInfo = (StreamInfo) readBlock(in, header);
 
         List<MetadataBlock> blocks = new ArrayList<>();
-        blocks.add(streamInfo);
-
         while (header >= 0) {
-            header = IOUtils.readInt(in);
+            header = readInt(in);
             blocks.add(readBlock(in, header));
         }
 
-        return new Metadata(streamInfo, blocks);
+        return new FlacHeader(streamInfo, blocks);
     }
 
     private static MetadataBlock readBlock(InputStream in, int header) throws IOException {
@@ -82,6 +80,10 @@ public final class Metadata {
             }
             return Unknown.read(buffer.rewind(), code);
         }
+    }
+
+    private static int readInt(InputStream in) throws IOException {
+        return IOUtils.readBuffer(in, 4, ByteOrder.BIG_ENDIAN).getInt();
     }
 
     public StreamInfo streamInfo() {

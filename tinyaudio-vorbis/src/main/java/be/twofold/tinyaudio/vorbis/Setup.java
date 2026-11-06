@@ -1,17 +1,19 @@
 package be.twofold.tinyaudio.vorbis;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
 
-final class SetupHeader {
+final class Setup {
     private final List<Codebook> codebooks;
     private final List<Floor> floors;
     private final List<Residue> residues;
     private final List<Mapping> mappings;
     private final List<Mode> modes;
 
-    SetupHeader(List<Codebook> codebooks, List<Floor> floors, List<Residue> residues, List<Mapping> mappings, List<Mode> modes) {
+    Setup(List<Codebook> codebooks, List<Floor> floors, List<Residue> residues, List<Mapping> mappings, List<Mode> modes) {
         this.codebooks = List.copyOf(codebooks);
         this.floors = List.copyOf(floors);
         this.residues = List.copyOf(residues);
@@ -19,9 +21,19 @@ final class SetupHeader {
         this.modes = List.copyOf(modes);
     }
 
-    static SetupHeader read(BitReader bits, int audioChannels) throws IOException {
+    static Setup read(ByteBuffer buffer, int audioChannels) throws IOException {
+        BitReader bits = new BitReader(
+            buffer.array(),
+            buffer.arrayOffset() + buffer.position(),
+            buffer.remaining(),
+            ByteOrder.LITTLE_ENDIAN
+        );
+        return read(bits, audioChannels);
+    }
+
+    static Setup read(BitReader bits, int audioChannels) throws IOException {
         List<Codebook> codebooks = readList(bits, 8, Codebook::unpack);
-        readList(bits, 6, SetupHeader::unpackTimeValue);
+        readList(bits, 6, Setup::unpackTimeValue);
         List<Floor> floors = readList(bits, 6, in -> Floor.unpack(in, codebooks.size()));
         List<Residue> residues = readList(bits, 6, in -> Residue.unpack(in, codebooks));
         List<Mapping> mappings = readList(bits, 6, in -> Mapping.unpack(in, audioChannels, floors.size(), residues.size()));
@@ -32,7 +44,7 @@ final class SetupHeader {
             throw new VorbisException("Invalid framing flag: " + framingFlag);
         }
 
-        return new SetupHeader(
+        return new Setup(
             codebooks,
             floors,
             residues,

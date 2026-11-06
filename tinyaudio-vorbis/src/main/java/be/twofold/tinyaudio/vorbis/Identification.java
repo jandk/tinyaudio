@@ -1,8 +1,11 @@
 package be.twofold.tinyaudio.vorbis;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 final class Identification {
+    private static final int BYTES = 23;
+
     private final int audioChannels;
     private final int audioSampleRate;
     private final int bitrateMaximum;
@@ -29,34 +32,38 @@ final class Identification {
         this.blockSize1Log2 = blockSize1Log2;
     }
 
-    static Identification read(BitReader bits) throws IOException {
-        int vorbis_version = bits.read(32);
-        if (vorbis_version != 0) {
-            throw new VorbisException("Invalid vorbis version: " + vorbis_version);
+    static Identification read(ByteBuffer buffer) throws IOException {
+        if (buffer.remaining() < BYTES) {
+            throw new VorbisException("Invalid identification header size: " + buffer.remaining());
+        }
+        int vorbisVersion = buffer.getInt();
+        if (vorbisVersion != 0) {
+            throw new VorbisException("Invalid vorbis version: " + vorbisVersion);
         }
 
-        int audioChannels = bits.read(8);
+        int audioChannels = Byte.toUnsignedInt(buffer.get());
         if (audioChannels == 0) {
             throw new VorbisException("Invalid audio channels: " + audioChannels);
         }
 
-        int audioSampleRate = bits.read(32);
+        int audioSampleRate = buffer.getInt();
         if (audioSampleRate <= 0) {
             throw new VorbisException("Invalid audio sample rate: " + audioSampleRate);
         }
 
-        int bitrateMaximum = bits.read(32);
-        int bitrateNominal = bits.read(32);
-        int bitrateMinimum = bits.read(32);
-        int blockSize0Log2 = readBlockSize(bits);
-        int blockSize1Log2 = readBlockSize(bits);
+        int bitrateMaximum = buffer.getInt();
+        int bitrateNominal = buffer.getInt();
+        int bitrateMinimum = buffer.getInt();
+        int blockSize = buffer.get();
+        int blockSize0Log2 = checkBlockSize(blockSize & 0x0F);
+        int blockSize1Log2 = checkBlockSize((blockSize >> 4) & 0x0F);
         if (blockSize0Log2 > blockSize1Log2) {
             throw new VorbisException("Invalid block size: " + blockSize0Log2 + " > " + blockSize1Log2);
         }
 
-        int framing_flag = bits.read(1);
-        if (framing_flag != 1) {
-            throw new VorbisException("Invalid framing flag: " + framing_flag);
+        int framingFlag = buffer.get() & 0x01;
+        if (framingFlag != 1) {
+            throw new VorbisException("Invalid framing flag: " + framingFlag);
         }
 
         return new Identification(
@@ -70,8 +77,7 @@ final class Identification {
         );
     }
 
-    private static int readBlockSize(BitReader bits) throws IOException {
-        int blockSizeLog2 = bits.read(4);
+    private static int checkBlockSize(int blockSizeLog2) throws IOException {
         if (blockSizeLog2 < 6 || blockSizeLog2 > 13) {
             throw new VorbisException("Invalid block size: " + (1 << blockSizeLog2));
         }
@@ -96,14 +102,6 @@ final class Identification {
 
     int bitrateMinimum() {
         return bitrateMinimum;
-    }
-
-    int blockSize0Log2() {
-        return blockSize0Log2;
-    }
-
-    int blockSize1Log2() {
-        return blockSize1Log2;
     }
 
     int blockSize0() {

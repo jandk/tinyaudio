@@ -12,11 +12,9 @@ import java.util.Arrays;
 import java.util.Objects;
 
 public final class VorbisDecoder extends BlockAudioDecoder {
-    private static final byte[] VORBIS = {'v', 'o', 'r', 'b', 'i', 's'};
-
     private final PacketSource packets;
     private final Identification identification;
-    private final SetupHeader setup;
+    private final Setup setup;
     private final float[][] spectrum;
 
     // Floor
@@ -38,13 +36,12 @@ public final class VorbisDecoder extends BlockAudioDecoder {
     private int previousBlockSize;
     private long produced;
 
-    private VorbisDecoder(PacketSource packets, Identification identification) throws IOException {
+    VorbisDecoder(PacketSource packets, Identification identification, Setup setup) {
         super(identification.audioChannels(), Math.max(identification.blockSize0(), identification.blockSize1()));
         this.packets = Objects.requireNonNull(packets);
         this.identification = Objects.requireNonNull(identification);
+        this.setup = Objects.requireNonNull(setup);
 
-        header(3); // skip comment header for now
-        setup = SetupHeader.read(header(5), identification.audioChannels());
         spectrum = new float[identification.audioChannels()][identification.blockSize1()];
 
         floorY = new int[identification.audioChannels()][65];
@@ -60,11 +57,6 @@ public final class VorbisDecoder extends BlockAudioDecoder {
         window1 = slope(identification.blockSize1() / 2);
     }
 
-    public static VorbisDecoder create(Packet first, PacketSource packets) throws IOException {
-        Identification identification = Identification.read(header(first, 1));
-        return new VorbisDecoder(packets, identification);
-    }
-
     private float[] slope(int n) {
         float[] w = new float[n];
         for (int i = 0; i < n; i++) {
@@ -72,23 +64,6 @@ public final class VorbisDecoder extends BlockAudioDecoder {
             w[i] = (float) Math.sin((Math.PI / 2) * s * s);
         }
         return w;
-    }
-
-    private BitReader header(int type) throws IOException {
-        return header(packets.next(), type);
-    }
-
-    private static BitReader header(Packet packet, int type) throws IOException {
-        if (packet == null) {
-            throw new VorbisException("Stream ended before header packet of type " + type);
-        }
-
-        byte[] data = packet.getData();
-        if (data.length < 7 || data[0] != type || !Arrays.equals(data, 1, 7, VORBIS, 0, 6)) {
-            throw new VorbisException("Expected header packet of type " + type + ", got " + Util.describe(data));
-        }
-
-        return new BitReader(data, 7, data.length - 7, ByteOrder.LITTLE_ENDIAN);
     }
 
     @Override

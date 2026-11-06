@@ -1,6 +1,4 @@
-package be.twofold.tinyaudio.flac.metadata;
-
-import be.twofold.tinyaudio.core.internal.IOUtils;
+package be.twofold.tinyaudio.core.internal;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -8,7 +6,7 @@ import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
-public final class VorbisComment implements MetadataBlock {
+public final class VorbisComment {
     private final String vendor;
     private final Map<String, List<String>> comments;
 

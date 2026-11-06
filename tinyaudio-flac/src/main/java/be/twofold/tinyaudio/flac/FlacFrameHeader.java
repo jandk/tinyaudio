@@ -7,7 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.zip.CheckedInputStream;
 
-public final class FlacFrameHeader {
+final class FlacFrameHeader {
     private final boolean variableBlockSize;
     private final int blockSize;
     private final int sampleRate;
@@ -16,7 +16,7 @@ public final class FlacFrameHeader {
     private final int bitsPerSample;
     private final long codedNumber;
 
-    public FlacFrameHeader(
+    FlacFrameHeader(
         boolean variableBlockSize,
         int blockSize,
         int sampleRate,
@@ -34,7 +34,7 @@ public final class FlacFrameHeader {
         this.codedNumber = codedNumber;
     }
 
-    public static FlacFrameHeader read(InputStream is) throws IOException {
+    static FlacFrameHeader read(InputStream is) throws IOException {
         CheckedInputStream checked = new CheckedInputStream(is, CRC.FLAC_HEADER.get());
         DataInputStream dis = new DataInputStream(checked);
 
@@ -214,35 +214,35 @@ public final class FlacFrameHeader {
         }
     }
 
-    public boolean isVariableBlockSize() {
+    boolean isVariableBlockSize() {
         return variableBlockSize;
     }
 
-    public int getBlockSize() {
+    int getBlockSize() {
         return blockSize;
     }
 
-    public int getSampleRate() {
+    int getSampleRate() {
         return sampleRate;
     }
 
-    public int getNumberOfChannels() {
+    int getNumberOfChannels() {
         return numberOfChannels;
     }
 
-    public ChannelType getChannelCorrelation() {
+    ChannelType getChannelCorrelation() {
         return channelCorrelation;
     }
 
-    public int getBitsPerSample() {
+    int getBitsPerSample() {
         return bitsPerSample;
     }
 
-    public long getCodedNumber() {
+    long getCodedNumber() {
         return codedNumber;
     }
 
-    public enum ChannelType {
+    enum ChannelType {
         LEFT_RIGHT(-1),
         LEFT_SIDE(1),
         SIDE_RIGHT(0),
@@ -255,7 +255,7 @@ public final class FlacFrameHeader {
             this.side = side;
         }
 
-        public int getSide() {
+        int getSide() {
             return side;
         }
     }

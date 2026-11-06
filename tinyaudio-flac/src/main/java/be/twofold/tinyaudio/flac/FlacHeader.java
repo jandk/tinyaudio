@@ -12,18 +12,18 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public final class FlacHeader {
+final class FlacHeader {
     private static final int MAGIC = 'f' << 24 | 'L' << 16 | 'a' << 8 | 'C';
 
     private final StreamInfo streamInfo;
     private final List<MetadataBlock> blocks;
 
-    public FlacHeader(StreamInfo streamInfo, List<MetadataBlock> blocks) {
+    FlacHeader(StreamInfo streamInfo, List<MetadataBlock> blocks) {
         this.streamInfo = Objects.requireNonNull(streamInfo);
         this.blocks = List.copyOf(blocks);
     }
 
-    public static FlacHeader read(InputStream in) throws IOException {
+    static FlacHeader read(InputStream in) throws IOException {
         int magic = readInt(in);
         if (magic != MAGIC) {
             throw new FlacException("Not a FLAC stream");
@@ -64,7 +64,7 @@ public final class FlacHeader {
                 case SEEK_TABLE:
                     return SeekTable.read(buffer);
                 case VORBIS_COMMENT:
-                    return VorbisComment.read(buffer);
+                    return CommentBlock.read(buffer);
                 case CUE_SHEET:
                     return CueSheet.read(buffer);
                 case PICTURE:
@@ -78,6 +78,7 @@ public final class FlacHeader {
             if (type == MetadataType.STREAM_INFO) {
                 throw new FlacException("Invalid stream info block", e);
             }
+            // failed metadata shouldn't cause an exception
             return Unknown.read(buffer.rewind(), code);
         }
     }
@@ -86,11 +87,11 @@ public final class FlacHeader {
         return IOUtils.readBuffer(in, 4, ByteOrder.BIG_ENDIAN).getInt();
     }
 
-    public StreamInfo streamInfo() {
+    StreamInfo streamInfo() {
         return streamInfo;
     }
 
-    public List<MetadataBlock> blocks() {
+    List<MetadataBlock> blocks() {
         return blocks;
     }
 }

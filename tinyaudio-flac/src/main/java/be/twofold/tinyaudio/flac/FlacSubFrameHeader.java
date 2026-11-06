@@ -3,18 +3,18 @@ package be.twofold.tinyaudio.flac;
 import java.io.IOException;
 import java.util.Objects;
 
-public final class FlacSubFrameHeader {
+final class FlacSubFrameHeader {
     private final Type subframeType;
     private final int order;
     private final int wastedBits;
 
-    public FlacSubFrameHeader(Type subframeType, int order, int wastedBits) {
+    FlacSubFrameHeader(Type subframeType, int order, int wastedBits) {
         this.subframeType = Objects.requireNonNull(subframeType);
         this.order = order;
         this.wastedBits = wastedBits;
     }
 
-    public static FlacSubFrameHeader read(BitInputStream is) throws IOException {
+    static FlacSubFrameHeader read(BitInputStream is) throws IOException {
         if (is.readBool()) {
             throw new IOException("Invalid subframe header");
         }
@@ -55,19 +55,19 @@ public final class FlacSubFrameHeader {
         }
     }
 
-    public Type getSubframeType() {
+    Type getSubframeType() {
         return subframeType;
     }
 
-    public int getOrder() {
+    int getOrder() {
         return order;
     }
 
-    public int getWastedBits() {
+    int getWastedBits() {
         return wastedBits;
     }
 
-    public enum Type {
+    enum Type {
         CONSTANT,
         VERBATIM,
         FIXED,

@@ -11,7 +11,7 @@ import java.util.Arrays;
 import java.util.Objects;
 import java.util.zip.CheckedInputStream;
 
-public class FlacDecoder extends BlockAudioDecoder {
+public final class FlacDecoder extends BlockAudioDecoder {
     private static final int[][] FIXED = {
         {},
         {1},
@@ -28,7 +28,7 @@ public class FlacDecoder extends BlockAudioDecoder {
     private int rightShift;
     private long sampleCount;
 
-    public FlacDecoder(InputStream in, StreamInfo streamInfo) {
+    FlacDecoder(InputStream in, StreamInfo streamInfo) {
         super(streamInfo.channels(), maximumBlockSize(streamInfo));
 
         this.in = Objects.requireNonNull(in);

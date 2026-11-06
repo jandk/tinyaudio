@@ -2,31 +2,37 @@ package be.twofold.tinyaudio.vorbis;
 
 import be.twofold.tinyaudio.core.Packet;
 import be.twofold.tinyaudio.core.PacketSource;
+import be.twofold.tinyaudio.core.internal.VorbisComment;
 
 import java.io.IOException;
+import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Arrays;
+import java.util.Map;
 import java.util.Objects;
 
 final class VorbisHeader {
     private static final byte[] VORBIS = {'v', 'o', 'r', 'b', 'i', 's'};
 
     private final Identification identification;
+    private final VorbisComment comment;
     private final Setup setup;
 
-    private VorbisHeader(Identification identification, Setup setup) {
+    private VorbisHeader(Identification identification, VorbisComment comment, Setup setup) {
         this.identification = Objects.requireNonNull(identification);
+        this.comment = Objects.requireNonNull(comment);
         this.setup = Objects.requireNonNull(setup);
     }
 
     static VorbisHeader read(Packet first, PacketSource packets) throws IOException {
         Identification identification = Identification.read(header(first, 1));
-        header(packets.next(), 3); // skip comment header for now
+        VorbisComment comment = readComment(packets);
         Setup setup = Setup.read(header(packets.next(), 5), identification.audioChannels());
 
         return new VorbisHeader(
             identification,
+            comment,
             setup
         );
     }
@@ -46,8 +52,22 @@ final class VorbisHeader {
             .order(ByteOrder.LITTLE_ENDIAN);
     }
 
+    private static VorbisComment readComment(PacketSource packets) throws IOException {
+        ByteBuffer buffer = header(packets.next(), 3);
+        try {
+            return VorbisComment.read(buffer);
+        } catch (BufferUnderflowException | IOException e) {
+            // failed metadata shouldn't cause an exception
+            return new VorbisComment("", Map.of());
+        }
+    }
+
     Identification identification() {
         return identification;
+    }
+
+    public VorbisComment comment() {
+        return comment;
     }
 
     Setup setup() {

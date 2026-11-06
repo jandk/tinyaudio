@@ -4,7 +4,8 @@ module be.twofold.tinyaudio.core {
     exports be.twofold.tinyaudio.core;
     exports be.twofold.tinyaudio.core.internal to
         be.twofold.tinyaudio.flac,
-        be.twofold.tinyaudio.ogg;
+        be.twofold.tinyaudio.ogg,
+        be.twofold.tinyaudio.vorbis;
 
     uses be.twofold.tinyaudio.core.AudioDecoderProvider;
 

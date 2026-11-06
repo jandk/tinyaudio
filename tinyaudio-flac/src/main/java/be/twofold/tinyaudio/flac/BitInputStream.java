@@ -5,34 +5,34 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Objects;
 
-public final class BitInputStream implements Closeable {
+final class BitInputStream implements Closeable {
     private final InputStream is;
     private long bitBuf;
     private int bitCount;
     private int read;
 
-    public BitInputStream(InputStream is) {
+    BitInputStream(InputStream is) {
         this.is = Objects.requireNonNull(is);
     }
 
-    public int read(int count) throws IOException {
+    int read(int count) throws IOException {
         if (count < 0 || count > 31) {
             throw new IllegalArgumentException("count < 0 or count > 31: " + count);
         }
         return (int) readLong(count);
     }
 
-    public int readSigned(int count) throws IOException {
+    int readSigned(int count) throws IOException {
         int shift = 32 - count;
         int read = read(count);
         return (read << shift) >> shift;
     }
 
-    public boolean readBool() throws IOException {
+    boolean readBool() throws IOException {
         return readLong(1) != 0;
     }
 
-    public int readUnary() throws IOException {
+    int readUnary() throws IOException {
         int count = 0;
         while (read(1) == 0) {
             count++;
@@ -40,7 +40,7 @@ public final class BitInputStream implements Closeable {
         return count;
     }
 
-    public long readLong(int count) throws IOException {
+    long readLong(int count) throws IOException {
         if (count < 0 || count > 57) {
             throw new IllegalArgumentException("count < 0 or count > 57: " + count);
         }
@@ -52,11 +52,11 @@ public final class BitInputStream implements Closeable {
         return result;
     }
 
-    public void align() {
+    void align() {
         consume(bitCount & 7);
     }
 
-    public void reset() {
+    void reset() {
         bitBuf = 0;
         bitCount = 0;
     }

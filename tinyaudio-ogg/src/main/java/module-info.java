@@ -3,6 +3,9 @@ module be.twofold.tinyaudio.ogg {
 
     exports be.twofold.tinyaudio.ogg;
 
+    provides be.twofold.tinyaudio.core.AudioDecoderProvider
+        with be.twofold.tinyaudio.ogg.OggAudioDecoderProvider;
+
     uses be.twofold.tinyaudio.ogg.OggCodec;
 
     // For testing in IJ

@@ -1,5 +1,3 @@
-import be.twofold.tinyaudio.vorbis.VorbisOggCodec;
-
 module be.twofold.tinyaudio.vorbis {
     requires be.twofold.tinyaudio.ogg;
     requires be.twofold.tinyaudio.core;
@@ -7,7 +5,7 @@ module be.twofold.tinyaudio.vorbis {
     exports be.twofold.tinyaudio.vorbis;
 
     provides be.twofold.tinyaudio.ogg.OggCodec
-        with VorbisOggCodec;
+        with be.twofold.tinyaudio.vorbis.VorbisOggCodec;
 
     // For testing in IJ
     opens be.twofold.tinyaudio.vorbis to org.junit.platform.commons;

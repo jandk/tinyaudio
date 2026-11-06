@@ -74,6 +74,11 @@ public final class OggPacketReader implements PacketSource {
         }
     }
 
+    @Override
+    public void close() throws IOException {
+        pages.close();
+    }
+
     private boolean nextPage() throws IOException {
         while (true) {
             // Try to read a page, if not, we're done

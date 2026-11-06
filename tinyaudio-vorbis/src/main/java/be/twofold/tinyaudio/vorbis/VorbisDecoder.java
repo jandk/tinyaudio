@@ -1,5 +1,7 @@
 package be.twofold.tinyaudio.vorbis;
 
+import be.twofold.tinyaudio.core.AudioInfo;
+import be.twofold.tinyaudio.core.BlockAudioDecoder;
 import be.twofold.tinyaudio.core.Packet;
 import be.twofold.tinyaudio.core.PacketSource;
 import be.twofold.tinyaudio.vorbis.mdct.MDCT;
@@ -9,7 +11,7 @@ import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.Objects;
 
-public final class VorbisDecoder {
+public final class VorbisDecoder extends BlockAudioDecoder {
     private static final byte[] VORBIS = {'v', 'o', 'r', 'b', 'i', 's'};
 
     private final PacketSource packets;
@@ -34,12 +36,13 @@ public final class VorbisDecoder {
     private final float[] window1;
 
     private int previousBlockSize;
-    private int outputLength;
 
-    public VorbisDecoder(PacketSource packets) throws IOException {
+    private VorbisDecoder(PacketSource packets, Identification identification) throws IOException {
+        super(identification.audioChannels(), Math.max(identification.blockSize0(), identification.blockSize1()));
         this.packets = Objects.requireNonNull(packets);
-        this.identification = Identification.read(header(1));
-        header(3);
+        this.identification = Objects.requireNonNull(identification);
+
+        header(3); // skip comment header for now
         setup = SetupHeader.read(header(5), identification.audioChannels());
         spectrum = new float[identification.audioChannels()][identification.blockSize1()];
 
@@ -56,6 +59,11 @@ public final class VorbisDecoder {
         window1 = slope(identification.blockSize1() / 2);
     }
 
+    public static VorbisDecoder create(Packet first, PacketSource packets) throws IOException {
+        Identification identification = Identification.read(header(first, 1));
+        return new VorbisDecoder(packets, identification);
+    }
+
     private float[] slope(int n) {
         float[] w = new float[n];
         for (int i = 0; i < n; i++) {
@@ -66,7 +74,10 @@ public final class VorbisDecoder {
     }
 
     private BitReader header(int type) throws IOException {
-        Packet packet = packets.next();
+        return header(packets.next(), type);
+    }
+
+    private static BitReader header(Packet packet, int type) throws IOException {
         if (packet == null) {
             throw new VorbisException("Stream ended before header packet of type " + type);
         }
@@ -79,13 +90,23 @@ public final class VorbisDecoder {
         return new BitReader(data, 7, data.length - 7, ByteOrder.LITTLE_ENDIAN);
     }
 
-    DecodeType decode() throws IOException {
+    @Override
+    public AudioInfo info() {
+        return new AudioInfo(
+            "vorbis",
+            identification.audioSampleRate(),
+            identification.audioChannels(),
+            -1 // vorbis has it at the end of the stream
+        );
+    }
+
+    @Override
+    protected int decodeBlock(short[][] pcm) throws IOException {
         Packet packet = packets.next();
         if (packet == null) {
-            return DecodeType.END;
+            return -1;
         }
 
-        outputLength = 0;
         if (previousBlockSize != 0) {
             for (int ch = 0; ch < identification.audioChannels(); ch++) {
                 System.arraycopy(spectrum[ch], previousBlockSize / 2, overlap[ch], 0, previousBlockSize / 2);
@@ -94,13 +115,13 @@ public final class VorbisDecoder {
 
         var bits = new BitReader(packet.getData(), ByteOrder.LITTLE_ENDIAN);
         if (bits.read(1) != 0) {
-            return DecodeType.BAD;
+            return 0;
         }
 
         int modeCountLog2 = Util.ilog(setup.modes().size() - 1);
         int modeNumber = bits.read(modeCountLog2);
         if (modeNumber >= setup.modes().size()) {
-            return DecodeType.BAD;
+            return 0;
         }
         Mode mode = setup.modes().get(modeNumber);
 
@@ -114,7 +135,7 @@ public final class VorbisDecoder {
             n = identification.blockSize0();
         }
         if (bits.isOverrun()) {
-            return DecodeType.BAD;
+            return 0;
         }
 
         // 4.3.2 floor curve decode
@@ -195,15 +216,29 @@ public final class VorbisDecoder {
         }
 
         // 4.3.8 overlap add, in place in the overlap buffer. The first packet only primes it.
+        int frames = 0;
         if (previousBlockSize != 0) {
             for (int ch = 0; ch < identification.audioChannels(); ch++) {
                 overlapAdd(overlap[ch], spectrum[ch], previousBlockSize, n);
             }
-            outputLength = previousBlockSize / 4 + n / 4;
+            frames = previousBlockSize / 4 + n / 4;
+            for (int ch = 0; ch < pcm.length; ch++) {
+                float[] src = overlap[ch];
+                short[] dst = pcm[ch];
+                for (int i = 0; i < frames; i++) {
+                    int value = (int) Math.rint(src[i] * 32768.0f);
+                    dst[i] = (short) Math.max(Short.MIN_VALUE, Math.min(Short.MAX_VALUE, value));
+                }
+            }
         }
-        previousBlockSize = n;
 
-        return DecodeType.GOOD;
+        previousBlockSize = n;
+        return frames;
+    }
+
+    @Override
+    public void close() throws IOException {
+        packets.close();
     }
 
     private void overlapAdd(float[] previous, float[] current, int previousN, int currentN) {
@@ -218,19 +253,5 @@ public final class VorbisDecoder {
         for (int i = currentStart + slope; i < currentN / 2; i++) {
             previous[o++] = current[i];
         }
-    }
-
-    int outputLength() {
-        return outputLength;
-    }
-
-    float[] output(int channel) {
-        return overlap[channel];
-    }
-
-    enum DecodeType {
-        GOOD,
-        BAD,
-        END,
     }
 }

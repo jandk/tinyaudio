@@ -1,9 +1,6 @@
 package be.twofold.tinyaudio.core;
 
-import javax.sound.sampled.AudioFormat;
-import javax.sound.sampled.AudioInputStream;
-import javax.sound.sampled.AudioSystem;
-import javax.sound.sampled.SourceDataLine;
+import javax.sound.sampled.*;
 import java.io.File;
 import java.io.OutputStream;
 import java.util.Objects;
@@ -15,6 +12,16 @@ public class Main {
             return;
         }
         String path = args[0];
+
+        AudioFileFormat fileFormat = AudioSystem.getAudioFileFormat(new File(path));
+        AudioFormat format = fileFormat.getFormat();
+        int frames = fileFormat.getFrameLength();
+        System.out.println("File:     " + path);
+        System.out.println("Codec:    " + fileFormat.getType());
+        System.out.println("Format:   " + format);
+        System.out.println("Duration: " + (frames == AudioSystem.NOT_SPECIFIED
+            ? "unknown"
+            : String.format("%.1f s (%d frames)", frames / format.getSampleRate(), frames)));
 
         try (AudioInputStream raw = AudioSystem.getAudioInputStream(new File(path));
              AudioInputStream pcm = AudioSystem.getAudioInputStream(AudioFormat.Encoding.PCM_SIGNED, raw);

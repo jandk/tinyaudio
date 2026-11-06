@@ -12,14 +12,15 @@ import java.util.Optional;
 import java.util.ServiceLoader;
 
 public final class TinyAudioFileReader extends AudioFileReader {
-    private static final int HEAD_SIZE = 64;
-    private static final int MARK_LIMIT = 1 << 24; // Largest FLAC metadata block
+    private static final int HEAD_SIZE = 256;
+    private static final int REJECT_LIMIT = 1 << 17; // We need enough for max of an ogg page because buffering
+    private static final int REWIND_LIMIT = 1 << 27; // 128MiB should be enough for anyone
 
     @Override
     public AudioFileFormat getAudioFileFormat(InputStream stream)
         throws UnsupportedAudioFileException, IOException {
         try {
-            return fileFormat(open(stream).info());
+            return fileFormat(open(stream, REWIND_LIMIT).info());
         } finally {
             stream.reset();
         }
@@ -29,7 +30,7 @@ public final class TinyAudioFileReader extends AudioFileReader {
     public AudioFileFormat getAudioFileFormat(URL url)
         throws UnsupportedAudioFileException, IOException {
         try (InputStream in = new BufferedInputStream(url.openStream())) {
-            return fileFormat(open(in).info());
+            return fileFormat(open(in, REJECT_LIMIT).info());
         }
     }
 
@@ -37,14 +38,14 @@ public final class TinyAudioFileReader extends AudioFileReader {
     public AudioFileFormat getAudioFileFormat(File file)
         throws UnsupportedAudioFileException, IOException {
         try (InputStream in = new BufferedInputStream(new FileInputStream(file))) {
-            return fileFormat(open(in).info());
+            return fileFormat(open(in, REJECT_LIMIT).info());
         }
     }
 
     @Override
     public AudioInputStream getAudioInputStream(InputStream stream)
         throws UnsupportedAudioFileException, IOException {
-        AudioDecoder decoder = open(stream);
+        AudioDecoder decoder = open(stream, REJECT_LIMIT);
         AudioInfo info = decoder.info();
         return new AudioInputStream(new AudioDecoderInputStream(decoder), audioFormat(info), info.totalFrames());
     }
@@ -61,13 +62,13 @@ public final class TinyAudioFileReader extends AudioFileReader {
         return openOwned(new FileInputStream(file));
     }
 
-    private AudioDecoder open(InputStream in)
+    private AudioDecoder open(InputStream in, int markLimit)
         throws UnsupportedAudioFileException, IOException {
         if (!in.markSupported()) {
             throw new IOException("Stream does not support mark/reset");
         }
 
-        in.mark(MARK_LIMIT);
+        in.mark(markLimit);
         byte[] head = in.readNBytes(HEAD_SIZE);
         in.reset();
 

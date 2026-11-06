@@ -20,7 +20,7 @@ public final class OggAudioDecoderProvider implements AudioDecoderProvider {
 
     @Override
     public Optional<AudioDecoder> open(byte[] head, InputStream in) throws IOException {
-        if (!AudioDecoderProvider.startsWith(head, MAGIC)) {
+        if (!AudioDecoderProvider.startsWith(head, MAGIC) || !validFirstPage(head)) {
             return Optional.empty();
         }
 
@@ -37,5 +37,17 @@ public final class OggAudioDecoderProvider implements AudioDecoderProvider {
             }
         }
         return Optional.empty();
+    }
+
+    private static boolean validFirstPage(byte[] head) {
+        if (head.length < 28) {
+            return false;
+        }
+        int packetSize = Byte.toUnsignedInt(head[27]);
+        return (head[5] & 0x02) != 0
+            && head[26] == 1
+            && packetSize != 0
+            && packetSize < 255
+            && 28 + packetSize <= head.length;
     }
 }

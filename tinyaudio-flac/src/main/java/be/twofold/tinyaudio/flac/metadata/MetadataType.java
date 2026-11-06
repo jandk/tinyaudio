@@ -10,24 +10,12 @@ public enum MetadataType {
     PICTURE,
     UNDEFINED;
 
+    private static final MetadataType[] VALUES = values();
+
     public static MetadataType fromCode(int code) {
-        switch (code) {
-            case 0:
-                return STREAM_INFO;
-            case 1:
-                return PADDING;
-            case 2:
-                return APPLICATION;
-            case 3:
-                return SEEK_TABLE;
-            case 4:
-                return VORBIS_COMMENT;
-            case 5:
-                return CUE_SHEET;
-            case 6:
-                return PICTURE;
-            default:
-                return UNDEFINED;
+        if (code < 0 || code >= UNDEFINED.ordinal()) {
+            return UNDEFINED;
         }
+        return VALUES[code];
     }
 }

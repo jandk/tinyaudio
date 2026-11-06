@@ -2,8 +2,10 @@ package be.twofold.tinyaudio.flac.metadata;
 
 import be.twofold.tinyaudio.core.internal.IOUtils;
 
-import java.io.DataInputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 public final class VorbisComment implements MetadataBlock {
@@ -17,13 +19,14 @@ public final class VorbisComment implements MetadataBlock {
         this.comments = Collections.unmodifiableMap(comments);
     }
 
-    public static VorbisComment read(DataInputStream dis) throws IOException {
-        String vendor = readString(dis);
+    public static VorbisComment read(ByteBuffer buffer) throws IOException {
+        buffer.order(ByteOrder.LITTLE_ENDIAN);
+        String vendor = IOUtils.getString(buffer, buffer.getInt(), StandardCharsets.UTF_8);
 
-        int count = Integer.reverseBytes(dis.readInt());
+        int count = buffer.getInt();
         Map<String, List<String>> comments = new LinkedHashMap<>();
         for (int i = 0; i < count; i++) {
-            String tag = readString(dis);
+            String tag = IOUtils.getString(buffer, buffer.getInt(), StandardCharsets.UTF_8);
             int index = tag.indexOf('=');
             if (index < 0) {
                 throw new IOException("Invalid vorbis tag: " + tag);
@@ -35,26 +38,21 @@ public final class VorbisComment implements MetadataBlock {
         return new VorbisComment(vendor, comments);
     }
 
-    private static String readString(DataInputStream dis) throws IOException {
-        int length = Integer.reverseBytes(dis.readInt());
-        return IOUtils.readString(dis, length);
-    }
-
     private static String validateName(String name) throws IOException {
         for (int i = 0; i < name.length(); i++) {
             char c = name.charAt(i);
-            if (c < 0x20 || c >= 0x7E || c == '=') {
+            if (c < 0x20 || c > 0x7E || c == '=') {
                 throw new IOException("Invalid vorbis tag name: " + name);
             }
         }
         return name;
     }
 
-    public String getVendor() {
+    public String vendor() {
         return vendor;
     }
 
-    public Map<String, List<String>> getComments() {
+    public Map<String, List<String>> comments() {
         return comments;
     }
 }

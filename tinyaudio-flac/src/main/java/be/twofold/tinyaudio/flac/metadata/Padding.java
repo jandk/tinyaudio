@@ -1,13 +1,19 @@
 package be.twofold.tinyaudio.flac.metadata;
 
+import java.nio.ByteBuffer;
+
 public final class Padding implements MetadataBlock {
     private final int length;
 
-    public Padding(int length) {
+    private Padding(int length) {
         this.length = length;
     }
 
-    public int getLength() {
+    public static Padding read(ByteBuffer buffer) {
+        return new Padding(buffer.remaining());
+    }
+
+    public int length() {
         return length;
     }
 }

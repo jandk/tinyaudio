@@ -1,9 +1,10 @@
 package be.twofold.tinyaudio.flac.metadata;
 
 import be.twofold.tinyaudio.core.internal.IOUtils;
+import be.twofold.tinyaudio.flac.FlacException;
 
-import java.io.DataInputStream;
-import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
 public final class Picture implements MetadataBlock {
@@ -36,20 +37,20 @@ public final class Picture implements MetadataBlock {
         this.data = data.clone();
     }
 
-    public static Picture read(DataInputStream dis) throws IOException {
-        int typeCode = dis.readInt();
+    public static Picture read(ByteBuffer buffer) throws FlacException {
+        int typeCode = buffer.getInt();
         PictureType type = PictureType.fromCode(typeCode);
         if (type == null) {
-            throw new IOException("Invalid picture type code: " + typeCode);
+            throw new FlacException("Invalid picture type code: " + typeCode);
         }
 
-        String mimeType = IOUtils.readString(dis, dis.readInt());
-        String description = IOUtils.readString(dis, dis.readInt());
-        int width = dis.readInt();
-        int height = dis.readInt();
-        int depth = dis.readInt();
-        int colors = dis.readInt();
-        byte[] data = IOUtils.readBytes(dis, dis.readInt());
+        String mimeType = IOUtils.getString(buffer, buffer.getInt(), StandardCharsets.US_ASCII);
+        String description = IOUtils.getString(buffer, buffer.getInt(), StandardCharsets.UTF_8);
+        int width = buffer.getInt();
+        int height = buffer.getInt();
+        int depth = buffer.getInt();
+        int colors = buffer.getInt();
+        byte[] data = IOUtils.getBytes(buffer, buffer.getInt());
 
         return new Picture(
             type,
@@ -63,35 +64,35 @@ public final class Picture implements MetadataBlock {
         );
     }
 
-    public PictureType getType() {
+    public PictureType type() {
         return type;
     }
 
-    public String getMimeType() {
+    public String mimeType() {
         return mimeType;
     }
 
-    public String getDescription() {
+    public String description() {
         return description;
     }
 
-    public int getWidth() {
+    public int width() {
         return width;
     }
 
-    public int getHeight() {
+    public int height() {
         return height;
     }
 
-    public int getDepth() {
+    public int depth() {
         return depth;
     }
 
-    public int getColors() {
+    public int colors() {
         return colors;
     }
 
-    public byte[] getData() {
+    public byte[] data() {
         return data.clone();
     }
 }

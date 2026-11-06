@@ -1,7 +1,8 @@
 package be.twofold.tinyaudio.flac.metadata;
 
-import java.io.DataInputStream;
-import java.io.IOException;
+import be.twofold.tinyaudio.core.internal.IOUtils;
+
+import java.nio.ByteBuffer;
 
 public final class Application implements MetadataBlock {
     private final int id;
@@ -15,9 +16,9 @@ public final class Application implements MetadataBlock {
         this.data = data.clone();
     }
 
-    public static Application read(DataInputStream dis) throws IOException {
-        int id = dis.readInt();
-        byte[] data = dis.readAllBytes();
+    public static Application read(ByteBuffer buffer) {
+        int id = buffer.getInt();
+        byte[] data = IOUtils.getBytes(buffer, buffer.remaining());
 
         return new Application(
             id,
@@ -25,11 +26,11 @@ public final class Application implements MetadataBlock {
         );
     }
 
-    public int getId() {
+    public int id() {
         return id;
     }
 
-    public byte[] getData() {
+    public byte[] data() {
         return data.clone();
     }
 }

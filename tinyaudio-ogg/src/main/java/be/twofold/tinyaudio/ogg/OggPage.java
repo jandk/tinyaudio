@@ -5,7 +5,8 @@ import be.twofold.tinyaudio.core.internal.IOUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Arrays;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -54,20 +55,21 @@ public final class OggPage {
     }
 
     public static OggPage read(InputStream in) throws IOException {
-        byte[] fixed = IOUtils.readBytes(in, FIXED_SIZE);
-        if (ByteIO.getInt(fixed, 0) != CAPTURE_PATTERN) {
+        ByteBuffer buffer = IOUtils.readBuffer(in, FIXED_SIZE, ByteOrder.LITTLE_ENDIAN);
+        if (buffer.getInt() != CAPTURE_PATTERN) {
             throw new OggException("Invalid capture pattern");
         }
-        if (fixed[4] != 0) {
-            throw new OggException("Invalid stream structure version: " + Byte.toUnsignedInt(fixed[4]));
+        byte streamStructureVersion = buffer.get();
+        if (streamStructureVersion != 0) {
+            throw new OggException("Invalid stream structure version: " + buffer.get());
         }
-        byte headerTypeFlag = fixed[5];
-        long granulePosition = ByteIO.getLong(fixed, 6);
-        int bitstreamSerialNumber = ByteIO.getInt(fixed, 14);
-        int pageSequenceNumber = ByteIO.getInt(fixed, 18);
-        int crcChecksum = ByteIO.getInt(fixed, 22);
-        Arrays.fill(fixed, 22, 26, (byte) 0);
-        int segmentCount = Byte.toUnsignedInt(fixed[26]);
+        byte headerTypeFlag = buffer.get();
+        long granulePosition = buffer.getLong();
+        int bitstreamSerialNumber = buffer.getInt();
+        int pageSequenceNumber = buffer.getInt();
+        int crcChecksum = buffer.getInt();
+        buffer.putInt(22, 0); // clear crc
+        int segmentCount = Byte.toUnsignedInt(buffer.get());
 
         byte[] segments = IOUtils.readBytes(in, segmentCount);
         int payloadSize = 0;
@@ -78,7 +80,7 @@ public final class OggPage {
         byte[] payload = IOUtils.readBytes(in, payloadSize);
 
         CRC crc = CRC.OGG_PAGE.get();
-        crc.update(fixed);
+        crc.update(buffer.rewind());
         crc.update(segments);
         crc.update(payload);
         int crcValue = (int) crc.getValue();

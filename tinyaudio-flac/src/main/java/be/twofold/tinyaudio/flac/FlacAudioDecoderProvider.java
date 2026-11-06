@@ -16,6 +16,6 @@ public final class FlacAudioDecoderProvider implements AudioDecoderProvider {
         if (!AudioDecoderProvider.startsWith(head, MAGIC)) {
             return Optional.empty();
         }
-        return Optional.of(new FlacDecoder(in, Metadata.read(in).getStreamInfo()));
+        return Optional.of(new FlacDecoder(in, Metadata.read(in).streamInfo()));
     }
 }

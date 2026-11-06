@@ -29,26 +29,26 @@ public class FlacDecoder extends BlockAudioDecoder {
     private long sampleCount;
 
     public FlacDecoder(InputStream in, StreamInfo streamInfo) {
-        super(streamInfo.getChannels(), maximumBlockSize(streamInfo));
+        super(streamInfo.channels(), maximumBlockSize(streamInfo));
 
         this.in = Objects.requireNonNull(in);
         this.streamInfo = Objects.requireNonNull(streamInfo);
-        this.samples = new int[streamInfo.getChannels()][maximumBlockSize(streamInfo)];
+        this.samples = new int[streamInfo.channels()][maximumBlockSize(streamInfo)];
     }
 
     private static int maximumBlockSize(StreamInfo streamInfo) {
-        int size = streamInfo.getMaxBlockSize();
+        int size = streamInfo.maxBlockSize();
         return size == 0 ? 65535 : size;
     }
 
     @Override
     public AudioInfo info() {
-        long total = streamInfo.getTotalSamples();
+        long total = streamInfo.totalSamples();
         return new AudioInfo(
             "flac",
             "flac",
-            streamInfo.getSampleRate(),
-            streamInfo.getChannels(),
+            streamInfo.sampleRate(),
+            streamInfo.channels(),
             total == 0 ? -1 : total
         );
     }
@@ -62,7 +62,7 @@ public class FlacDecoder extends BlockAudioDecoder {
             return -1;
         }
 
-        long total = streamInfo.getTotalSamples();
+        long total = streamInfo.totalSamples();
         boolean last = total == 0 || sampleCount + frameHeader.getBlockSize() >= total;
         validateFrameHeader(frameHeader, streamInfo, last);
         int blocksize = frameHeader.getBlockSize();
@@ -157,7 +157,7 @@ public class FlacDecoder extends BlockAudioDecoder {
     }
 
     private void convertToShort(short[][] pcm, int blocksize) {
-        int shift = streamInfo.getBitsPerSample() - 16;
+        int shift = streamInfo.bitsPerSample() - 16;
         for (int ch = 0; ch < pcm.length; ch++) {
             int[] src = samples[ch];
             short[] dst = pcm[ch];
@@ -267,29 +267,29 @@ public class FlacDecoder extends BlockAudioDecoder {
         }
     }
 
-    private void validateFrameHeader(FlacFrameHeader frameHeader, StreamInfo streamInfo, boolean last) {
-        int minimumBlockSize = streamInfo.getMinBlockSize();
-        int maximumBlockSize = streamInfo.getMaxBlockSize();
+    private void validateFrameHeader(FlacFrameHeader frameHeader, StreamInfo streamInfo, boolean last) throws FlacException {
+        int minimumBlockSize = streamInfo.minBlockSize();
+        int maximumBlockSize = streamInfo.maxBlockSize();
         int blockSize = frameHeader.getBlockSize();
 
         boolean checkMinimum = minimumBlockSize > 0 && !last;
         if (checkMinimum && blockSize < minimumBlockSize ||
             maximumBlockSize > 0 && blockSize > maximumBlockSize) {
-            throw new IllegalArgumentException(String.format(
+            throw new FlacException(String.format(
                 "Block size (%s) not between %s and %s",
                 blockSize, minimumBlockSize, maximumBlockSize));
         }
-        if (frameHeader.getSampleRate() != streamInfo.getSampleRate()) {
-            throw new IllegalArgumentException(String.format("Sample rate (%s) not %s",
-                frameHeader.getSampleRate(), streamInfo.getSampleRate()));
+        if (frameHeader.getSampleRate() != streamInfo.sampleRate()) {
+            throw new FlacException(String.format("Sample rate (%s) not %s",
+                frameHeader.getSampleRate(), streamInfo.sampleRate()));
         }
-        if (frameHeader.getNumberOfChannels() != streamInfo.getChannels()) {
-            throw new IllegalArgumentException(String.format("Channel count (%s) not %s",
-                frameHeader.getNumberOfChannels(), streamInfo.getChannels()));
+        if (frameHeader.getNumberOfChannels() != streamInfo.channels()) {
+            throw new FlacException(String.format("Channel count (%s) not %s",
+                frameHeader.getNumberOfChannels(), streamInfo.channels()));
         }
-        if (frameHeader.getBitsPerSample() != streamInfo.getBitsPerSample()) {
-            throw new IllegalArgumentException(String.format("Bit depth (%s) not %s",
-                frameHeader.getBitsPerSample(), streamInfo.getBitsPerSample()));
+        if (frameHeader.getBitsPerSample() != streamInfo.bitsPerSample()) {
+            throw new FlacException(String.format("Bit depth (%s) not %s",
+                frameHeader.getBitsPerSample(), streamInfo.bitsPerSample()));
         }
     }
 }

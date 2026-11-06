@@ -1,9 +1,11 @@
 package be.twofold.tinyaudio.flac.metadata;
 
 import be.twofold.tinyaudio.core.internal.IOUtils;
+import be.twofold.tinyaudio.flac.FlacException;
 
-import java.io.DataInputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -11,60 +13,62 @@ import java.util.Objects;
 public final class CueSheet implements MetadataBlock {
     private final String mediaCatalogNumber;
     private final long leadIn;
-    private final boolean cd;
+    private final boolean cdda;
     private final List<CueSheetTrack> tracks;
 
     public CueSheet(
         String mediaCatalogNumber,
         long leadIn,
-        boolean cd,
+        boolean cdda,
         List<CueSheetTrack> tracks
     ) {
         this.mediaCatalogNumber = Objects.requireNonNull(mediaCatalogNumber);
         this.leadIn = leadIn;
-        this.cd = cd;
+        this.cdda = cdda;
         this.tracks = List.copyOf(tracks);
     }
 
-    public static CueSheet read(DataInputStream dis) throws IOException {
-        String mediaCatalogNumber = IOUtils.readString(dis, 128).trim();
-        long leadIn = dis.readLong();
-        byte isCdByte = dis.readByte();
-        boolean isCd = (isCdByte & 0x80) != 0;
+    public static CueSheet read(ByteBuffer buffer) throws IOException {
+        String mediaCatalogNumber = IOUtils.getString(buffer, 128, StandardCharsets.US_ASCII).trim();
+        long leadIn = buffer.getLong();
+        boolean cdda = (buffer.get() & 0x80) != 0;
+        checkPadding(buffer, 258);
+        int numTracks = Byte.toUnsignedInt(buffer.get());
 
-        for (int i = 0; i < 258; i++) {
-            if (dis.readByte() != 0) {
-                throw new IOException("Invalid cue sheet");
-            }
-        }
-
-        int numTracks = dis.readUnsignedByte();
         List<CueSheetTrack> tracks = new ArrayList<>(numTracks);
         for (int i = 0; i < numTracks; i++) {
-            tracks.add(CueSheetTrack.read(dis));
+            tracks.add(CueSheetTrack.read(buffer));
         }
 
         return new CueSheet(
             mediaCatalogNumber,
             leadIn,
-            isCd,
+            cdda,
             tracks
         );
     }
 
-    public String getMediaCatalogNumber() {
+    static void checkPadding(ByteBuffer buffer, int length) throws FlacException {
+        for (int i = 0; i < length; i++) {
+            if (buffer.get() != 0) {
+                throw new FlacException("Invalid padding");
+            }
+        }
+    }
+
+    public String mediaCatalogNumber() {
         return mediaCatalogNumber;
     }
 
-    public long getLeadIn() {
+    public long leadIn() {
         return leadIn;
     }
 
-    public boolean isCd() {
-        return cd;
+    public boolean cdda() {
+        return cdda;
     }
 
-    public List<CueSheetTrack> getTracks() {
+    public List<CueSheetTrack> tracks() {
         return tracks;
     }
 }

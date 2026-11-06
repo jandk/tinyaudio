@@ -1,45 +1,35 @@
 package be.twofold.tinyaudio.flac.metadata;
 
 public enum PictureType {
-    OTHER(0),
-    FILE_ICON_STANDARD(1),
-    FILE_ICON(2),
-    FRONT_COVER(3),
-    BACK_COVER(4),
-    LEAFLET_PAGE(5),
-    MEDIA(6),
-    LEAD_ARTIST(7),
-    ARTIST(8),
-    CONDUCTOR(9),
-    BAND(10),
-    COMPOSER(11),
-    LYRICIST(12),
-    RECORDING_LOCATION(13),
-    DURING_RECORDING(14),
-    DURING_PERFORMANCE(15),
-    VIDEO_SCREEN_CAPTURE(16),
-    FISH(17),
-    ILLUSTRATION(18),
-    BAND_LOGOTYPE(19),
-    PUBLISHER_LOGOTYPE(20),
+    OTHER,
+    FILE_ICON_STANDARD,
+    FILE_ICON,
+    FRONT_COVER,
+    BACK_COVER,
+    LEAFLET_PAGE,
+    MEDIA,
+    LEAD_ARTIST,
+    ARTIST,
+    CONDUCTOR,
+    BAND,
+    COMPOSER,
+    LYRICIST,
+    RECORDING_LOCATION,
+    DURING_RECORDING,
+    DURING_PERFORMANCE,
+    VIDEO_SCREEN_CAPTURE,
+    FISH,
+    ILLUSTRATION,
+    BAND_LOGOTYPE,
+    PUBLISHER_LOGOTYPE,
     ;
 
-    private final int code;
-
-    PictureType(int code) {
-        this.code = code;
-    }
+    private static final PictureType[] VALUES = values();
 
     static PictureType fromCode(int code) {
-        for (PictureType value : values()) {
-            if (value.code == code) {
-                return value;
-            }
+        if (code < 0 || code > PUBLISHER_LOGOTYPE.ordinal()) {
+            return OTHER;
         }
-        return null;
-    }
-
-    public int code() {
-        return code;
+        return VALUES[code];
     }
 }

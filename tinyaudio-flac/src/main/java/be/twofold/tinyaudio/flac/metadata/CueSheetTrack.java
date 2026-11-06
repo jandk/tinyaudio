@@ -2,15 +2,16 @@ package be.twofold.tinyaudio.flac.metadata;
 
 import be.twofold.tinyaudio.core.internal.IOUtils;
 
-import java.io.DataInputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
 public final class CueSheetTrack {
     private final long offset;
-    private final byte number;
+    private final int number;
     private final String isrc;
     private final boolean type;
     private final boolean preEmphasis;
@@ -18,7 +19,7 @@ public final class CueSheetTrack {
 
     public CueSheetTrack(
         long offset,
-        byte number,
+        int number,
         String isrc,
         boolean type,
         boolean preEmphasis,
@@ -32,47 +33,52 @@ public final class CueSheetTrack {
         this.indices = List.copyOf(indices);
     }
 
-    public static CueSheetTrack read(DataInputStream dis) throws IOException {
-        long offset = dis.readLong();
-        byte number = dis.readByte();
-        String isrc = IOUtils.readString(dis, 12);
-        byte typeAndPreEmphasis = dis.readByte();
+    public static CueSheetTrack read(ByteBuffer buffer) throws IOException {
+        long offset = buffer.getLong();
+        int number = Byte.toUnsignedInt(buffer.get());
+        String isrc = IOUtils.getString(buffer, 12, StandardCharsets.US_ASCII).trim();
+        byte typeAndPreEmphasis = buffer.get();
         boolean type = (typeAndPreEmphasis & 0x80) != 0;
         boolean preEmphasis = (typeAndPreEmphasis & 0x40) != 0;
-        for (int i = 0; i < 13; i++) {
-            if (dis.readByte() != 0) {
-                throw new IOException("Invalid cue sheet track");
-            }
-        }
-        int numIndices = Byte.toUnsignedInt(dis.readByte());
+        CueSheet.checkPadding(buffer, 13);
+        int numIndices = Byte.toUnsignedInt(buffer.get());
+
         List<CueSheetIndex> indices = new ArrayList<>(numIndices);
         for (int i = 0; i < numIndices; i++) {
-            indices.add(CueSheetIndex.read(dis));
+            indices.add(CueSheetIndex.read(buffer));
         }
-        return new CueSheetTrack(offset, number, isrc, type, preEmphasis, indices);
+
+        return new CueSheetTrack(
+            offset,
+            number,
+            isrc,
+            type,
+            preEmphasis,
+            indices
+        );
     }
 
-    public long getOffset() {
+    public long offset() {
         return offset;
     }
 
-    public byte getNumber() {
+    public int number() {
         return number;
     }
 
-    public String getIsrc() {
+    public String isrc() {
         return isrc;
     }
 
-    public boolean isType() {
+    public boolean type() {
         return type;
     }
 
-    public boolean isPreEmphasis() {
+    public boolean preEmphasis() {
         return preEmphasis;
     }
 
-    public List<CueSheetIndex> getIndices() {
+    public List<CueSheetIndex> indices() {
         return indices;
     }
 }

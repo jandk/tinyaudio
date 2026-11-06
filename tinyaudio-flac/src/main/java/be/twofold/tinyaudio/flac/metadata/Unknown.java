@@ -1,5 +1,10 @@
 package be.twofold.tinyaudio.flac.metadata;
 
+import be.twofold.tinyaudio.core.internal.IOUtils;
+
+import java.nio.ByteBuffer;
+import java.util.Objects;
+
 public final class Unknown implements MetadataBlock {
     private final int type;
     private final byte[] data;
@@ -9,14 +14,19 @@ public final class Unknown implements MetadataBlock {
         byte[] data
     ) {
         this.type = type;
-        this.data = data.clone();
+        this.data = Objects.requireNonNull(data);
     }
 
-    public int getType() {
+    public static Unknown read(ByteBuffer buffer, int type) {
+        byte[] data = IOUtils.getBytes(buffer, buffer.remaining());
+        return new Unknown(type, data);
+    }
+
+    public int type() {
         return type;
     }
 
-    public byte[] getData() {
-        return data.clone();
+    public byte[] data() {
+        return data;
     }
 }

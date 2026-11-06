@@ -1,6 +1,8 @@
 package be.twofold.tinyaudio.flac;
 
-public class FlacException extends RuntimeException {
+import java.io.IOException;
+
+public final class FlacException extends IOException {
     public FlacException(String message) {
         super(message);
     }

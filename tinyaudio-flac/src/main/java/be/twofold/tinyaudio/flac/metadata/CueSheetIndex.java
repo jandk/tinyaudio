@@ -1,7 +1,7 @@
 package be.twofold.tinyaudio.flac.metadata;
 
-import java.io.DataInputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 public final class CueSheetIndex {
     private final long offset;
@@ -15,23 +15,22 @@ public final class CueSheetIndex {
         this.number = number;
     }
 
-    public static CueSheetIndex read(DataInputStream dis) throws IOException {
-        long offset = dis.readLong();
-        byte number = dis.readByte();
-        for (int i = 0; i < 3; i++) {
-            if (dis.readByte() != 0) {
-                throw new IOException("Invalid cue sheet index");
-            }
-        }
+    public static CueSheetIndex read(ByteBuffer buffer) throws IOException {
+        long offset = buffer.getLong();
+        byte number = buffer.get();
+        CueSheet.checkPadding(buffer, 3);
 
-        return new CueSheetIndex(offset, number);
+        return new CueSheetIndex(
+            offset,
+            number
+        );
     }
 
-    public long getOffset() {
+    public long offset() {
         return offset;
     }
 
-    public byte getNumber() {
+    public byte number() {
         return number;
     }
 }

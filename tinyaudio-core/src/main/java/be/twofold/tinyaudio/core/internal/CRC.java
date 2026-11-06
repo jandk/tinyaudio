@@ -1,4 +1,4 @@
-package be.twofold.tinyaudio.core;
+package be.twofold.tinyaudio.core.internal;
 
 import java.util.Objects;
 import java.util.function.Supplier;

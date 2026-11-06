@@ -7,7 +7,4 @@ module be.twofold.tinyaudio.ogg {
         with be.twofold.tinyaudio.ogg.OggAudioDecoderProvider;
 
     uses be.twofold.tinyaudio.ogg.OggCodec;
-
-    // For testing in IJ
-    opens be.twofold.tinyaudio.ogg to org.junit.platform.commons;
 }

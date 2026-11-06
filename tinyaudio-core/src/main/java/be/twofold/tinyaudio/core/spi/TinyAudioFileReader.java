@@ -94,7 +94,7 @@ public final class TinyAudioFileReader extends AudioFileReader {
             ? AudioSystem.NOT_SPECIFIED
             : (int) totalFrames;
 
-        AudioFileFormat.Type type = new AudioFileFormat.Type(info.codec(), info.codec());
+        AudioFileFormat.Type type = new AudioFileFormat.Type(info.codec(), info.extension());
         return new AudioFileFormat(type, audioFormat(info), frameLength);
     }
 

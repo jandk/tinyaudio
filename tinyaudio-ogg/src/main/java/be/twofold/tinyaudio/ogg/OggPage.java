@@ -1,6 +1,7 @@
 package be.twofold.tinyaudio.ogg;
 
-import be.twofold.tinyaudio.core.CRC;
+import be.twofold.tinyaudio.core.internal.CRC;
+import be.twofold.tinyaudio.core.internal.IOUtils;
 
 import java.io.IOException;
 import java.io.InputStream;

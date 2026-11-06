@@ -1,6 +1,6 @@
 package be.twofold.tinyaudio.flac;
 
-import be.twofold.tinyaudio.core.CRC;
+import be.twofold.tinyaudio.core.internal.CRC;
 
 import java.io.DataInputStream;
 import java.io.IOException;

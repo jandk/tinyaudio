@@ -1,7 +1,7 @@
 package be.twofold.tinyaudio.flac.metadata;
 
+import be.twofold.tinyaudio.core.internal.IOUtils;
 import be.twofold.tinyaudio.flac.FlacException;
-import be.twofold.tinyaudio.flac.internal.IOUtils;
 
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;

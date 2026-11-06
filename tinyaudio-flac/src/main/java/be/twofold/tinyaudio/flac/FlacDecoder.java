@@ -2,7 +2,7 @@ package be.twofold.tinyaudio.flac;
 
 import be.twofold.tinyaudio.core.AudioInfo;
 import be.twofold.tinyaudio.core.BlockAudioDecoder;
-import be.twofold.tinyaudio.core.CRC;
+import be.twofold.tinyaudio.core.internal.CRC;
 import be.twofold.tinyaudio.flac.metadata.StreamInfo;
 
 import java.io.IOException;
@@ -45,6 +45,7 @@ public class FlacDecoder extends BlockAudioDecoder {
     public AudioInfo info() {
         long total = streamInfo.getTotalSamples();
         return new AudioInfo(
+            "flac",
             "flac",
             streamInfo.getSampleRate(),
             streamInfo.getChannels(),

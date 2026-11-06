@@ -1,4 +1,4 @@
-package be.twofold.tinyaudio.flac.internal;
+package be.twofold.tinyaudio.core.internal;
 
 import java.io.EOFException;
 import java.io.IOException;

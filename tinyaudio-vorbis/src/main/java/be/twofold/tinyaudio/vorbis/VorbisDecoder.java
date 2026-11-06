@@ -36,6 +36,7 @@ public final class VorbisDecoder extends BlockAudioDecoder {
     private final float[] window1;
 
     private int previousBlockSize;
+    private long produced;
 
     private VorbisDecoder(PacketSource packets, Identification identification) throws IOException {
         super(identification.audioChannels(), Math.max(identification.blockSize0(), identification.blockSize1()));
@@ -94,6 +95,7 @@ public final class VorbisDecoder extends BlockAudioDecoder {
     public AudioInfo info() {
         return new AudioInfo(
             "vorbis",
+            "ogg",
             identification.audioSampleRate(),
             identification.audioChannels(),
             -1 // vorbis has it at the end of the stream
@@ -231,8 +233,12 @@ public final class VorbisDecoder extends BlockAudioDecoder {
                 }
             }
         }
+        if (packet.isFinished() && packet.getPosition() >= 0) {
+            frames = (int) Math.max(0, Math.min(frames, packet.getPosition() - produced));
+        }
 
         previousBlockSize = n;
+        produced += frames;
         return frames;
     }
 

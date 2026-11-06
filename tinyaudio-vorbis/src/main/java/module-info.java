@@ -6,7 +6,4 @@ module be.twofold.tinyaudio.vorbis {
 
     provides be.twofold.tinyaudio.ogg.OggCodec
         with be.twofold.tinyaudio.vorbis.VorbisOggCodec;
-
-    // For testing in IJ
-    opens be.twofold.tinyaudio.vorbis to org.junit.platform.commons;
 }

@@ -6,7 +6,4 @@ module be.twofold.tinyaudio.flac {
 
     provides be.twofold.tinyaudio.core.AudioDecoderProvider
         with be.twofold.tinyaudio.flac.FlacAudioDecoderProvider;
-
-    // For testing in IJ
-    opens be.twofold.tinyaudio.flac to org.junit.platform.commons;
 }

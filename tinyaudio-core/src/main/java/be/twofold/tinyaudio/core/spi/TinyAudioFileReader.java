@@ -8,6 +8,7 @@ import javax.sound.sampled.*;
 import javax.sound.sampled.spi.AudioFileReader;
 import java.io.*;
 import java.net.URL;
+import java.util.Optional;
 import java.util.ServiceLoader;
 
 public final class TinyAudioFileReader extends AudioFileReader {
@@ -71,9 +72,11 @@ public final class TinyAudioFileReader extends AudioFileReader {
         in.reset();
 
         for (AudioDecoderProvider provider : ServiceLoader.load(AudioDecoderProvider.class)) {
-            if (provider.matches(head)) {
-                return provider.open(in);
+            Optional<AudioDecoder> decoder = provider.open(head, in);
+            if (decoder.isPresent()) {
+                return decoder.get();
             }
+            in.reset();
         }
         throw new UnsupportedAudioFileException("No decoder found for stream");
     }

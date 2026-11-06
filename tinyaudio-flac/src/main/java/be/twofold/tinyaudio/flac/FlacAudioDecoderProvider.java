@@ -6,19 +6,16 @@ import be.twofold.tinyaudio.flac.metadata.Metadata;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Optional;
 
 public final class FlacAudioDecoderProvider implements AudioDecoderProvider {
-    @Override
-    public boolean matches(byte[] head) {
-        return head.length >= 4
-            && head[0] == 'f'
-            && head[1] == 'L'
-            && head[2] == 'a'
-            && head[3] == 'C';
-    }
+    private static final byte[] MAGIC = new byte[]{'f', 'L', 'a', 'C'};
 
     @Override
-    public AudioDecoder open(InputStream in) throws IOException {
-        return new FlacDecoder(in, Metadata.read(in).getStreamInfo());
+    public Optional<AudioDecoder> open(byte[] head, InputStream in) throws IOException {
+        if (!AudioDecoderProvider.startsWith(head, MAGIC)) {
+            return Optional.empty();
+        }
+        return Optional.of(new FlacDecoder(in, Metadata.read(in).getStreamInfo()));
     }
 }

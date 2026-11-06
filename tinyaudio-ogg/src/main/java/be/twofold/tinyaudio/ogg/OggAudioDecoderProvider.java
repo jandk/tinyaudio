@@ -4,31 +4,38 @@ import be.twofold.tinyaudio.core.AudioDecoder;
 import be.twofold.tinyaudio.core.AudioDecoderProvider;
 import be.twofold.tinyaudio.core.Packet;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.List;
+import java.util.Optional;
+import java.util.ServiceLoader;
+import java.util.stream.Collectors;
 
 public final class OggAudioDecoderProvider implements AudioDecoderProvider {
-    @Override
-    public boolean matches(byte[] head) {
-        try {
-            OggPacketReader reader = new OggPacketReader(new OggPageReader(new ByteArrayInputStream(head)));
-            Packet first = reader.next();
-            return first != null && OggCodecs.findCodec(first).isPresent();
-        } catch (IOException e) {
-            return false;
-        }
-    }
+    private static final byte[] MAGIC = new byte[]{'O', 'g', 'g', 'S'};
+    private static final List<OggCodec> CODECS = ServiceLoader
+            .load(OggCodec.class).stream()
+            .map(ServiceLoader.Provider::get)
+            .collect(Collectors.toList());
 
     @Override
-    public AudioDecoder open(InputStream in) throws IOException {
+    public Optional<AudioDecoder> open(byte[] head, InputStream in) throws IOException {
+        if (!AudioDecoderProvider.startsWith(head, MAGIC)) {
+            return Optional.empty();
+        }
+
         OggPacketReader reader = new OggPacketReader(new OggPageReader(in));
         Packet first = reader.next();
         if (first == null) {
-            throw new OggException("Stream has no packets");
+            return Optional.empty();
         }
-        OggCodec codec = OggCodecs.findCodec(first)
-            .orElseThrow(() -> new OggException("Unsupported Ogg codec"));
-        return codec.open(first, reader);
+
+        for (OggCodec codec : CODECS) {
+            Optional<AudioDecoder> decoder = codec.open(first, reader);
+            if (decoder.isPresent()) {
+                return decoder;
+            }
+        }
+        return Optional.empty();
     }
 }

@@ -5,27 +5,32 @@ import java.util.function.Supplier;
 import java.util.zip.Checksum;
 
 public final class CRC implements Checksum {
-    public static final Supplier<CRC> FLAC_HEADER = () -> new CRC(8, 0x07);
-    public static final Supplier<CRC> FLAC_FRAME = () -> new CRC(16, 0x8005);
-    public static final Supplier<CRC> OGG_PAGE = () -> new CRC(32, 0x04C1_1DB7);
+    public static final Supplier<CRC> FLAC_HEADER = supplier(8, 0x07);
+    public static final Supplier<CRC> FLAC_FRAME = supplier(16, 0x8005);
+    public static final Supplier<CRC> OGG_PAGE = supplier(32, 0x04C1_1DB7);
 
     private final int[] table;
     private final int width;
 
     private int crc;
 
-    public CRC(int width, int poly) {
+    private CRC(int[] table, int width) {
+        this.table = Objects.requireNonNull(table);
+        this.width = width;
+    }
+
+    private static Supplier<CRC> supplier(int width, int poly) {
+        int[] table = generateTable(width, poly);
+        return () -> new CRC(table, width);
+    }
+
+    private static int[] generateTable(int width, int poly) {
         if (width < 8 || width > 32) {
             throw new IllegalArgumentException("width must be between 8 and 32");
         }
         if (Integer.toUnsignedLong(poly) >= (1L << width)) {
             throw new IllegalArgumentException("poly must be less than 2^width");
         }
-        this.width = width;
-        this.table = generateTable(width, poly);
-    }
-
-    private static int[] generateTable(int width, int poly) {
         poly = poly << (Integer.SIZE - width);
 
         int[] table = new int[256];

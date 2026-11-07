@@ -2,10 +2,8 @@ package be.twofold.tinyaudio.flac;
 
 import be.twofold.tinyaudio.core.internal.CRC;
 
-import java.io.DataInputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.util.zip.CheckedInputStream;
+import java.nio.ByteBuffer;
 
 final class FlacFrameHeader {
     private final boolean variableBlockSize;
@@ -34,21 +32,16 @@ final class FlacFrameHeader {
         this.codedNumber = codedNumber;
     }
 
-    static FlacFrameHeader read(InputStream is) throws IOException {
-        CheckedInputStream checked = new CheckedInputStream(is, CRC.FLAC_HEADER.get());
-        DataInputStream dis = new DataInputStream(checked);
+    static FlacFrameHeader read(ByteBuffer buffer) throws IOException {
+        int position = buffer.position();
+        int b0 = Byte.toUnsignedInt(buffer.get());
+        int b1 = Byte.toUnsignedInt(buffer.get());
+        int b2 = Byte.toUnsignedInt(buffer.get());
+        int b3 = Byte.toUnsignedInt(buffer.get());
 
-        int b0 = dis.read();
-        if (b0 != 0xFF) {
-            return null;
+        if (b0 != 0xFF || b1 >> 1 != 0x7C) {
+            throw new FlacException("Invalid sync");
         }
-
-        int b1 = dis.readUnsignedByte();
-        if (b1 >> 1 != 0x7C) {
-            return null;
-        }
-        int b2 = dis.readUnsignedByte();
-        int b3 = dis.readUnsignedByte();
 
         boolean variableBlockSize = (b1 & 0x01) != 0;
         int numberOfChannels = numberOfChannels(b3 >> 4);
@@ -58,12 +51,14 @@ final class FlacFrameHeader {
             throw new FlacException("Reserved bit must be zero");
         }
 
-        long codedNumber = codedNumber(dis);
-        int blockSize = blockSize(b2 >> 4, dis);
-        int sampleRate = sampleRate(b2 & 0x0F, dis);
+        long codedNumber = codedNumber(buffer);
+        int blockSize = blockSize(b2 >> 4, buffer);
+        int sampleRate = sampleRate(b2 & 0x0F, buffer);
 
-        byte crc = (byte) checked.getChecksum().getValue();
-        if (crc != dis.readByte()) {
+        ByteBuffer crcBuffer = buffer.duplicate().position(position).limit(buffer.position());
+        var crc = CRC.FLAC_HEADER.get();
+        crc.update(crcBuffer);
+        if ((byte) crc.getValue() != buffer.get()) {
             throw new FlacException("Invalid audio frame crc");
         }
 
@@ -122,8 +117,8 @@ final class FlacFrameHeader {
         }
     }
 
-    private static long codedNumber(DataInputStream dis) throws IOException {
-        int b = dis.readUnsignedByte();
+    private static long codedNumber(ByteBuffer buffer) throws IOException {
+        int b = Byte.toUnsignedInt(buffer.get());
         if (b < 0x80) {
             return b;
         }
@@ -137,7 +132,7 @@ final class FlacFrameHeader {
         long minValid = 1L << (extra * 5 + (extra == 1 ? 2 : 1));
 
         for (int i = 0; i < extra; i++) {
-            int continuation = dis.readUnsignedByte();
+            int continuation = Byte.toUnsignedInt(buffer.get());
             if ((continuation & 0xC0) != 0x80) {
                 throw new FlacException("Invalid continuation byte: " + b);
             }
@@ -150,7 +145,7 @@ final class FlacFrameHeader {
         return codedNumber;
     }
 
-    private static int blockSize(int blockSizeBits, DataInputStream dis) throws IOException {
+    private static int blockSize(int blockSizeBits, ByteBuffer buffer) throws IOException {
         switch (blockSizeBits) {
             case 1:
                 return 192;
@@ -160,9 +155,9 @@ final class FlacFrameHeader {
             case 5:
                 return 144 << blockSizeBits;
             case 6:
-                return dis.readUnsignedByte() + 1;
+                return Byte.toUnsignedInt(buffer.get()) + 1;
             case 7:
-                return dis.readUnsignedShort() + 1;
+                return Short.toUnsignedInt(buffer.getShort()) + 1;
             case 8:
             case 9:
             case 10:
@@ -177,7 +172,7 @@ final class FlacFrameHeader {
         }
     }
 
-    private static int sampleRate(int sampleRateBits, DataInputStream dis) throws IOException {
+    private static int sampleRate(int sampleRateBits, ByteBuffer buffer) throws IOException {
         switch (sampleRateBits) {
             case 0:
                 return -1;
@@ -204,11 +199,11 @@ final class FlacFrameHeader {
             case 11:
                 return 96000;
             case 12:
-                return dis.readUnsignedByte() * 1000;
+                return Byte.toUnsignedInt(buffer.get()) * 1000;
             case 13:
-                return dis.readUnsignedShort();
+                return Short.toUnsignedInt(buffer.getShort());
             case 14:
-                return dis.readUnsignedShort() * 10;
+                return Short.toUnsignedInt(buffer.getShort()) * 10;
             default:
                 throw new FlacException("Invalid sample rate bits: " + sampleRateBits);
         }

@@ -1,6 +1,7 @@
 package be.twofold.tinyaudio.flac;
 
-import java.io.IOException;
+import be.twofold.tinyaudio.core.internal.BitReader;
+
 import java.util.Objects;
 
 final class FlacSubFrameHeader {
@@ -14,15 +15,15 @@ final class FlacSubFrameHeader {
         this.wastedBits = wastedBits;
     }
 
-    static FlacSubFrameHeader read(BitInputStream is) throws IOException {
-        if (is.readBool()) {
-            throw new IOException("Invalid subframe header");
+    static FlacSubFrameHeader read(BitReader bits) throws FlacException {
+        if (bits.readBool()) {
+            throw new FlacException("Invalid subframe header");
         }
 
-        int subframeTypeBits = is.read(6);
+        int subframeTypeBits = bits.read(6);
         Type subframeType = subframeType(subframeTypeBits);
         int order = order(subframeTypeBits);
-        int wastedBits = is.readBool() ? is.readUnary() + 1 : 0;
+        int wastedBits = bits.readBool() ? bits.readUnary() + 1 : 0;
 
         return new FlacSubFrameHeader(
             subframeType,
@@ -31,7 +32,7 @@ final class FlacSubFrameHeader {
         );
     }
 
-    private static Type subframeType(int bits) throws IOException {
+    private static Type subframeType(int bits) throws FlacException {
         if (bits == 0) {
             return Type.CONSTANT;
         } else if (bits == 1) {
@@ -41,11 +42,11 @@ final class FlacSubFrameHeader {
         } else if (bits >= 32 && bits <= 63) {
             return Type.LPC;
         } else {
-            throw new IOException("Invalid subframe type");
+            throw new FlacException("Invalid subframe type");
         }
     }
 
-    private static int order(int bits) throws IOException {
+    private static int order(int bits) {
         if (bits >= 8 && bits <= 12) {
             return bits - 8;
         } else if (bits >= 32 && bits <= 63) {

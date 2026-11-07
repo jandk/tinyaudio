@@ -1,5 +1,6 @@
 package be.twofold.tinyaudio.vorbis;
 
+import be.twofold.tinyaudio.core.internal.BitReader;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;

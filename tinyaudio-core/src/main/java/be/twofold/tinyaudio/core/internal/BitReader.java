@@ -1,4 +1,4 @@
-package be.twofold.tinyaudio.vorbis;
+package be.twofold.tinyaudio.core.internal;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
@@ -8,7 +8,7 @@ import java.util.Objects;
 /**
  * Reads variable-width bit fields from a {@code byte[]}. Supports both little and big endian bit readers.
  */
-final class BitReader {
+public final class BitReader {
     private static final VarHandle VH_LONG_LE = MethodHandles
         .byteArrayViewVarHandle(long[].class, ByteOrder.LITTLE_ENDIAN);
 
@@ -20,11 +20,11 @@ final class BitReader {
     private long buffer;
     private int bitCount;
 
-    BitReader(byte[] source, ByteOrder order) {
+    public BitReader(byte[] source, ByteOrder order) {
         this(source, 0, source.length, order);
     }
 
-    BitReader(byte[] source, int offset, int length, ByteOrder order) {
+    public BitReader(byte[] source, int offset, int length, ByteOrder order) {
         Objects.checkFromIndexSize(offset, length, source.length);
         this.source = source;
         this.offset = offset;
@@ -52,14 +52,14 @@ final class BitReader {
     /**
      * Returns the number of bits still available to read.
      */
-    int bitsRemaining() {
+    public int bitsRemaining() {
         return bitCount + (end - position) * 8;
     }
 
     /**
      * Returns {@code true} if we read past the end of the source.
      */
-    boolean isOverrun() {
+    public boolean isOverrun() {
         return bitCount < 0;
     }
 
@@ -68,7 +68,7 @@ final class BitReader {
      *
      * @param count number of bits to read, in {@code [0, 32]}
      */
-    int read(int count) {
+    public int read(int count) {
         if (count < 0 || count > 32) {
             throw new IllegalArgumentException("count must be between 0 and 32 inclusive");
         }
@@ -93,8 +93,32 @@ final class BitReader {
     /**
      * Consumes and returns the next single bit as {@code true} or {@code false}.
      */
-    boolean readBool() {
+    public boolean readBool() {
         return readLong(1) != 0;
+    }
+
+    /**
+     * Consumes and returns the next {@code count} bits as a signed integer. Missing bits read as zero.
+     *
+     * @param count number of bits to read, in {@code [0, 32]}
+     * @return the next {@code count} bits as a signed integer
+     */
+    public int readSigned(int count) {
+        int shift = Integer.SIZE - count;
+        return read(count) << shift >> shift;
+    }
+
+    /**
+     * Returns the next unary code as an integer.
+     *
+     * @return the next unary code as an integer
+     */
+    public int readUnary() {
+        int count = 0;
+        while (read(1) == 0 && !isOverrun()) {
+            count++;
+        }
+        return count;
     }
 
     /**
@@ -102,7 +126,7 @@ final class BitReader {
      *
      * @param count number of bits to peek, in {@code [0, 32]}
      */
-    int peek(int count) {
+    public int peek(int count) {
         if (count < 0 || count > 32) {
             throw new IllegalArgumentException("count must be between 0 and 32 inclusive");
         }
@@ -129,7 +153,7 @@ final class BitReader {
      *
      * @param count number of bits to skip, in {@code [0, 57]}
      */
-    void skip(int count) {
+    public void skip(int count) {
         if (count < 0 || count > 57) {
             throw new IllegalArgumentException("count must be between 0 and 57 inclusive");
         }

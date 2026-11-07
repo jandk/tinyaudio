@@ -2,6 +2,7 @@ package be.twofold.tinyaudio.flac;
 
 import be.twofold.tinyaudio.core.AudioDecoder;
 import be.twofold.tinyaudio.core.AudioDecoderProvider;
+import be.twofold.tinyaudio.flac.metadata.StreamInfo;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -15,6 +16,8 @@ public final class FlacAudioDecoderProvider implements AudioDecoderProvider {
         if (!AudioDecoderProvider.startsWith(head, MAGIC)) {
             return Optional.empty();
         }
-        return Optional.of(new FlacDecoder(in, FlacHeader.read(in).streamInfo()));
+        FlacHeader header = FlacHeader.read(in);
+        StreamInfo streamInfo = header.streamInfo();
+        return Optional.of(new FlacDecoder(new FlacPacketSource(in, streamInfo), streamInfo));
     }
 }

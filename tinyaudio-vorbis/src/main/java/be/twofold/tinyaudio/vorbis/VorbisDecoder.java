@@ -4,6 +4,7 @@ import be.twofold.tinyaudio.core.AudioInfo;
 import be.twofold.tinyaudio.core.BlockAudioDecoder;
 import be.twofold.tinyaudio.core.Packet;
 import be.twofold.tinyaudio.core.PacketSource;
+import be.twofold.tinyaudio.core.internal.BitReader;
 import be.twofold.tinyaudio.vorbis.mdct.MDCT;
 
 import java.io.IOException;
@@ -91,7 +92,7 @@ public final class VorbisDecoder extends BlockAudioDecoder {
         }
 
         var bits = new BitReader(packet.getData(), ByteOrder.LITTLE_ENDIAN);
-        if (bits.read(1) != 0) {
+        if (bits.readBool()) { // packet type
             return 0;
         }
 

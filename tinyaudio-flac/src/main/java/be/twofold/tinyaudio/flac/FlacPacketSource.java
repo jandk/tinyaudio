@@ -5,16 +5,17 @@ import be.twofold.tinyaudio.core.PacketSource;
 import be.twofold.tinyaudio.core.internal.CRC;
 import be.twofold.tinyaudio.flac.metadata.StreamInfo;
 
-import java.io.ByteArrayInputStream;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.BufferUnderflowException;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Objects;
 
 final class FlacPacketSource implements PacketSource {
     private static final int MAX_FRAME_SIZE = 1 << 22;
-    private static final int MAX_HEADER_SIZE = 16;
+    static final int MAX_HEADER_SIZE = 16;
 
     private final CRC crc = CRC.FLAC_FRAME.get();
     private final InputStream in;
@@ -90,7 +91,11 @@ final class FlacPacketSource implements PacketSource {
 
     private FlacFrameHeader readHeader(int offset) throws IOException {
         int from = start + offset;
-        return FlacFrameHeader.read(new ByteArrayInputStream(buffer, from, end - from));
+        try {
+            return FlacFrameHeader.read(ByteBuffer.wrap(buffer, from, end - from));
+        } catch (BufferUnderflowException e) {
+            throw new EOFException("Truncated frame header");
+        }
     }
 
     private void validateFrameHeader(FlacFrameHeader frameHeader, StreamInfo streamInfo, boolean last) throws FlacException {

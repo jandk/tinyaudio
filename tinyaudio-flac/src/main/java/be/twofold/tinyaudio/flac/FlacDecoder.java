@@ -2,14 +2,16 @@ package be.twofold.tinyaudio.flac;
 
 import be.twofold.tinyaudio.core.AudioInfo;
 import be.twofold.tinyaudio.core.BlockAudioDecoder;
-import be.twofold.tinyaudio.core.internal.CRC;
+import be.twofold.tinyaudio.core.Packet;
+import be.twofold.tinyaudio.core.PacketSource;
+import be.twofold.tinyaudio.core.internal.BitReader;
 import be.twofold.tinyaudio.flac.metadata.StreamInfo;
 
 import java.io.IOException;
-import java.io.InputStream;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.Objects;
-import java.util.zip.CheckedInputStream;
 
 public final class FlacDecoder extends BlockAudioDecoder {
     private static final int[][] FIXED = {
@@ -20,18 +22,17 @@ public final class FlacDecoder extends BlockAudioDecoder {
         {4, -6, 4, -1}
     };
 
-    private final InputStream in;
+    private final PacketSource packets;
     private final StreamInfo streamInfo;
 
     private final int[][] samples;
     private int[] coefficients;
     private int rightShift;
-    private long sampleCount;
 
-    FlacDecoder(InputStream in, StreamInfo streamInfo) {
+    FlacDecoder(PacketSource packets, StreamInfo streamInfo) {
         super(streamInfo.channels(), maximumBlockSize(streamInfo));
 
-        this.in = Objects.requireNonNull(in);
+        this.packets = Objects.requireNonNull(packets);
         this.streamInfo = Objects.requireNonNull(streamInfo);
         this.samples = new int[streamInfo.channels()][maximumBlockSize(streamInfo)];
     }
@@ -55,25 +56,22 @@ public final class FlacDecoder extends BlockAudioDecoder {
 
     @Override
     protected int decodeBlock(short[][] pcm) throws IOException {
-        CheckedInputStream checked = new CheckedInputStream(in, CRC.FLAC_FRAME.get());
-
-        FlacFrameHeader frameHeader = FlacFrameHeader.read(checked);
-        if (frameHeader == null) {
+        Packet packet = packets.next();
+        if (packet == null) {
             return -1;
         }
 
-        long total = streamInfo.totalSamples();
-        boolean last = total == 0 || sampleCount + frameHeader.blockSize() >= total;
-        validateFrameHeader(frameHeader, streamInfo, last);
-        int blocksize = frameHeader.blockSize();
+        ByteBuffer buffer = ByteBuffer.wrap(packet.getData());
+        FlacFrameHeader header = FlacFrameHeader.read(buffer);
+        int blocksize = header.blockSize();
 
-        BitInputStream bits = new BitInputStream(checked);
-        for (int i = 0; i < frameHeader.numberOfChannels(); i++) {
+        BitReader bits = new BitReader(buffer.array(), buffer.position(), buffer.remaining(), ByteOrder.BIG_ENDIAN);
+        for (int i = 0; i < header.numberOfChannels(); i++) {
             FlacSubFrameHeader subFrameHeader = FlacSubFrameHeader.read(bits);
 
-            boolean side = frameHeader.channelCorrelation() != null
-                && frameHeader.channelCorrelation().side() == i;
-            int bitsPerSample = frameHeader.bitsPerSample() - subFrameHeader.getWastedBits() + (side ? 1 : 0);
+            boolean side = header.channelCorrelation() != null
+                && header.channelCorrelation().side() == i;
+            int bitsPerSample = header.bitsPerSample() - subFrameHeader.getWastedBits() + (side ? 1 : 0);
 
             switch (subFrameHeader.getSubframeType()) {
                 case CONSTANT:
@@ -93,24 +91,19 @@ public final class FlacDecoder extends BlockAudioDecoder {
             if (subFrameHeader.getWastedBits() > 0) {
                 applyWastedBits(samples[i], blocksize, subFrameHeader.getWastedBits());
             }
-
+        }
+        if (bits.isOverrun()) {
+            throw new FlacException("Frame data truncated");
         }
 
-        short actualCrc = (short) checked.getChecksum().getValue();
-        short expectedCrc = (short) (checked.read() << 8 | checked.read());
-        if (actualCrc != expectedCrc) {
-            throw new IOException("CRC mismatch");
-        }
-
-        sampleCount += blocksize;
-        decorrelate(frameHeader.channelCorrelation(), blocksize);
+        decorrelate(header.channelCorrelation(), blocksize);
         convertToShort(pcm, blocksize);
         return blocksize;
     }
 
     @Override
     public void close() throws IOException {
-        in.close();
+        packets.close();
     }
 
     private void applyWastedBits(int[] samples, int blockSize, int wastedBits) {
@@ -173,28 +166,28 @@ public final class FlacDecoder extends BlockAudioDecoder {
         }
     }
 
-    private void decodeConstant(BitInputStream bits, int blocksize, int bitsPerSample, int channel) throws IOException {
+    private void decodeConstant(BitReader bits, int blocksize, int bitsPerSample, int channel) throws IOException {
         int value = bits.readSigned(bitsPerSample);
         Arrays.fill(samples[channel], 0, blocksize, value);
     }
 
-    private void decodeVerbatim(BitInputStream bits, int blocksize, int bitsPerSample, int channel) throws IOException {
+    private void decodeVerbatim(BitReader bits, int blocksize, int bitsPerSample, int channel) throws IOException {
         readInts(bits, bitsPerSample, samples[channel], 0, blocksize);
     }
 
-    private void decodeFixed(BitInputStream bits, int blocksize, int bitsPerSample, int order, int channel) throws IOException {
+    private void decodeFixed(BitReader bits, int blocksize, int bitsPerSample, int order, int channel) throws IOException {
         rightShift = 0;
         coefficients = FIXED[order];
         readInts(bits, bitsPerSample, samples[channel], 0, order);
         decodeCodedResidual(bits, blocksize, order, channel);
     }
 
-    private void decodeLpc(BitInputStream bits, int blocksize, int bitsPerSample, int order, int channel) throws IOException {
+    private void decodeLpc(BitReader bits, int blocksize, int bitsPerSample, int order, int channel) throws IOException {
         readInts(bits, bitsPerSample, samples[channel], 0, order);
 
         int precision = bits.read(4) + 1;
         if (precision == 16) {
-            throw new IOException("precision 16");
+            throw new FlacException("precision 16");
         }
 
         rightShift = bits.readSigned(5);
@@ -203,7 +196,7 @@ public final class FlacDecoder extends BlockAudioDecoder {
         decodeCodedResidual(bits, blocksize, order, channel);
     }
 
-    private void decodeCodedResidual(BitInputStream bits, int blockSize, int order, int channel) throws IOException {
+    private void decodeCodedResidual(BitReader bits, int blockSize, int order, int channel) throws IOException {
         int codingMethod = bits.read(2);
         if (codingMethod > 1) {
             throw new FlacException("Invalid coding method: " + codingMethod);
@@ -238,7 +231,7 @@ public final class FlacDecoder extends BlockAudioDecoder {
         }
     }
 
-    private void decodePartition(BitInputStream bits, int codingMethod, int sampleCount, int[] target, int offset) throws IOException {
+    private void decodePartition(BitReader bits, int codingMethod, int sampleCount, int[] target, int offset) throws IOException {
         int riceParameter = bits.read(codingMethod);
         if (riceParameter == (1 << codingMethod) - 1) {
             int residualBits = bits.read(5);
@@ -250,43 +243,17 @@ public final class FlacDecoder extends BlockAudioDecoder {
         }
     }
 
-    private int decodeRice(BitInputStream bits, int riceParameter) throws IOException {
+    private int decodeRice(BitReader bits, int riceParameter) throws IOException {
         int msb = bits.readUnary();
         int lsb = bits.read(riceParameter);
         int folded = msb << riceParameter | lsb;
         return (folded >>> 1) ^ -(folded & 1);
     }
 
-    private void readInts(BitInputStream bits, int bitCount, int[] target, int offset, int count) throws IOException {
+    private void readInts(BitReader bits, int bitCount, int[] target, int offset, int count) throws IOException {
         Objects.checkFromIndexSize(offset, count, target.length);
         for (int i = offset, lim = offset + count; i < lim; i++) {
             target[i] = bits.readSigned(bitCount);
-        }
-    }
-
-    private void validateFrameHeader(FlacFrameHeader frameHeader, StreamInfo streamInfo, boolean last) throws FlacException {
-        int minimumBlockSize = streamInfo.minBlockSize();
-        int maximumBlockSize = streamInfo.maxBlockSize();
-        int blockSize = frameHeader.blockSize();
-
-        boolean checkMinimum = minimumBlockSize > 0 && !last;
-        if (checkMinimum && blockSize < minimumBlockSize ||
-            maximumBlockSize > 0 && blockSize > maximumBlockSize) {
-            throw new FlacException(String.format(
-                "Block size (%s) not between %s and %s",
-                blockSize, minimumBlockSize, maximumBlockSize));
-        }
-        if (frameHeader.sampleRate() != streamInfo.sampleRate()) {
-            throw new FlacException(String.format("Sample rate (%s) not %s",
-                frameHeader.sampleRate(), streamInfo.sampleRate()));
-        }
-        if (frameHeader.numberOfChannels() != streamInfo.channels()) {
-            throw new FlacException(String.format("Channel count (%s) not %s",
-                frameHeader.numberOfChannels(), streamInfo.channels()));
-        }
-        if (frameHeader.bitsPerSample() != streamInfo.bitsPerSample()) {
-            throw new FlacException(String.format("Bit depth (%s) not %s",
-                frameHeader.bitsPerSample(), streamInfo.bitsPerSample()));
         }
     }
 }

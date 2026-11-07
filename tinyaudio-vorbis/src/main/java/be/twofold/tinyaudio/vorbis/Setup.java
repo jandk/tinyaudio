@@ -1,5 +1,7 @@
 package be.twofold.tinyaudio.vorbis;
 
+import be.twofold.tinyaudio.core.internal.BitReader;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -39,9 +41,8 @@ final class Setup {
         List<Mapping> mappings = readList(bits, 6, in -> Mapping.unpack(in, audioChannels, floors.size(), residues.size()));
         List<Mode> modes = readList(bits, 6, in -> Mode.unpack(in, mappings.size()));
 
-        int framingFlag = bits.read(1);
-        if (framingFlag != 1) {
-            throw new VorbisException("Invalid framing flag: " + framingFlag);
+        if (!bits.readBool()) { // framing flag
+            throw new VorbisException("Invalid framing flag");
         }
 
         return new Setup(

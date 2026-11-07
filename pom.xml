@@ -9,6 +9,7 @@
     <packaging>pom</packaging>
 
     <modules>
+        <module>tinyaudio-app</module>
         <module>tinyaudio-core</module>
         <module>tinyaudio-flac</module>
         <module>tinyaudio-ogg</module>

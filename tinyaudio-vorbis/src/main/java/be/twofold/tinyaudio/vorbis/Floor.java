@@ -7,7 +7,7 @@ interface Floor {
     static Floor unpack(BitReader bits, int codebookCount) throws IOException {
         int floorType = bits.read(16);
         if (floorType == 0) {
-            throw new UnsupportedOperationException("Floor 0");
+            throw new VorbisException("Floor 0 is not supported");
         } else if (floorType == 1) {
             return Floor1.unpack(bits, codebookCount);
         } else {

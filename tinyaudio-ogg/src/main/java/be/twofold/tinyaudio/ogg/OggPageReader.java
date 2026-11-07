@@ -9,7 +9,7 @@ public final class OggPageReader implements Closeable {
     private final InputStream in;
 
     public OggPageReader(InputStream in) {
-        this.in = new BufferedInputStream(in, MAX_PAGE_SIZE);
+        this.in = new BufferedInputStream(in);
     }
 
     public OggPage next() throws IOException {

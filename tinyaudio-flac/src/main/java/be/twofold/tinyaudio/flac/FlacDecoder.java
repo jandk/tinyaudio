@@ -63,17 +63,17 @@ public final class FlacDecoder extends BlockAudioDecoder {
         }
 
         long total = streamInfo.totalSamples();
-        boolean last = total == 0 || sampleCount + frameHeader.getBlockSize() >= total;
+        boolean last = total == 0 || sampleCount + frameHeader.blockSize() >= total;
         validateFrameHeader(frameHeader, streamInfo, last);
-        int blocksize = frameHeader.getBlockSize();
+        int blocksize = frameHeader.blockSize();
 
         BitInputStream bits = new BitInputStream(checked);
-        for (int i = 0; i < frameHeader.getNumberOfChannels(); i++) {
+        for (int i = 0; i < frameHeader.numberOfChannels(); i++) {
             FlacSubFrameHeader subFrameHeader = FlacSubFrameHeader.read(bits);
 
-            boolean side = frameHeader.getChannelCorrelation() != null
-                && frameHeader.getChannelCorrelation().getSide() == i;
-            int bitsPerSample = frameHeader.getBitsPerSample() - subFrameHeader.getWastedBits() + (side ? 1 : 0);
+            boolean side = frameHeader.channelCorrelation() != null
+                && frameHeader.channelCorrelation().side() == i;
+            int bitsPerSample = frameHeader.bitsPerSample() - subFrameHeader.getWastedBits() + (side ? 1 : 0);
 
             switch (subFrameHeader.getSubframeType()) {
                 case CONSTANT:
@@ -103,7 +103,7 @@ public final class FlacDecoder extends BlockAudioDecoder {
         }
 
         sampleCount += blocksize;
-        decorrelate(frameHeader.getChannelCorrelation(), blocksize);
+        decorrelate(frameHeader.channelCorrelation(), blocksize);
         convertToShort(pcm, blocksize);
         return blocksize;
     }
@@ -204,21 +204,18 @@ public final class FlacDecoder extends BlockAudioDecoder {
     }
 
     private void decodeCodedResidual(BitInputStream bits, int blockSize, int order, int channel) throws IOException {
-        int codingMethod;
-        switch (bits.read(2)) {
-            case 0:
-                codingMethod = 4;
-                break;
-            case 1:
-                codingMethod = 5;
-                break;
-            default:
-                throw new IOException("Invalid coding method");
+        int codingMethod = bits.read(2);
+        if (codingMethod > 1) {
+            throw new FlacException("Invalid coding method: " + codingMethod);
         }
+        codingMethod += 4;
 
         int partitionOrder = bits.read(4);
         int partitionCount = 1 << partitionOrder;
         int samplesPerPartition = blockSize >> partitionOrder;
+        if ((blockSize & (partitionCount - 1)) != 0 || samplesPerPartition < order) {
+            throw new FlacException("Invalid residual partition order: " + partitionOrder);
+        }
 
         int offset = order;
         for (int p = 0; p < partitionCount; p++) {
@@ -270,7 +267,7 @@ public final class FlacDecoder extends BlockAudioDecoder {
     private void validateFrameHeader(FlacFrameHeader frameHeader, StreamInfo streamInfo, boolean last) throws FlacException {
         int minimumBlockSize = streamInfo.minBlockSize();
         int maximumBlockSize = streamInfo.maxBlockSize();
-        int blockSize = frameHeader.getBlockSize();
+        int blockSize = frameHeader.blockSize();
 
         boolean checkMinimum = minimumBlockSize > 0 && !last;
         if (checkMinimum && blockSize < minimumBlockSize ||
@@ -279,17 +276,17 @@ public final class FlacDecoder extends BlockAudioDecoder {
                 "Block size (%s) not between %s and %s",
                 blockSize, minimumBlockSize, maximumBlockSize));
         }
-        if (frameHeader.getSampleRate() != streamInfo.sampleRate()) {
+        if (frameHeader.sampleRate() != streamInfo.sampleRate()) {
             throw new FlacException(String.format("Sample rate (%s) not %s",
-                frameHeader.getSampleRate(), streamInfo.sampleRate()));
+                frameHeader.sampleRate(), streamInfo.sampleRate()));
         }
-        if (frameHeader.getNumberOfChannels() != streamInfo.channels()) {
+        if (frameHeader.numberOfChannels() != streamInfo.channels()) {
             throw new FlacException(String.format("Channel count (%s) not %s",
-                frameHeader.getNumberOfChannels(), streamInfo.channels()));
+                frameHeader.numberOfChannels(), streamInfo.channels()));
         }
-        if (frameHeader.getBitsPerSample() != streamInfo.bitsPerSample()) {
+        if (frameHeader.bitsPerSample() != streamInfo.bitsPerSample()) {
             throw new FlacException(String.format("Bit depth (%s) not %s",
-                frameHeader.getBitsPerSample(), streamInfo.bitsPerSample()));
+                frameHeader.bitsPerSample(), streamInfo.bitsPerSample()));
         }
     }
 }

@@ -55,7 +55,7 @@ final class FlacFrameHeader {
         ChannelType channelCorrelation = channelCorrelation(b3 >> 4);
         int bitsPerSample = bitsPerSample((b3 >> 1) & 0x07);
         if ((b3 & 1) != 0) {
-            throw new IOException("Reserved bit must be zero");
+            throw new FlacException("Reserved bit must be zero");
         }
 
         long codedNumber = codedNumber(dis);
@@ -64,7 +64,7 @@ final class FlacFrameHeader {
 
         byte crc = (byte) checked.getChecksum().getValue();
         if (crc != dis.readByte()) {
-            throw new IOException("Invalid audio frame crc");
+            throw new FlacException("Invalid audio frame crc");
         }
 
         return new FlacFrameHeader(
@@ -78,15 +78,15 @@ final class FlacFrameHeader {
         );
     }
 
-    private static int numberOfChannels(int channelBits) throws IOException {
+    private static int numberOfChannels(int channelBits) throws FlacException {
         if (channelBits < 8) {
             return channelBits + 1;
         } else if (channelBits < 11) {
             return 2;
-        } else throw new IOException("Invalid channel bits: " + channelBits);
+        } else throw new FlacException("Invalid channel bits: " + channelBits);
     }
 
-    private static ChannelType channelCorrelation(int channelBits) throws IOException {
+    private static ChannelType channelCorrelation(int channelBits) {
         switch (channelBits) {
             case 1:
                 return ChannelType.LEFT_RIGHT;
@@ -118,7 +118,7 @@ final class FlacFrameHeader {
             case 7:
                 return 32;
             default:
-                throw new IOException("Invalid bit depth bits: " + bitsPerSampleBits);
+                throw new FlacException("Invalid bit depth bits: " + bitsPerSampleBits);
         }
     }
 
@@ -130,7 +130,7 @@ final class FlacFrameHeader {
 
         int extra = Integer.numberOfLeadingZeros(~(b << 24)) - 1;
         if (extra > 6) {
-            throw new IOException("Invalid UTF-8 start byte: " + b);
+            throw new FlacException("Invalid UTF-8 start byte: " + b);
         }
 
         long codedNumber = b & (0x7F >> extra);
@@ -139,13 +139,13 @@ final class FlacFrameHeader {
         for (int i = 0; i < extra; i++) {
             int continuation = dis.readUnsignedByte();
             if ((continuation & 0xC0) != 0x80) {
-                throw new IOException("Invalid continuation byte: " + b);
+                throw new FlacException("Invalid continuation byte: " + b);
             }
             codedNumber = (codedNumber << 6) | (continuation & 0x3F);
         }
 
         if (codedNumber < minValid) {
-            throw new IOException("Non-canonical coded number: " + codedNumber);
+            throw new FlacException("Non-canonical coded number: " + codedNumber);
         }
         return codedNumber;
     }
@@ -173,7 +173,7 @@ final class FlacFrameHeader {
             case 15:
                 return 1 << blockSizeBits;
             default:
-                throw new IOException("Invalid block size bits: " + blockSizeBits);
+                throw new FlacException("Invalid block size bits: " + blockSizeBits);
         }
     }
 
@@ -210,35 +210,35 @@ final class FlacFrameHeader {
             case 14:
                 return dis.readUnsignedShort() * 10;
             default:
-                throw new IOException("Invalid sample rate bits: " + sampleRateBits);
+                throw new FlacException("Invalid sample rate bits: " + sampleRateBits);
         }
     }
 
-    boolean isVariableBlockSize() {
+    boolean variableBlockSize() {
         return variableBlockSize;
     }
 
-    int getBlockSize() {
+    int blockSize() {
         return blockSize;
     }
 
-    int getSampleRate() {
+    int sampleRate() {
         return sampleRate;
     }
 
-    int getNumberOfChannels() {
+    int numberOfChannels() {
         return numberOfChannels;
     }
 
-    ChannelType getChannelCorrelation() {
+    ChannelType channelCorrelation() {
         return channelCorrelation;
     }
 
-    int getBitsPerSample() {
+    int bitsPerSample() {
         return bitsPerSample;
     }
 
-    long getCodedNumber() {
+    long codedNumber() {
         return codedNumber;
     }
 
@@ -255,7 +255,7 @@ final class FlacFrameHeader {
             this.side = side;
         }
 
-        int getSide() {
+        int side() {
             return side;
         }
     }

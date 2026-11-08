@@ -8,6 +8,7 @@ import javax.sound.sampled.*;
 import javax.sound.sampled.spi.AudioFileReader;
 import java.io.*;
 import java.net.URL;
+import java.util.Map;
 import java.util.Optional;
 import java.util.ServiceLoader;
 
@@ -98,8 +99,9 @@ public final class TinyAudioFileReader extends AudioFileReader {
             ? AudioSystem.NOT_SPECIFIED
             : (int) totalFrames;
 
-        AudioFileFormat.Type type = new AudioFileFormat.Type(info.codec(), info.extension());
-        return new AudioFileFormat(type, audioFormat(info), frameLength);
+        AudioFileFormat.Type type = new AudioFileFormat.Type(info.container(), info.extension());
+        Map<String, Object> properties = Map.of("codec", info.codec());
+        return new AudioFileFormat(type, audioFormat(info), frameLength, properties);
     }
 
     private AudioFormat audioFormat(AudioInfo info) {

@@ -19,6 +19,6 @@ public final class FlacOggCodec implements OggCodec {
         }
         FlacHeader header = FlacHeader.read(first, packets);
         StreamInfo streamInfo = header.streamInfo();
-        return Optional.of(new FlacDecoder(packets, streamInfo));
+        return Optional.of(new FlacDecoder(packets, streamInfo, "ogg"));
     }
 }

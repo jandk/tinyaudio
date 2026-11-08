@@ -70,8 +70,7 @@ public final class VorbisDecoder extends BlockAudioDecoder {
     @Override
     public AudioInfo info() {
         return new AudioInfo(
-            "vorbis",
-            "ogg",
+            "ogg", "vorbis", "ogg",
             identification.audioSampleRate(),
             identification.audioChannels(),
             -1 // vorbis has it at the end of the stream

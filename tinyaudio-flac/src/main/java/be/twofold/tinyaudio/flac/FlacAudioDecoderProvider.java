@@ -17,6 +17,6 @@ public final class FlacAudioDecoderProvider implements AudioDecoderProvider {
         }
         FlacHeader header = FlacHeader.read(in);
         StreamInfo streamInfo = header.streamInfo();
-        return Optional.of(new FlacDecoder(new FlacPacketSource(in, streamInfo), streamInfo));
+        return Optional.of(new FlacDecoder(new FlacPacketSource(in, streamInfo), streamInfo, "flac"));
     }
 }

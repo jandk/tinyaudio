@@ -24,17 +24,19 @@ public final class FlacDecoder extends BlockAudioDecoder {
 
     private final PacketSource packets;
     private final StreamInfo streamInfo;
+    private final String container;
 
     private final int[][] samples;
     private int[] coefficients;
     private int rightShift;
     private long sampleCount;
 
-    FlacDecoder(PacketSource packets, StreamInfo streamInfo) {
+    FlacDecoder(PacketSource packets, StreamInfo streamInfo, String container) {
         super(streamInfo.channels(), streamInfo.maxBlockSizeOrDefault());
 
         this.packets = Objects.requireNonNull(packets);
         this.streamInfo = Objects.requireNonNull(streamInfo);
+        this.container = Objects.requireNonNull(container);
         this.samples = new int[streamInfo.channels()][streamInfo.maxBlockSizeOrDefault()];
     }
 
@@ -42,8 +44,7 @@ public final class FlacDecoder extends BlockAudioDecoder {
     public AudioInfo info() {
         long total = streamInfo.totalSamples();
         return new AudioInfo(
-            "flac",
-            "flac",
+            container, "flac", "ogg".equals(container) ? "oga" : "flac",
             streamInfo.sampleRate(),
             streamInfo.channels(),
             total == 0 ? -1 : total

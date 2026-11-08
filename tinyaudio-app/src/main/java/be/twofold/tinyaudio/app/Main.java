@@ -25,10 +25,11 @@ public class Main {
         AudioFileFormat fileFormat = AudioSystem.getAudioFileFormat(file);
         AudioFormat format = fileFormat.getFormat();
         int frames = fileFormat.getFrameLength();
-        System.out.println("File:     " + file);
-        System.out.println("Codec:    " + fileFormat.getType());
-        System.out.println("Format:   " + format);
-        System.out.println("Duration: " + (frames == AudioSystem.NOT_SPECIFIED
+        System.out.println("File:      " + file);
+        System.out.println("Container: " + fileFormat.getType());
+        System.out.println("Codec:     " + fileFormat.getProperty("codec"));
+        System.out.println("Format:    " + format);
+        System.out.println("Duration:  " + (frames == AudioSystem.NOT_SPECIFIED
             ? "unknown"
             : String.format("%.1f s (%d frames)", frames / format.getSampleRate(), frames)));
 

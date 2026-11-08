@@ -15,7 +15,7 @@ import java.util.Objects;
 
 final class FlacPacketSource implements PacketSource {
     private static final int MAX_FRAME_SIZE = 1 << 22;
-    static final int MAX_HEADER_SIZE = 16;
+    private static final int MAX_HEADER_SIZE = 16;
 
     private final CRC crc = CRC.FLAC_FRAME.get();
     private final InputStream in;
@@ -42,14 +42,11 @@ final class FlacPacketSource implements PacketSource {
         FlacFrameHeader header = readHeader(0);
         position += header.blockSize();
 
-        long totalSamples = streamInfo.totalSamples();
-        boolean last = totalSamples == 0 || position >= totalSamples;
-        validateFrameHeader(header, streamInfo, last);
-
         int size = findFrameEnd();
         byte[] data = Arrays.copyOfRange(buffer, start, start + size);
         start += size;
 
+        long totalSamples = streamInfo.totalSamples();
         finished = !fill(1) || totalSamples > 0 && position >= totalSamples;
         return new Packet(data, position, finished, false);
     }
@@ -98,31 +95,6 @@ final class FlacPacketSource implements PacketSource {
         }
     }
 
-    private void validateFrameHeader(FlacFrameHeader frameHeader, StreamInfo streamInfo, boolean last) throws FlacException {
-        int minBlockSize = streamInfo.minBlockSize();
-        int maxBlockSize = streamInfo.maxBlockSize() > 0 ? streamInfo.maxBlockSize() : 65535;
-        int blockSize = frameHeader.blockSize();
-
-        boolean checkMinimum = minBlockSize > 0 && !last;
-        if (checkMinimum && blockSize < minBlockSize || blockSize > maxBlockSize) {
-            throw new FlacException(String.format(
-                "Block size (%s) not between %s and %s",
-                blockSize, minBlockSize, maxBlockSize));
-        }
-        if (frameHeader.sampleRate() != streamInfo.sampleRate()) {
-            throw new FlacException(String.format("Sample rate (%s) not %s",
-                frameHeader.sampleRate(), streamInfo.sampleRate()));
-        }
-        if (frameHeader.numberOfChannels() != streamInfo.channels()) {
-            throw new FlacException(String.format("Channel count (%s) not %s",
-                frameHeader.numberOfChannels(), streamInfo.channels()));
-        }
-        if (frameHeader.bitsPerSample() != streamInfo.bitsPerSample()) {
-            throw new FlacException(String.format("Bit depth (%s) not %s",
-                frameHeader.bitsPerSample(), streamInfo.bitsPerSample()));
-        }
-    }
-
     private int findFrameEnd() throws IOException {
         crc.reset();
         int count = 0;
@@ -157,7 +129,11 @@ final class FlacPacketSource implements PacketSource {
         }
 
         try {
-            return readHeader(offset) != null;
+            FlacFrameHeader header = readHeader(offset);
+            return header.blockSize() <= streamInfo.maxBlockSizeOrDefault()
+                && header.sampleRate() == streamInfo.sampleRate()
+                && header.numberOfChannels() == streamInfo.channels()
+                && header.bitsPerSample() == streamInfo.bitsPerSample();
         } catch (FlacException | EOFException e) {
             return false;
         }

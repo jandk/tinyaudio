@@ -15,5 +15,9 @@
             <groupId>be.twofold</groupId>
             <artifactId>tinyaudio-core</artifactId>
         </dependency>
+        <dependency>
+            <groupId>be.twofold</groupId>
+            <artifactId>tinyaudio-ogg</artifactId>
+        </dependency>
     </dependencies>
 </project>

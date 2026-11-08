@@ -1,8 +1,8 @@
 package be.twofold.tinyaudio.flac.metadata;
 
 import be.twofold.tinyaudio.core.internal.IOUtils;
+import be.twofold.tinyaudio.flac.FlacException;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -33,7 +33,7 @@ public final class CueSheetTrack {
         this.indices = List.copyOf(indices);
     }
 
-    public static CueSheetTrack read(ByteBuffer buffer) throws IOException {
+    public static CueSheetTrack read(ByteBuffer buffer) throws FlacException {
         long offset = buffer.getLong();
         int number = Byte.toUnsignedInt(buffer.get());
         String isrc = IOUtils.getString(buffer, 12, StandardCharsets.US_ASCII).trim();

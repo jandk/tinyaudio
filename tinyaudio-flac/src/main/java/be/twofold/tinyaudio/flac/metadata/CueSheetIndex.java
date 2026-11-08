@@ -1,6 +1,7 @@
 package be.twofold.tinyaudio.flac.metadata;
 
-import java.io.IOException;
+import be.twofold.tinyaudio.flac.FlacException;
+
 import java.nio.ByteBuffer;
 
 public final class CueSheetIndex {
@@ -15,7 +16,7 @@ public final class CueSheetIndex {
         this.number = number;
     }
 
-    public static CueSheetIndex read(ByteBuffer buffer) throws IOException {
+    public static CueSheetIndex read(ByteBuffer buffer) throws FlacException {
         long offset = buffer.getLong();
         byte number = buffer.get();
         CueSheet.checkPadding(buffer, 3);

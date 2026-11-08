@@ -28,18 +28,14 @@ public final class FlacDecoder extends BlockAudioDecoder {
     private final int[][] samples;
     private int[] coefficients;
     private int rightShift;
+    private long sampleCount;
 
     FlacDecoder(PacketSource packets, StreamInfo streamInfo) {
-        super(streamInfo.channels(), maximumBlockSize(streamInfo));
+        super(streamInfo.channels(), streamInfo.maxBlockSizeOrDefault());
 
         this.packets = Objects.requireNonNull(packets);
         this.streamInfo = Objects.requireNonNull(streamInfo);
-        this.samples = new int[streamInfo.channels()][maximumBlockSize(streamInfo)];
-    }
-
-    private static int maximumBlockSize(StreamInfo streamInfo) {
-        int size = streamInfo.maxBlockSize();
-        return size == 0 ? 65535 : size;
+        this.samples = new int[streamInfo.channels()][streamInfo.maxBlockSizeOrDefault()];
     }
 
     @Override
@@ -63,6 +59,11 @@ public final class FlacDecoder extends BlockAudioDecoder {
 
         ByteBuffer buffer = ByteBuffer.wrap(packet.getData());
         FlacFrameHeader header = FlacFrameHeader.read(buffer);
+        long total = streamInfo.totalSamples();
+        boolean last = total == 0 || sampleCount + header.blockSize() >= total || packet.isFinished();
+        validateFrameHeader(header, streamInfo, last);
+        sampleCount += header.blockSize();
+
         int blocksize = header.blockSize();
 
         BitReader bits = new BitReader(buffer.array(), buffer.position(), buffer.remaining(), ByteOrder.BIG_ENDIAN);
@@ -94,6 +95,9 @@ public final class FlacDecoder extends BlockAudioDecoder {
         }
         if (bits.isOverrun()) {
             throw new FlacException("Frame data truncated");
+        }
+        if (bits.bitsRemaining() >= 24 && !packet.isFinished()) {
+            throw new FlacException("Packet contains more than one frame");
         }
 
         decorrelate(header.channelCorrelation(), blocksize);
@@ -254,6 +258,26 @@ public final class FlacDecoder extends BlockAudioDecoder {
         Objects.checkFromIndexSize(offset, count, target.length);
         for (int i = offset, lim = offset + count; i < lim; i++) {
             target[i] = bits.readSigned(bitCount);
+        }
+    }
+
+    private void validateFrameHeader(FlacFrameHeader header, StreamInfo streamInfo, boolean last) throws FlacException {
+        int minimumBlockSize = streamInfo.minBlockSize();
+        int maximumBlockSize = streamInfo.maxBlockSizeOrDefault();
+        int blockSize = header.blockSize();
+
+        boolean checkMin = minimumBlockSize > 0 && !last;
+        if (checkMin && blockSize < minimumBlockSize || blockSize > maximumBlockSize) {
+            throw new FlacException("Block size (" + blockSize + ") not between " + minimumBlockSize + " and " + maximumBlockSize);
+        }
+        if (header.sampleRate() != streamInfo.sampleRate()) {
+            throw new FlacException("Sample rate (" + header.sampleRate() + ") not " + streamInfo.sampleRate());
+        }
+        if (header.numberOfChannels() != streamInfo.channels()) {
+            throw new FlacException("Channel count (" + header.numberOfChannels() + ") not " + streamInfo.channels());
+        }
+        if (header.bitsPerSample() != streamInfo.bitsPerSample()) {
+            throw new FlacException("Bit depth (" + header.bitsPerSample() + ") not " + streamInfo.bitsPerSample());
         }
     }
 }

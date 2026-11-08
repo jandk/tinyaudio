@@ -9,11 +9,10 @@ import java.io.InputStream;
 import java.util.Optional;
 
 public final class FlacAudioDecoderProvider implements AudioDecoderProvider {
-    private static final byte[] MAGIC = new byte[]{'f', 'L', 'a', 'C'};
 
     @Override
     public Optional<AudioDecoder> open(byte[] head, InputStream in) throws IOException {
-        if (!AudioDecoderProvider.startsWith(head, MAGIC)) {
+        if (!AudioDecoderProvider.startsWith(head, FlacHeader.MAGIC)) {
             return Optional.empty();
         }
         FlacHeader header = FlacHeader.read(in);

@@ -111,4 +111,8 @@ public final class StreamInfo implements MetadataBlock {
     public byte[] md5Sum() {
         return md5Sum.clone();
     }
+
+    public int maxBlockSizeOrDefault() {
+        return maxBlockSize == 0 ? 65535 : maxBlockSize;
+    }
 }

@@ -3,7 +3,6 @@ package be.twofold.tinyaudio.flac.metadata;
 import be.twofold.tinyaudio.core.internal.IOUtils;
 import be.twofold.tinyaudio.flac.FlacException;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -28,7 +27,7 @@ public final class CueSheet implements MetadataBlock {
         this.tracks = List.copyOf(tracks);
     }
 
-    public static CueSheet read(ByteBuffer buffer) throws IOException {
+    public static CueSheet read(ByteBuffer buffer) throws FlacException {
         String mediaCatalogNumber = IOUtils.getString(buffer, 128, StandardCharsets.US_ASCII).trim();
         long leadIn = buffer.getLong();
         boolean cdda = (buffer.get() & 0x80) != 0;

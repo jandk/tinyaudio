@@ -13,6 +13,7 @@
         <module>tinyaudio-core</module>
         <module>tinyaudio-flac</module>
         <module>tinyaudio-ogg</module>
+        <module>tinyaudio-opus</module>
         <module>tinyaudio-vorbis</module>
     </modules>
 
@@ -36,6 +37,11 @@
             <dependency>
                 <groupId>be.twofold</groupId>
                 <artifactId>tinyaudio-ogg</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>be.twofold</groupId>
+                <artifactId>tinyaudio-opus</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

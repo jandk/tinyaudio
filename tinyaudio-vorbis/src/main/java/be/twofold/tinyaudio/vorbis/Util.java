@@ -24,15 +24,4 @@ final class Util {
         exp = Math.max(-63, Math.min(63, exp));
         return Math.scalb(mant, exp);
     }
-
-    static String describe(byte[] data) {
-        StringBuilder sb = new StringBuilder(data.length + " bytes");
-        if (data.length > 0) {
-            sb.append(" starting with");
-            for (int i = 0; i < Math.min(data.length, 8); i++) {
-                sb.append(String.format(" %02X", data[i]));
-            }
-        }
-        return sb.toString();
-    }
 }

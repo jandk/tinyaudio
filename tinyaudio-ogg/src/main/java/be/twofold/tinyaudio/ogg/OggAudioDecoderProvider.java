@@ -3,6 +3,7 @@ package be.twofold.tinyaudio.ogg;
 import be.twofold.tinyaudio.core.AudioDecoder;
 import be.twofold.tinyaudio.core.AudioDecoderProvider;
 import be.twofold.tinyaudio.core.Packet;
+import be.twofold.tinyaudio.core.internal.IOUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -12,7 +13,6 @@ import java.util.ServiceLoader;
 import java.util.stream.Collectors;
 
 public final class OggAudioDecoderProvider implements AudioDecoderProvider {
-    private static final byte[] MAGIC = new byte[]{'O', 'g', 'g', 'S'};
     private static final List<OggCodec> CODECS = ServiceLoader
             .load(OggCodec.class).stream()
             .map(ServiceLoader.Provider::get)
@@ -20,7 +20,7 @@ public final class OggAudioDecoderProvider implements AudioDecoderProvider {
 
     @Override
     public Optional<AudioDecoder> open(byte[] head, InputStream in) throws IOException {
-        if (!AudioDecoderProvider.startsWith(head, MAGIC) || !validFirstPage(head)) {
+        if (!IOUtils.startsWith(head, OggPage.MAGIC) || !validFirstPage(head)) {
             return Optional.empty();
         }
 

@@ -6,7 +6,7 @@ import java.io.IOException;
 import java.util.Arrays;
 
 final class Codebook {
-    public static final int MAGIC = 0x56_4342;
+    private static final int MAGIC = 0x56_4342;
     private final int dimensions;
     private final boolean ordered;
     private final boolean sparse;

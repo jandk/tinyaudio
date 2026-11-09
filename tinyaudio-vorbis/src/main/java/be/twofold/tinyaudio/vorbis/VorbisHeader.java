@@ -2,18 +2,18 @@ package be.twofold.tinyaudio.vorbis;
 
 import be.twofold.tinyaudio.core.Packet;
 import be.twofold.tinyaudio.core.PacketSource;
+import be.twofold.tinyaudio.core.internal.IOUtils;
 import be.twofold.tinyaudio.core.internal.VorbisComment;
 
 import java.io.IOException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
 
 final class VorbisHeader {
-    private static final byte[] VORBIS = {'v', 'o', 'r', 'b', 'i', 's'};
+    private static final byte[] MAGIC = {'v', 'o', 'r', 'b', 'i', 's'};
 
     private final Identification identification;
     private final VorbisComment comment;
@@ -37,18 +37,21 @@ final class VorbisHeader {
         );
     }
 
+    static boolean isHeader(byte[] data, int type) {
+        ByteBuffer buffer = ByteBuffer.wrap(data);
+        return buffer.hasRemaining() && buffer.get() == type && IOUtils.matches(buffer, MAGIC);
+    }
+
     private static ByteBuffer header(Packet packet, int type) throws IOException {
         if (packet == null) {
             throw new VorbisException("Stream ended before header packet of type " + type);
         }
-
-        byte[] data = packet.getData();
-        if (data.length < 7 || data[0] != type || !Arrays.equals(data, 1, 7, VORBIS, 0, 6)) {
-            throw new VorbisException("Expected header packet of type " + type + ", got " + Util.describe(data));
+        if (!isHeader(packet.getData(), type)) {
+            throw new VorbisException("Expected header packet of type " + type);
         }
 
-        return ByteBuffer
-            .wrap(data, 7, data.length - 7)
+        return ByteBuffer.wrap(packet.getData())
+            .position(1 + MAGIC.length)
             .order(ByteOrder.LITTLE_ENDIAN);
     }
 

@@ -7,6 +7,7 @@ import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.Charset;
+import java.util.Arrays;
 
 public final class IOUtils {
     private IOUtils() {
@@ -37,5 +38,22 @@ public final class IOUtils {
             throw new EOFException("Expected " + length + " bytes, but got " + bytes.length);
         }
         return bytes;
+    }
+
+    public static boolean startsWith(byte[] data, byte[] prefix) {
+        return data.length >= prefix.length
+            && Arrays.equals(data, 0, prefix.length, prefix, 0, prefix.length);
+    }
+
+    public static boolean matches(ByteBuffer buffer, byte[] expected) {
+        if (buffer.remaining() < expected.length) {
+            return false;
+        }
+        for (byte b : expected) {
+            if (buffer.get() != b) {
+                return false;
+            }
+        }
+        return true;
     }
 }

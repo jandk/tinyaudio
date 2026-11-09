@@ -11,12 +11,11 @@ import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
 final class FlacHeader {
-    static final byte[] MAGIC = new byte[]{'f', 'L', 'a', 'C'};
+    static final byte[] MAGIC = {'f', 'L', 'a', 'C'};
     static final byte[] OGG_MAGIC = {0x7F, 'F', 'L', 'A', 'C'};
     private static final int OGG_HEADER_SIZE = 13;
 
@@ -29,43 +28,45 @@ final class FlacHeader {
     }
 
     static FlacHeader read(InputStream in) throws IOException {
-        if (!Arrays.equals(IOUtils.readBytes(in, 4), MAGIC)) {
+        ByteBuffer buffer = IOUtils.readBuffer(in, MAGIC.length + 4 + StreamInfo.BYTES, ByteOrder.BIG_ENDIAN);
+        if (!IOUtils.matches(buffer, MAGIC)) {
             throw new FlacException("Not a FLAC stream");
         }
 
-        int header = readInt(in);
-        checkStreamInfoFirst(header);
-        StreamInfo streamInfo = (StreamInfo) readBlock(header, in);
+        boolean last = buffer.get(buffer.position()) < 0;
+        StreamInfo streamInfo = parseStreamInfo(buffer);
 
         List<MetadataBlock> blocks = new ArrayList<>();
-        while (header >= 0) {
-            header = readInt(in);
+        while (!last) {
+            int header = IOUtils.readBuffer(in, 4, ByteOrder.BIG_ENDIAN).getInt();
             blocks.add(readBlock(header, in));
+            last = header < 0;
         }
 
         return new FlacHeader(streamInfo, blocks);
     }
 
     static FlacHeader read(Packet first, PacketSource packets) throws IOException {
-        ByteBuffer buffer = ByteBuffer.wrap(first.getData());
-        if (buffer.remaining() < OGG_HEADER_SIZE + 4 + StreamInfo.BYTES) {
+        if (first.getData().length < OGG_HEADER_SIZE + 4 + StreamInfo.BYTES) {
             throw new FlacException("Ogg FLAC header packet too short");
         }
 
-        buffer.position(5); // already checked
+        ByteBuffer buffer = ByteBuffer.wrap(first.getData());
+        if (!IOUtils.matches(buffer, OGG_MAGIC)) {
+            throw new FlacException("Invalid Ogg FLAC header");
+        }
         int major = buffer.get();
         buffer.get(); // minor
         buffer.getShort(); // header packet count
-        if (major != 1 || !Arrays.equals(IOUtils.getBytes(buffer, 4), MAGIC)) {
+        if (major != 1 || !IOUtils.matches(buffer, MAGIC)) {
             throw new FlacException("Invalid Ogg FLAC header");
         }
 
-        int header = buffer.getInt();
-        checkStreamInfoFirst(header);
-        StreamInfo streamInfo = (StreamInfo) parseBlock(header, buffer);
+        boolean last = buffer.get(buffer.position()) < 0;
+        StreamInfo streamInfo = parseStreamInfo(buffer);
 
-        List<MetadataBlock> metadataBlocks = new ArrayList<>();
-        while (header >= 0) {
+        List<MetadataBlock> blocks = new ArrayList<>();
+        while (!last) {
             Packet packet = packets.next();
             if (packet == null) {
                 throw new FlacException("Stream ended before the last metadata block");
@@ -74,16 +75,19 @@ final class FlacHeader {
             if (block.remaining() < 4) {
                 throw new FlacException("Metadata packet too short");
             }
-            header = block.getInt();
-            metadataBlocks.add(parseBlock(header, block));
+            int header = block.getInt();
+            blocks.add(parseBlock(header, block));
+            last = header < 0;
         }
-        return new FlacHeader(streamInfo, metadataBlocks);
+        return new FlacHeader(streamInfo, blocks);
     }
 
-    private static void checkStreamInfoFirst(int header) throws FlacException {
+    private static StreamInfo parseStreamInfo(ByteBuffer buffer) throws FlacException {
+        int header = buffer.getInt();
         if ((header & 0x7FFF_FFFF) != StreamInfo.BYTES) {
             throw new FlacException("First metadata block must be a StreamInfo block");
         }
+        return (StreamInfo) parseBlock(header, buffer);
     }
 
     private static MetadataBlock readBlock(int header, InputStream in) throws IOException {
@@ -132,10 +136,6 @@ final class FlacHeader {
             // failed metadata shouldn't cause an exception
             return Unknown.read(buffer.rewind(), code);
         }
-    }
-
-    private static int readInt(InputStream in) throws IOException {
-        return IOUtils.readBuffer(in, 4, ByteOrder.BIG_ENDIAN).getInt();
     }
 
     StreamInfo streamInfo() {

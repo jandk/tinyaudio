@@ -13,7 +13,8 @@ import java.util.stream.IntStream;
 
 public final class OggPage {
     private static final int FIXED_SIZE = 27;
-    private static final int CAPTURE_PATTERN = 'O' | 'g' << 8 | 'g' << 16 | 'S' << 24;
+    static final int MAX_PAGE_SIZE = FIXED_SIZE + 255 + 255 * 255;
+    static final byte[] MAGIC = {'O', 'g', 'g', 'S'};
 
     private final byte headerTypeFlag;
     private final long granulePosition;
@@ -56,7 +57,7 @@ public final class OggPage {
 
     public static OggPage read(InputStream in) throws IOException {
         ByteBuffer buffer = IOUtils.readBuffer(in, FIXED_SIZE, ByteOrder.LITTLE_ENDIAN);
-        if (buffer.getInt() != CAPTURE_PATTERN) {
+        if (!IOUtils.matches(buffer, MAGIC)) {
             throw new OggException("Invalid capture pattern");
         }
         byte streamStructureVersion = buffer.get();

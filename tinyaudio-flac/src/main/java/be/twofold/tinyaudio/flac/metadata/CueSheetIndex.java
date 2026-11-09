@@ -6,11 +6,11 @@ import java.nio.ByteBuffer;
 
 public final class CueSheetIndex {
     private final long offset;
-    private final byte number;
+    private final int number;
 
     public CueSheetIndex(
         long offset,
-        byte number
+        int number
     ) {
         this.offset = offset;
         this.number = number;
@@ -18,7 +18,7 @@ public final class CueSheetIndex {
 
     public static CueSheetIndex read(ByteBuffer buffer) throws FlacException {
         long offset = buffer.getLong();
-        byte number = buffer.get();
+        int number = Byte.toUnsignedInt(buffer.get());
         CueSheet.checkPadding(buffer, 3);
 
         return new CueSheetIndex(
@@ -31,7 +31,7 @@ public final class CueSheetIndex {
         return offset;
     }
 
-    public byte number() {
+    public int number() {
         return number;
     }
 }

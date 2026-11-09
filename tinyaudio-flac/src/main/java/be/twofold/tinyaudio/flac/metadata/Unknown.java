@@ -27,6 +27,6 @@ public final class Unknown implements MetadataBlock {
     }
 
     public byte[] data() {
-        return data;
+        return data.clone();
     }
 }

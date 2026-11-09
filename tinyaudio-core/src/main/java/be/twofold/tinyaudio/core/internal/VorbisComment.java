@@ -53,4 +53,12 @@ public final class VorbisComment {
     public Map<String, List<String>> comments() {
         return comments;
     }
+
+    @Override
+    public String toString() {
+        return "VorbisComment{" +
+            "vendor='" + vendor + "', " +
+            "comments=" + comments +
+            "}";
+    }
 }

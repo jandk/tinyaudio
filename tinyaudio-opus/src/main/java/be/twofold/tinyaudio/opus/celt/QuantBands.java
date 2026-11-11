@@ -3,6 +3,8 @@ package be.twofold.tinyaudio.opus.celt;
 import static be.twofold.tinyaudio.opus.celt.Utils.celt_assert;
 
 final class QuantBands {
+    private static final int MAX_FINE_BITS = 8;
+
     private static final float[] pred_coef = {29440 / 32768.0f, 26112 / 32768.0f, 21248 / 32768.0f, 16384 / 32768.0f};
     private static final float[] beta_coef = {30147 / 32768.0f, 22282 / 32768.0f, 12124 / 32768.0f, +6554 / 32768.0f};
     private static final float beta_intra = 4915 / 32768.0f;
@@ -82,6 +84,47 @@ final class QuantBands {
                 oldEBands[i + (c * m.nbEBands)] = tmp;
                 prev[c] = (prev[c] + q) - (beta * q);
             } while (++c < C);
+        }
+    }
+
+    static void unquant_fine_energy(CeltMode m, int end, float[] oldEBands, int[] fine_quant, RangeDecoder dec, int C) {
+        /* Decode finer resolution */
+        for (int i = 0; i < end; i++) {
+            if (fine_quant[i] <= 0) {
+                continue;
+            }
+            /* Skip the band if its bits don't fit in the packet */
+            if (dec.ec_tell() + C * fine_quant[i] > dec.storage * 8) {
+                continue;
+            }
+            int c = 0;
+            do {
+                int q2;
+                float offset;
+                q2 = dec.ec_dec_bits(fine_quant[i]);
+                offset = (q2 + .5f) * (1 << (14 - fine_quant[i])) * (1.f / 16384) - .5f;
+                oldEBands[i + c * m.nbEBands] += offset;
+            } while (++c < C);
+        }
+    }
+
+    static void unquant_energy_finalise(CeltMode m, int end, float[] oldEBands, int[] fine_quant, int[] fine_priority, int bits_left, RangeDecoder dec, int C) {
+        /* Use up the remaining bits */
+        for (int prio = 0; prio < 2; prio++) {
+            for (int i = 0; i < end && bits_left >= C; i++) {
+                if (fine_quant[i] >= MAX_FINE_BITS || fine_priority[i] != prio) {
+                    continue;
+                }
+                int c = 0;
+                do {
+                    int q2;
+                    float offset;
+                    q2 = dec.ec_dec_bits(1);
+                    offset = (q2 - .5f) * (1 << (14 - fine_quant[i] - 1)) * (1.f / 16384);
+                    oldEBands[i + c * m.nbEBands] += offset;
+                    bits_left--;
+                } while (++c < C);
+            }
         }
     }
 }

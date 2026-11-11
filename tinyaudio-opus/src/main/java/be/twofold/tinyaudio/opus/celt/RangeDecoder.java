@@ -13,7 +13,7 @@ final class RangeDecoder {
 
     private static final int EC_WINDOW_SIZE = Integer.SIZE;
     private static final int EC_UINT_BITS = 8;
-    private static final int BITRES = 3;
+    static final int BITRES = 3;
 
     private static final int LAPLACE_LOG_MINP = 0;
     private static final int LAPLACE_MINP = 1 << LAPLACE_LOG_MINP;

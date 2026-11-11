@@ -106,6 +106,24 @@ final class QuantBands {
         }
     }
 
+    static void unquant_energy_finalise(CeltMode m, int end, float[] oldEBands, int[] fine_quant, int[] fine_priority,
+                                        int bits_left, RangeDecoder dec, int C) {
+        // Use up the remaining bits
+        for (int prio = 0; prio < 2; prio++) {
+            for (int i = 0; i < end && bits_left >= C; i++) {
+                if (fine_quant[i] >= MAX_FINE_BITS || fine_priority[i] != prio) {
+                    continue;
+                }
+                for (int c = 0; c < C; c++) {
+                    int q2 = dec.ec_dec_bits(1);
+                    float offset = (q2 - .5f) * (1 << (14 - fine_quant[i] - 1)) * (1.f / 16384);
+                    oldEBands[i + c * m.nbEBands] += offset;
+                    bits_left--;
+                }
+            }
+        }
+    }
+
     static void unquant_fine_energy(CeltMode m, int end, float[] oldEBands, int[] fine_quant, RangeDecoder dec, int C) {
         // Decode finer resolution
         for (int i = 0; i < end; i++) {
@@ -120,23 +138,6 @@ final class QuantBands {
                 int q2 = dec.ec_dec_bits(fine_quant[i]);
                 float offset = (q2 + .5f) * (1 << (14 - fine_quant[i])) * (1.f / 16384) - .5f;
                 oldEBands[i + c * m.nbEBands] += offset;
-            }
-        }
-    }
-
-    static void unquant_energy_finalise(CeltMode m, int end, float[] oldEBands, int[] fine_quant, int[] fine_priority, int bits_left, RangeDecoder dec, int C) {
-        // Use up the remaining bits
-        for (int prio = 0; prio < 2; prio++) {
-            for (int i = 0; i < end && bits_left >= C; i++) {
-                if (fine_quant[i] >= MAX_FINE_BITS || fine_priority[i] != prio) {
-                    continue;
-                }
-                for (int c = 0; c < C; c++) {
-                    int q2 = dec.ec_dec_bits(1);
-                    float offset = (q2 - .5f) * (1 << (14 - fine_quant[i] - 1)) * (1.f / 16384);
-                    oldEBands[i + c * m.nbEBands] += offset;
-                    bits_left--;
-                }
             }
         }
     }

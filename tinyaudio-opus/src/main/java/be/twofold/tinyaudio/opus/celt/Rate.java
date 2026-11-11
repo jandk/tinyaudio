@@ -21,6 +21,28 @@ final class Rate {
     private Rate() {
     }
 
+    static int bits2pulses(CeltMode m, int band, int LM, int bits) {
+        int cacheOff = m.cacheIndex[(LM + 1) * m.nbEBands + band];
+        bits--;
+
+        int lo = 0;
+        int hi = m.cacheBits[cacheOff];
+        for (int i = 0; i < LOG_MAX_PSEUDO; i++) {
+            int mid = (lo + hi + 1) >> 1;
+            // OPT: Make sure this is implemented with a conditional move
+            if (m.cacheBits[cacheOff + mid] >= bits) {
+                hi = mid;
+            } else {
+                lo = mid;
+            }
+        }
+        if (bits - (lo == 0 ? -1 : m.cacheBits[cacheOff + lo]) <= m.cacheBits[cacheOff + hi] - bits) {
+            return lo;
+        } else {
+            return hi;
+        }
+    }
+
     /**
      * Compute the pulse allocation, i.e. how many pulses will go in each band.
      *
@@ -348,28 +370,6 @@ final class Rate {
 
     static int get_pulses(int i) {
         return i < 8 ? i : (8 + (i & 7)) << ((i >> 3) - 1);
-    }
-
-    static int bits2pulses(CeltMode m, int band, int LM, int bits) {
-        int cacheOff = m.cacheIndex[(LM + 1) * m.nbEBands + band];
-        bits--;
-
-        int lo = 0;
-        int hi = m.cacheBits[cacheOff];
-        for (int i = 0; i < LOG_MAX_PSEUDO; i++) {
-            int mid = (lo + hi + 1) >> 1;
-            // OPT: Make sure this is implemented with a conditional move
-            if (m.cacheBits[cacheOff + mid] >= bits) {
-                hi = mid;
-            } else {
-                lo = mid;
-            }
-        }
-        if (bits - (lo == 0 ? -1 : m.cacheBits[cacheOff + lo]) <= m.cacheBits[cacheOff + hi] - bits) {
-            return lo;
-        } else {
-            return hi;
-        }
     }
 
     static int pulses2bits(CeltMode m, int band, int LM, int pulses) {

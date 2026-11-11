@@ -91,21 +91,20 @@ final class RangeDecoder {
     // The minimum number of guaranteed representable energy deltas (in one
     // direction).
     private static final int LAPLACE_NMIN = 16;
-
+    // The size of the buffer.
+    final int storage;
     // Buffered input.
     private final byte[] buf;
     private final int bufOff;
-    // The size of the buffer.
-    final int storage;
+    // The total number of whole bits read.
+    // This does not include partial bits currently in the range coder.
+    int nbits_total;
     // The offset at which the last byte containing raw bits was read.
     private int end_offs;
     // Bits that will be read from the end.
     private int end_window;
     // Number of valid bits in end_window.
     private int nend_bits;
-    // The total number of whole bits read.
-    // This does not include partial bits currently in the range coder.
-    int nbits_total;
     // The offset at which the next range coder byte will be read.
     private int offs;
     // The number of values in the current range.
@@ -159,10 +158,6 @@ final class RangeDecoder {
             // And subtract them from val, capped to be less than EC_CODE_TOP.
             this.val = ((val << EC_SYM_BITS) + (EC_SYM_MAX & ~sym)) & (EC_CODE_TOP - 1);
         }
-    }
-
-    int rng() {
-        return rng;
     }
 
     /**
@@ -256,6 +251,49 @@ final class RangeDecoder {
         return (end_offs < storage) ? Byte.toUnsignedInt(buf[bufOff + storage - ++end_offs]) : 0;
     }
 
+    int ec_laplace_decode(int fs, int decay) {
+        int val = 0;
+        int fm = ec_decode_bin(15);
+        int fl = 0;
+        if (fm >= fs) {
+            val++;
+            fl = fs;
+            int ft = 32768 - (LAPLACE_MINP * 2 * LAPLACE_NMIN) - fs;
+            fs = ((ft * (16384 - decay)) >> 15) + LAPLACE_MINP;
+            // Search the decaying part of the PDF.
+            while ((fs > LAPLACE_MINP) && (fm >= (fl + (2 * fs)))) {
+                fs *= 2;
+                fl += fs;
+                fs = ((fs - (2 * LAPLACE_MINP)) * decay) >> 15;
+                fs += LAPLACE_MINP;
+                val++;
+            }
+            // Everything beyond that has probability LAPLACE_MINP.
+            if (fs <= LAPLACE_MINP) {
+                int di = (fm - fl) >> (LAPLACE_LOG_MINP + 1);
+                val += di;
+                fl += 2 * di * LAPLACE_MINP;
+            }
+            if (fm < (fl + fs)) {
+                val = -val;
+            } else {
+                fl += fs;
+            }
+        }
+        celt_assert(fl < 32768);
+        celt_assert(fs > 0);
+        celt_assert(fl <= fm);
+        celt_assert(fm < Math.min(fl + fs, 32768));
+        ec_dec_update(fl, Math.min(fl + fs, 32768), 32768);
+        return val;
+    }
+
+    int ec_decode_bin(int _bits) {
+        this.ext = rng >>> _bits;
+        int s = Integer.divideUnsigned(val, ext);
+        return (1 << _bits) - Math.min(s + 1, 1 << _bits);
+    }
+
     /**
      * Returns the number of bits "used" by the encoded or decoded symbols so far.
      * This same number can be computed in either the encoder or the decoder, and is
@@ -303,46 +341,7 @@ final class RangeDecoder {
         return nbits - l;
     }
 
-    int ec_laplace_decode(int fs, int decay) {
-        int val = 0;
-        int fm = ec_decode_bin(15);
-        int fl = 0;
-        if (fm >= fs) {
-            val++;
-            fl = fs;
-            int ft = 32768 - (LAPLACE_MINP * 2 * LAPLACE_NMIN) - fs;
-            fs = ((ft * (16384 - decay)) >> 15) + LAPLACE_MINP;
-            // Search the decaying part of the PDF.
-            while ((fs > LAPLACE_MINP) && (fm >= (fl + (2 * fs)))) {
-                fs *= 2;
-                fl += fs;
-                fs = ((fs - (2 * LAPLACE_MINP)) * decay) >> 15;
-                fs += LAPLACE_MINP;
-                val++;
-            }
-            // Everything beyond that has probability LAPLACE_MINP.
-            if (fs <= LAPLACE_MINP) {
-                int di = (fm - fl) >> (LAPLACE_LOG_MINP + 1);
-                val += di;
-                fl += 2 * di * LAPLACE_MINP;
-            }
-            if (fm < (fl + fs)) {
-                val = -val;
-            } else {
-                fl += fs;
-            }
-        }
-        celt_assert(fl < 32768);
-        celt_assert(fs > 0);
-        celt_assert(fl <= fm);
-        celt_assert(fm < Math.min(fl + fs, 32768));
-        ec_dec_update(fl, Math.min(fl + fs, 32768), 32768);
-        return val;
-    }
-
-    int ec_decode_bin(int _bits) {
-        this.ext = rng >>> _bits;
-        int s = Integer.divideUnsigned(val, ext);
-        return (1 << _bits) - Math.min(s + 1, 1 << _bits);
+    int rng() {
+        return rng;
     }
 }

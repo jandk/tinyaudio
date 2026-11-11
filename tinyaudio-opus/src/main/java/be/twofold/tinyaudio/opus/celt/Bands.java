@@ -294,66 +294,8 @@ final class Bands {
         return ctx.seed;
     }
 
-    private void deinterleave_hadamard(float[] X, int XOff, int N0, int stride, boolean hadamard) {
-        celt_assert(stride > 0);
-        int N = N0 * stride;
-        float[] tmp = new float[N];
-        if (hadamard) {
-            int orderyOff = stride - 2;
-            for (int i = 0; i < stride; i++) {
-                int x = XOff + i;
-                int t = ordery_table[orderyOff + i] * N0;
-                for (int j = 0; j < N0; j++) {
-                    tmp[t + j] = X[x + j * stride];
-                }
-            }
-        } else {
-            for (int i = 0; i < stride; i++) {
-                int x = XOff + i;
-                int t = i * N0;
-                for (int j = 0; j < N0; j++) {
-                    tmp[t + j] = X[x + j * stride];
-                }
-            }
-        }
-        System.arraycopy(tmp, 0, X, XOff, N);
-    }
-
-    private void interleave_hadamard(float[] X, int XOff, int N0, int stride, boolean hadamard) {
-        int N = N0 * stride;
-        float[] tmp = new float[N];
-        if (hadamard) {
-            int orderyOff = stride - 2;
-            for (int i = 0; i < stride; i++) {
-                int x = XOff + ordery_table[orderyOff + i] * N0;
-                for (int j = 0; j < N0; j++) {
-                    tmp[j * stride + i] = X[x + j];
-                }
-            }
-        } else {
-            for (int i = 0; i < stride; i++) {
-                int x = XOff + i * N0;
-                for (int j = 0; j < N0; j++) {
-                    tmp[j * stride + i] = X[x + j];
-                }
-            }
-        }
-        System.arraycopy(tmp, 0, X, XOff, N);
-    }
-
-    private void haar1(float[] X, int XOff, int N0, int stride) {
-        N0 >>= 1;
-        for (int i = 0; i < stride; i++) {
-            int xx = XOff + i;
-            for (int j = 0; j < N0; j++) {
-                int i1 = xx + stride * 2 * j;
-                int i2 = i1 + stride;
-                float tmp1 = 0.70710678f * X[i1];
-                float tmp2 = 0.70710678f * X[i2];
-                X[i1] = tmp1 + tmp2;
-                X[i2] = tmp1 - tmp2;
-            }
-        }
+    private int FRAC_MUL16(int a, int b) {
+        return (16384 + (a * b)) >> 15;
     }
 
     /**
@@ -375,28 +317,6 @@ final class Bands {
         icos <<= 15 - lc;
         isin <<= 15 - ls;
         return (((ls - lc) * (1 << 11)) + FRAC_MUL16(isin, FRAC_MUL16(isin, -2597) + 7932)) - FRAC_MUL16(icos, FRAC_MUL16(icos, -2597) + 7932);
-    }
-
-    /**
-     * Uses the second method from http://www.azillionmonkeys.com/qed/sqroot.html.
-     * The main idea is to search for the largest binary digit {@code b} such that
-     * {@code (g+b)*(g+b) <= _val}, and add it to the solution {@code g}.
-     */
-    private int isqrt32(int _val) {
-        int g = 0;
-        for (int bshift = (EC_ILOG(_val) - 1) >> 1; bshift >= 0; bshift--) {
-            int b = 1 << bshift;
-            int t = ((g << 1) + b) << bshift;
-            if (t <= _val) {
-                g += b;
-                _val -= t;
-            }
-        }
-        return g;
-    }
-
-    private int FRAC_MUL16(int a, int b) {
-        return (16384 + (a * b)) >> 15;
     }
 
     private int compute_qn(int N, int b, int offset, int pulse_cap, boolean stereo) {
@@ -513,140 +433,83 @@ final class Bands {
         sctx_fill = fill;
     }
 
-    /**
-     * Special case for one sample: just a sign per channel.
-     */
-    private int quant_band_n1(float[] X, int XOff, float[] Y, int YOff, float[] lowband_out, int lowband_outOff) {
-        X[XOff] = readFloatSign();
-        if (Y != null) {
-            Y[YOff] = readFloatSign();
-        }
-        if (lowband_out != null) {
-            lowband_out[lowband_outOff] = X[XOff];
-        }
-        return 1;
-    }
-
-    private float readFloatSign() {
-        if (remaining_bits < 1 << BITRES) {
-            return 1.0f;
-        }
-        remaining_bits -= 1 << BITRES;
-        return ec.ec_dec_bits(1) != 0 ? -1.0f : 1.0f;
-    }
-
-    /**
-     * Decodes a mono partition. It can split the band in two and transmit the energy
-     * difference between the two half-bands. It is called recursively, so a band can
-     * end up split in 8 parts.
-     */
-    private int quant_partition(
-            float[] X, int XOff, int N, int b, int B,
-            float[] lowband, int lowbandOff, int LM, float gain, int fill
-    ) {
-        int B0 = B;
-        int cm = 0;
-
-        // If we need 1.5 more bit than we can produce, split the band in two.
-        short[] cache = m.cacheBits;
-        int cacheOff = m.cacheIndex[(LM + 1) * m.nbEBands + i];
-        if (LM != -1 && b > cache[cacheOff + cache[cacheOff]] + 12 && N > 2) {
-            N >>= 1;
-            LM -= 1;
-            if (B == 1) {
-                fill = (fill & 1) | (fill << 1);
-            }
-            B = (B + 1) >> 1;
-
-            compute_theta(N, b, B, B0, LM, false, fill);
-            b = sctx_b;
-            fill = sctx_fill;
-            float mid = sctx_imid * (1.0f / 32768.0f);
-            float side = sctx_iside * (1.0f / 32768.0f);
-            int delta = sctx_delta;
-            int itheta = sctx_itheta;
-
-            // Give more bits to low-energy MDCTs than they would otherwise deserve
-            if (B0 > 1 && (itheta & 0x3fff) != 0) {
-                if (itheta > 8192) {
-                    // Rough approximation for pre-echo masking
-                    delta -= delta >> (4 - LM);
-                } else {
-                    // Corresponds to a forward-masking slope of 1.5 dB per 10 ms
-                    delta = Math.min(0, delta + (N << BITRES >> (5 - LM)));
+    private void deinterleave_hadamard(float[] X, int XOff, int N0, int stride, boolean hadamard) {
+        celt_assert(stride > 0);
+        int N = N0 * stride;
+        float[] tmp = new float[N];
+        if (hadamard) {
+            int orderyOff = stride - 2;
+            for (int i = 0; i < stride; i++) {
+                int x = XOff + i;
+                int t = ordery_table[orderyOff + i] * N0;
+                for (int j = 0; j < N0; j++) {
+                    tmp[t + j] = X[x + j * stride];
                 }
-            }
-            int mbits = Math.max(0, Math.min(b, (b - delta) / 2));
-            int sbits = b - mbits;
-            remaining_bits -= sctx_qalloc;
-
-            int rebalance = remaining_bits;
-            if (mbits >= sbits) {
-                cm = quant_partition(X, XOff, N, mbits, B, lowband, lowbandOff, LM, gain * mid, fill);
-                rebalance = mbits - (rebalance - remaining_bits);
-                if (rebalance > 3 << BITRES && itheta != 0) {
-                    sbits += rebalance - (3 << BITRES);
-                }
-                cm |= quant_partition(X, XOff + N, N, sbits, B, lowband, lowbandOff + N, LM, gain * side, fill >> B) << (B0 >> 1);
-            } else {
-                cm = quant_partition(X, XOff + N, N, sbits, B, lowband, lowbandOff + N, LM, gain * side, fill >> B) << (B0 >> 1);
-                rebalance = sbits - (rebalance - remaining_bits);
-                if (rebalance > 3 << BITRES && itheta != 16384) {
-                    mbits += rebalance - (3 << BITRES);
-                }
-                cm |= quant_partition(X, XOff, N, mbits, B, lowband, lowbandOff, LM, gain * mid, fill);
             }
         } else {
-            // This is the basic no-split case
-            int q = Rate.bits2pulses(m, i, LM, b);
-            int curr_bits = Rate.pulses2bits(m, i, LM, q);
-            remaining_bits -= curr_bits;
-
-            // Ensures we can never bust the budget
-            while (remaining_bits < 0 && q > 0) {
-                remaining_bits += curr_bits;
-                q--;
-                curr_bits = Rate.pulses2bits(m, i, LM, q);
-                remaining_bits -= curr_bits;
-            }
-
-            if (q != 0) {
-                int K = Rate.get_pulses(q);
-
-                // Finally decode the pulses
-                cm = Vq.alg_unquant(X, XOff, N, K, spread, B, ec, gain);
-            } else {
-                // If there's no pulse, fill the band anyway
-                int cm_mask = (1 << B) - 1;
-                fill &= cm_mask;
-                if (fill == 0) {
-                    for (int j = 0; j < N; j++) {
-                        X[XOff + j] = 0;
-                    }
-                } else {
-                    if (lowband == null) {
-                        // Noise
-                        for (int j = 0; j < N; j++) {
-                            seed = celt_lcg_rand(seed);
-                            X[XOff + j] = (float) (seed >> 20);
-                        }
-                        cm = cm_mask;
-                    } else {
-                        // Folded spectrum
-                        for (int j = 0; j < N; j++) {
-                            seed = celt_lcg_rand(seed);
-                            // About 48 dB below the "normal" folding level
-                            float tmp = (seed & 0x8000) != 0 ? 1.0f / 256 : -1.0f / 256;
-                            X[XOff + j] = lowband[lowbandOff + j] + tmp;
-                        }
-                        cm = fill;
-                    }
-                    Vq.renormalise_vector(X, XOff, N, gain);
+            for (int i = 0; i < stride; i++) {
+                int x = XOff + i;
+                int t = i * N0;
+                for (int j = 0; j < N0; j++) {
+                    tmp[t + j] = X[x + j * stride];
                 }
             }
         }
+        System.arraycopy(tmp, 0, X, XOff, N);
+    }
 
-        return cm;
+    private void haar1(float[] X, int XOff, int N0, int stride) {
+        N0 >>= 1;
+        for (int i = 0; i < stride; i++) {
+            int xx = XOff + i;
+            for (int j = 0; j < N0; j++) {
+                int i1 = xx + stride * 2 * j;
+                int i2 = i1 + stride;
+                float tmp1 = 0.70710678f * X[i1];
+                float tmp2 = 0.70710678f * X[i2];
+                X[i1] = tmp1 + tmp2;
+                X[i2] = tmp1 - tmp2;
+            }
+        }
+    }
+
+    private void interleave_hadamard(float[] X, int XOff, int N0, int stride, boolean hadamard) {
+        int N = N0 * stride;
+        float[] tmp = new float[N];
+        if (hadamard) {
+            int orderyOff = stride - 2;
+            for (int i = 0; i < stride; i++) {
+                int x = XOff + ordery_table[orderyOff + i] * N0;
+                for (int j = 0; j < N0; j++) {
+                    tmp[j * stride + i] = X[x + j];
+                }
+            }
+        } else {
+            for (int i = 0; i < stride; i++) {
+                int x = XOff + i * N0;
+                for (int j = 0; j < N0; j++) {
+                    tmp[j * stride + i] = X[x + j];
+                }
+            }
+        }
+        System.arraycopy(tmp, 0, X, XOff, N);
+    }
+
+    /**
+     * Uses the second method from http://www.azillionmonkeys.com/qed/sqroot.html. The main idea is to search for the
+     * largest binary digit {@code b} such that {@code (g+b)*(g+b) <= _val}, and add it to the solution {@code g}.
+     */
+    private int isqrt32(int _val) {
+        int g = 0;
+        for (int bshift = (EC_ILOG(_val) - 1) >> 1; bshift >= 0; bshift--) {
+            int b = 1 << bshift;
+            int t = ((g << 1) + b) << bshift;
+            if (t <= _val) {
+                g += b;
+                _val -= t;
+            }
+        }
+        return g;
     }
 
     /**
@@ -734,6 +597,20 @@ final class Bands {
         }
         cm &= (1 << B) - 1;
         return cm;
+    }
+
+    /**
+     * Special case for one sample: just a sign per channel.
+     */
+    private int quant_band_n1(float[] X, int XOff, float[] Y, int YOff, float[] lowband_out, int lowband_outOff) {
+        X[XOff] = readFloatSign();
+        if (Y != null) {
+            Y[YOff] = readFloatSign();
+        }
+        if (lowband_out != null) {
+            lowband_out[lowband_outOff] = X[XOff];
+        }
+        return 1;
     }
 
     /**
@@ -839,6 +716,127 @@ final class Bands {
             }
         }
         return cm;
+    }
+
+    /**
+     * Decodes a mono partition. It can split the band in two and transmit the energy difference between the two
+     * half-bands. It is called recursively, so a band can end up split in 8 parts.
+     */
+    private int quant_partition(float[] X, int XOff, int N, int b, int B, float[] lowband, int lowbandOff, int LM,
+                                float gain, int fill) {
+        int B0 = B;
+        int cm = 0;
+
+        // If we need 1.5 more bit than we can produce, split the band in two.
+        short[] cache = m.cacheBits;
+        int cacheOff = m.cacheIndex[(LM + 1) * m.nbEBands + i];
+        if (LM != -1 && b > cache[cacheOff + cache[cacheOff]] + 12 && N > 2) {
+            N >>= 1;
+            LM -= 1;
+            if (B == 1) {
+                fill = (fill & 1) | (fill << 1);
+            }
+            B = (B + 1) >> 1;
+
+            compute_theta(N, b, B, B0, LM, false, fill);
+            b = sctx_b;
+            fill = sctx_fill;
+            float mid = sctx_imid * (1.0f / 32768.0f);
+            float side = sctx_iside * (1.0f / 32768.0f);
+            int delta = sctx_delta;
+            int itheta = sctx_itheta;
+
+            // Give more bits to low-energy MDCTs than they would otherwise deserve
+            if (B0 > 1 && (itheta & 0x3fff) != 0) {
+                if (itheta > 8192) {
+                    // Rough approximation for pre-echo masking
+                    delta -= delta >> (4 - LM);
+                } else {
+                    // Corresponds to a forward-masking slope of 1.5 dB per 10 ms
+                    delta = Math.min(0, delta + (N << BITRES >> (5 - LM)));
+                }
+            }
+            int mbits = Math.max(0, Math.min(b, (b - delta) / 2));
+            int sbits = b - mbits;
+            remaining_bits -= sctx_qalloc;
+
+            int rebalance = remaining_bits;
+            if (mbits >= sbits) {
+                cm = quant_partition(X, XOff, N, mbits, B, lowband, lowbandOff, LM, gain * mid, fill);
+                rebalance = mbits - (rebalance - remaining_bits);
+                if (rebalance > 3 << BITRES && itheta != 0) {
+                    sbits += rebalance - (3 << BITRES);
+                }
+                cm |= quant_partition(X, XOff + N, N, sbits, B, lowband, lowbandOff + N, LM, gain * side,
+                    fill >> B) << (B0 >> 1);
+            } else {
+                cm = quant_partition(X, XOff + N, N, sbits, B, lowband, lowbandOff + N, LM, gain * side,
+                    fill >> B) << (B0 >> 1);
+                rebalance = sbits - (rebalance - remaining_bits);
+                if (rebalance > 3 << BITRES && itheta != 16384) {
+                    mbits += rebalance - (3 << BITRES);
+                }
+                cm |= quant_partition(X, XOff, N, mbits, B, lowband, lowbandOff, LM, gain * mid, fill);
+            }
+        } else {
+            // This is the basic no-split case
+            int q = Rate.bits2pulses(m, i, LM, b);
+            int curr_bits = Rate.pulses2bits(m, i, LM, q);
+            remaining_bits -= curr_bits;
+
+            // Ensures we can never bust the budget
+            while (remaining_bits < 0 && q > 0) {
+                remaining_bits += curr_bits;
+                q--;
+                curr_bits = Rate.pulses2bits(m, i, LM, q);
+                remaining_bits -= curr_bits;
+            }
+
+            if (q != 0) {
+                int K = Rate.get_pulses(q);
+
+                // Finally decode the pulses
+                cm = Vq.alg_unquant(X, XOff, N, K, spread, B, ec, gain);
+            } else {
+                // If there's no pulse, fill the band anyway
+                int cm_mask = (1 << B) - 1;
+                fill &= cm_mask;
+                if (fill == 0) {
+                    for (int j = 0; j < N; j++) {
+                        X[XOff + j] = 0;
+                    }
+                } else {
+                    if (lowband == null) {
+                        // Noise
+                        for (int j = 0; j < N; j++) {
+                            seed = celt_lcg_rand(seed);
+                            X[XOff + j] = (float) (seed >> 20);
+                        }
+                        cm = cm_mask;
+                    } else {
+                        // Folded spectrum
+                        for (int j = 0; j < N; j++) {
+                            seed = celt_lcg_rand(seed);
+                            // About 48 dB below the "normal" folding level
+                            float tmp = (seed & 0x8000) != 0 ? 1.0f / 256 : -1.0f / 256;
+                            X[XOff + j] = lowband[lowbandOff + j] + tmp;
+                        }
+                        cm = fill;
+                    }
+                    Vq.renormalise_vector(X, XOff, N, gain);
+                }
+            }
+        }
+
+        return cm;
+    }
+
+    private float readFloatSign() {
+        if (remaining_bits < 1 << BITRES) {
+            return 1.0f;
+        }
+        remaining_bits -= 1 << BITRES;
+        return ec.ec_dec_bits(1) != 0 ? -1.0f : 1.0f;
     }
 
     private void stereo_merge(float[] X, int XOff, float[] Y, int YOff, float mid, int N) {

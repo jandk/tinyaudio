@@ -59,7 +59,7 @@ public final class CeltDecoder {
         Arrays.fill(oldLogE2, -28.f);
     }
 
-    private static int resampling_factor(int rate) {
+    private int resampling_factor(int rate) {
         switch (rate) {
             case 48000:
                 return 1;
@@ -75,10 +75,6 @@ public final class CeltDecoder {
                 celt_assert(false);
                 return 0;
         }
-    }
-
-    public int rng() {
-        return rng;
     }
 
     public int celt_decode_with_ec(byte[] data, int dataOff, int len, float[] pcm, int pcmOff, int frame_size, int C, int end) {
@@ -301,8 +297,72 @@ public final class CeltDecoder {
         return frame_size / downsample;
     }
 
-    private static void comb_filter(float[] y, int yOff, float[] x, int xOff, int T0, int T1, int N,
-                                    float g0, float g1, int tapset0, int tapset1, float[] window, int overlap) {
+    private void tf_decode(int end, int isTransient, int[] tf_res, int LM, RangeDecoder dec) {
+        int budget = dec.storage * 8;
+        int tell = dec.ec_tell();
+        int logp = isTransient != 0 ? 2 : 4;
+        int tf_select_rsv = LM > 0 && tell + logp + 1 <= budget ? 1 : 0;
+        budget -= tf_select_rsv;
+        int tf_changed = 0;
+        int curr = 0;
+        for (int i = 0; i < end; i++) {
+            if (tell + logp <= budget) {
+                curr ^= dec.ec_dec_bit_logp(logp);
+                tell = dec.ec_tell();
+                tf_changed |= curr;
+            }
+            tf_res[i] = curr;
+            logp = isTransient != 0 ? 4 : 5;
+        }
+        int tf_select = 0;
+        if (tf_select_rsv != 0 && tf_select_table[LM][4 * isTransient + tf_changed] != tf_select_table[LM][4 * isTransient + 2 + tf_changed]) {
+            tf_select = dec.ec_dec_bit_logp(1);
+        }
+        for (int i = 0; i < end; i++) {
+            tf_res[i] = tf_select_table[LM][4 * isTransient + 2 * tf_select + tf_res[i]];
+        }
+    }
+
+    private void init_caps(CeltMode m, int[] cap, int LM, int C) {
+        for (int i = 0; i < m.nbEBands; i++) {
+            int N = (m.eBands[i + 1] - m.eBands[i]) << LM;
+            cap[i] = (m.cacheCaps[m.nbEBands * (2 * LM + C - 1) + i] + 64) * C * N >> 2;
+        }
+    }
+
+    /**
+     * Turns the normalised spectrum X of C coded channels into CC output channels of time-domain signal (upmixing or
+     * downmixing as needed).
+     */
+    private void celt_synthesis(float[] X, float[] out_mem, int[] out_synOff, int[] overlap_memOff, float[] oldBandE,
+                                int end, int C, int CC, int shortBlocks, int LM, int downsample, int silence) {
+        int M = 1 << LM;
+        int N = mode.shortMdctSize << LM;
+        float[] freq = new float[CC * N];
+
+        if (CC == 2 && C == 1) {
+            // Copy mono to stereo
+            Bands.denormalise_bands(mode, X, 0, freq, 0, oldBandE, 0, end, M, downsample, silence);
+            System.arraycopy(freq, 0, freq, N, N);
+        } else if (CC == 1 && C == 2) {
+            // Downmix stereo to mono
+            float[] freq2 = new float[N];
+            Bands.denormalise_bands(mode, X, 0, freq, 0, oldBandE, 0, end, M, downsample, silence);
+            Bands.denormalise_bands(mode, X, N, freq2, 0, oldBandE, mode.nbEBands, end, M, downsample, silence);
+            for (int i = 0; i < N; i++) {
+                freq[i] = .5f * (freq[i] + freq2[i]);
+            }
+        } else {
+            for (int c = 0; c < CC; c++) {
+                Bands.denormalise_bands(mode, X, c * N, freq, c * N, oldBandE, c * mode.nbEBands, end, M, downsample,
+                    silence);
+            }
+        }
+        compute_inv_mdcts(shortBlocks, freq, out_mem, out_synOff, overlap_memOff, CC, LM);
+    }
+
+    private void comb_filter(float[] y, int yOff, float[] x, int xOff, int T0, int T1, int N, float g0, float g1,
+                             int tapset0, int tapset1, float[] window, int overlap) {
         if (g0 == 0 && g1 == 0) {
             if (x != y || xOff != yOff) {
                 System.arraycopy(x, xOff, y, yOff, N);
@@ -345,7 +405,8 @@ public final class CeltDecoder {
         }
     }
 
-    private static void deemphasis(float[] in, int[] inOff, float[] pcm, int pcmOff, int N, int C, int downsample, float[] coef, float[] mem) {
+    private void deemphasis(float[] in, int[] inOff, float[] pcm, int pcmOff, int N, int C, int downsample,
+                            float[] coef, float[] mem) {
         int count = 0;
         for (int c = 0; c < C; c++) {
             float m = mem[c];
@@ -369,77 +430,6 @@ public final class CeltDecoder {
             }
             mem[c] = m;
         }
-    }
-
-    private static float SCALEOUT(float a) {
-        return a * (1 / CELT_SIG_SCALE);
-    }
-
-    static void tf_decode(int end, int isTransient, int[] tf_res, int LM, RangeDecoder dec) {
-        int budget = dec.storage * 8;
-        int tell = dec.ec_tell();
-        int logp = isTransient != 0 ? 2 : 4;
-        int tf_select_rsv = LM > 0 && tell + logp + 1 <= budget ? 1 : 0;
-        budget -= tf_select_rsv;
-        int tf_changed = 0;
-        int curr = 0;
-        for (int i = 0; i < end; i++) {
-            if (tell + logp <= budget) {
-                curr ^= dec.ec_dec_bit_logp(logp);
-                tell = dec.ec_tell();
-                tf_changed |= curr;
-            }
-            tf_res[i] = curr;
-            logp = isTransient != 0 ? 4 : 5;
-        }
-        int tf_select = 0;
-        if (tf_select_rsv != 0 &&
-            tf_select_table[LM][4 * isTransient + tf_changed] != tf_select_table[LM][4 * isTransient + 2 + tf_changed]) {
-            tf_select = dec.ec_dec_bit_logp(1);
-        }
-        for (int i = 0; i < end; i++) {
-            tf_res[i] = tf_select_table[LM][4 * isTransient + 2 * tf_select + tf_res[i]];
-        }
-    }
-
-    static void init_caps(CeltMode m, int[] cap, int LM, int C) {
-        for (int i = 0; i < m.nbEBands; i++) {
-            int N = (m.eBands[i + 1] - m.eBands[i]) << LM;
-            cap[i] = (m.cacheCaps[m.nbEBands * (2 * LM + C - 1) + i] + 64) * C * N >> 2;
-        }
-    }
-
-    /**
-     * Turns the normalised spectrum X of C coded channels into CC output
-     * channels of time-domain signal (upmixing or downmixing as needed).
-     */
-    private void celt_synthesis(
-        float[] X, float[] out_mem, int[] out_synOff, int[] overlap_memOff,
-        float[] oldBandE, int end, int C, int CC, int shortBlocks, int LM,
-        int downsample, int silence
-    ) {
-        int M = 1 << LM;
-        int N = mode.shortMdctSize << LM;
-        float[] freq = new float[CC * N];
-
-        if (CC == 2 && C == 1) {
-            // Copy mono to stereo
-            Bands.denormalise_bands(mode, X, 0, freq, 0, oldBandE, 0, end, M, downsample, silence);
-            System.arraycopy(freq, 0, freq, N, N);
-        } else if (CC == 1 && C == 2) {
-            // Downmix stereo to mono
-            float[] freq2 = new float[N];
-            Bands.denormalise_bands(mode, X, 0, freq, 0, oldBandE, 0, end, M, downsample, silence);
-            Bands.denormalise_bands(mode, X, N, freq2, 0, oldBandE, mode.nbEBands, end, M, downsample, silence);
-            for (int i = 0; i < N; i++) {
-                freq[i] = .5f * (freq[i] + freq2[i]);
-            }
-        } else {
-            for (int c = 0; c < CC; c++) {
-                Bands.denormalise_bands(mode, X, c * N, freq, c * N, oldBandE, c * mode.nbEBands, end, M, downsample, silence);
-            }
-        }
-        compute_inv_mdcts(shortBlocks, freq, out_mem, out_synOff, overlap_memOff, CC, LM);
     }
 
     /**
@@ -479,5 +469,13 @@ public final class CeltDecoder {
             System.arraycopy(x, overlap, out_mem, out_memOffC + overlap, N - overlap);
             System.arraycopy(x, N, out_mem, overlap_memOffC, overlap);
         }
+    }
+
+    private float SCALEOUT(float a) {
+        return a * (1 / CELT_SIG_SCALE);
+    }
+
+    public int rng() {
+        return rng;
     }
 }

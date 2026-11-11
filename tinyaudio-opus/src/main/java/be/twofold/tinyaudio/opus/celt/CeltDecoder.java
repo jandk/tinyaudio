@@ -53,6 +53,7 @@ public final class CeltDecoder {
             silence = 0;
         }
         if (silence != 0) {
+            // Pretend we've read all the remaining bits
             tell = len * 8;
             dec.nbits_total += tell - dec.ec_tell();
         }
@@ -108,15 +109,12 @@ public final class CeltDecoder {
         total_bits <<= BITRES;
         tell = dec.ec_tell_frac();
         for (int i = 0; i < end; i++) {
-            int width, quanta;
-            int dynalloc_loop_logp;
-            int boost;
-            width = C * (mode.eBands[i + 1] - mode.eBands[i]) << LM;
-            /* quanta is 6 bits, but no more than 1 bit/sample
-               and no less than 1/8 bit/sample */
-            quanta = Math.min(width << BITRES, Math.max(6 << BITRES, width));
-            dynalloc_loop_logp = dynalloc_logp;
-            boost = 0;
+            int width = C * (mode.eBands[i + 1] - mode.eBands[i]) << LM;
+            // quanta is 6 bits, but no more than 1 bit/sample
+            // and no less than 1/8 bit/sample
+            int quanta = Math.min(width << BITRES, Math.max(6 << BITRES, width));
+            int dynalloc_loop_logp = dynalloc_logp;
+            int boost = 0;
             while (tell + (dynalloc_loop_logp << BITRES) < total_bits && boost < cap[i]) {
                 int flag = dec.ec_dec_bit_logp(dynalloc_loop_logp);
                 tell = dec.ec_tell_frac();
@@ -128,7 +126,7 @@ public final class CeltDecoder {
                 dynalloc_loop_logp = 1;
             }
             offsets[i] = boost;
-            /* Making dynalloc more likely */
+            // Making dynalloc more likely
             if (boost > 0) {
                 dynalloc_logp = Math.max(2, dynalloc_logp - 1);
             }
@@ -150,9 +148,9 @@ public final class CeltDecoder {
 
         QuantBands.unquant_fine_energy(mode, end, oldBandE, fine_quant, dec, C);
 
-        /* Decode fixed codebook */
+        // Decode fixed codebook
         int N = mode.shortMdctSize << LM;
-        float[] X = new float[C * N];
+        float[] X = new float[C * N]; // Interleaved normalised MDCTs
         int[] collapse_masks = new int[C * mode.nbEBands];
         rng = Bands.quant_all_bands(mode, end, X, C == 2 ? X : null, N, collapse_masks,
             pulses, shortBlocks, spread_decision, dual_stereo[0] != 0, intensity[0], tf_res,

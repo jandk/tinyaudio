@@ -21,18 +21,17 @@ public final class OpusDecoder implements AudioDecoder {
     private final OpusIdentification identification;
 
     private final int[] frames = new int[49];
-    private final int[] size = new int[48];
+    private final int[] size = new int[48]; // 48 x 2.5 ms = 120 ms
 
     private final CeltDecoder celt_dec;
     private final int channels;
-    private final int Fs = 48000;
+    private final int Fs = 48000; // Sampling rate (at the API level)
 
-    /* Everything beyond this point gets cleared on a reset */
+    // Everything beyond this point gets cleared on a reset
     private int stream_channels;
     private int bandwidth;
     private int frame_size;
     int rangeFinal;
-
 
     OpusDecoder(PacketSource packets, OpusIdentification identification) {
         this.packets = Objects.requireNonNull(packets);
@@ -62,8 +61,11 @@ public final class OpusDecoder implements AudioDecoder {
         packets.close();
     }
 
+    /**
+     * Decodes one CELT frame of the current packet (frame size {@code frame_size}).
+     */
     private int opus_decode_frame(byte[] data, int dataOff, int len, float[] pcm, int pcmOff) {
-        /* A frame of 0 or 1 bytes (1 or 2 including the ToC) is lost: output silence */
+        // A frame of 0 or 1 bytes (1 or 2 including the ToC) is lost: output silence
         if (len <= 1) {
             Arrays.fill(pcm, pcmOff, pcmOff + frame_size * channels, 0);
             rangeFinal = 0;
@@ -136,7 +138,7 @@ public final class OpusDecoder implements AudioDecoder {
                 if (len < 1) {
                     throw new OpusException("OPUS_INVALID_PACKET");
                 }
-                /* Number of frames encoded in bits 0 to 5 */
+                // Number of frames encoded in bits 0 to 5
                 byte ch = data[dataOff++];
                 count = ch & 0x3F;
                 int framesize = opus_packet_get_samples_per_frame(toc, 48000);
@@ -144,16 +146,16 @@ public final class OpusDecoder implements AudioDecoder {
                     throw new OpusException("OPUS_INVALID_PACKET");
                 }
                 len--;
-                /* Padding flag is bit 6 */
+                // Padding flag is bit 6
                 if ((ch & 0x40) != 0) {
-                    int p, tmp;
+                    int p;
                     do {
                         if (len <= 0) {
                             throw new OpusException("OPUS_INVALID_PACKET");
                         }
                         p = Byte.toUnsignedInt(data[dataOff++]);
                         len--;
-                        tmp = (p == 255) ? 254 : p;
+                        int tmp = (p == 255) ? 254 : p;
                         len -= tmp;
                         pad += tmp;
                     } while (p == 255);
@@ -161,10 +163,10 @@ public final class OpusDecoder implements AudioDecoder {
                 if (len < 0) {
                     throw new OpusException("OPUS_INVALID_PACKET");
                 }
-                /* VBR flag is bit 7 */
+                // VBR flag is bit 7
                 cbr = (ch & 0x80) == 0;
                 if (!cbr) {
-                    /* VBR case */
+                    // VBR case
                     last_size = len;
                     for (int i = 0; i < (count - 1); i++) {
                         size[i] = parse_size(data, dataOff, len);
@@ -180,7 +182,7 @@ public final class OpusDecoder implements AudioDecoder {
                         throw new OpusException("OPUS_INVALID_PACKET");
                     }
                 } else if (!self_delimited) {
-                    /* CBR case */
+                    // CBR case
                     last_size = len / count;
                     if ((last_size * count) != len) {
                         throw new OpusException("OPUS_INVALID_PACKET");
@@ -193,7 +195,7 @@ public final class OpusDecoder implements AudioDecoder {
             }
         }
 
-        /* Self-delimited framing has an extra size for the last frame. */
+        // Self-delimited framing has an extra size for the last frame.
         if (self_delimited) {
             size[count - 1] = parse_size(data, dataOff, len);
             int bytes = (size[count - 1] < 252) ? 1 : 2;
@@ -202,7 +204,7 @@ public final class OpusDecoder implements AudioDecoder {
                 throw new OpusException("OPUS_INVALID_PACKET");
             }
             dataOff += bytes;
-            /* For CBR packets, apply the size to all the frames. */
+            // For CBR packets, apply the size to all the frames.
             if (cbr) {
                 if ((size[count - 1] * count) > len) {
                     throw new OpusException("OPUS_INVALID_PACKET");
@@ -214,6 +216,9 @@ public final class OpusDecoder implements AudioDecoder {
                 throw new OpusException("OPUS_INVALID_PACKET");
             }
         } else {
+            // Because it's not encoded explicitly, it's possible the size of the
+            // last packet (or all the packets, for the CBR case) is larger than
+            // 1275. Reject them here.
             if (last_size > 1275) {
                 throw new OpusException("OPUS_INVALID_PACKET");
             }
@@ -224,11 +229,15 @@ public final class OpusDecoder implements AudioDecoder {
             frames[i] = dataOff;
             dataOff += size[i];
         }
+        // The padding sits after the last frame, so the next self-delimited
+        // packet starts past it.
         frames[count] = dataOff + pad;
         return count;
     }
 
     int opus_decode_native(byte[] data, int dataOff, int len, float[] pcm, int pcmOff, int frame_size, boolean self_delimited) throws OpusException {
+        // SILK-only and hybrid packets are not supported: only CELT is built in.
+        // Reject them before touching any decoder state.
         byte toc = data[dataOff];
         if ((toc & 0x80) == 0) {
             throw new OpusException("OPUS_INVALID_PACKET");
@@ -240,7 +249,7 @@ public final class OpusDecoder implements AudioDecoder {
             throw new OpusException("OPUS_BUFFER_TOO_SMALL");
         }
 
-        /* The packet is valid: only now update the decoder state */
+        // The packet is valid: only now update the decoder state
         bandwidth = opus_packet_get_bandwidth(toc);
         this.frame_size = packet_frame_size;
         this.stream_channels = opus_packet_get_nb_channels(toc);

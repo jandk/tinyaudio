@@ -3,11 +3,13 @@ package be.twofold.tinyaudio.opus.celt;
 public final class CeltMode {
     // @formatter:off
     private static final short[] eband5ms = {
-      /*0  200 400 600 800  1k 1.2 1.4 1.6  2k 2.4 2.8 3.2  4k 4.8 5.6 6.8  8k 9.6 12k 15.6 */
+      // 0  200 400 600 800  1k 1.2 1.4 1.6  2k 2.4 2.8 3.2  4k 4.8 5.6 6.8  8k 9.6 12k 15.6
         0,  1,  2,  3,  4,  5,  6,  7,  8, 10, 12, 14, 16, 20, 24, 28, 34, 40, 48, 60, 78, 100
     };
+    // Alternate tuning (partially derived from Vorbis)
+    // Bit allocation table in units of 1/32 bit/sample (0.1875 dB SNR)
     private static final short[] band_allocation = {
-        /*0  200 400 600 800  1k 1.2 1.4 1.6  2k 2.4 2.8 3.2  4k 4.8 5.6 6.8  8k 9.6 12k 15.6 */
+        //0  200 400 600 800  1k 1.2 1.4 1.6  2k 2.4 2.8 3.2  4k 4.8 5.6 6.8  8k 9.6 12k 15.6
           0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
          90, 80, 75, 69, 63, 56, 49, 40, 34, 29, 20, 18, 10,  0,  0,  0,  0,  0,  0,  0,  0,
         110,100, 90, 84, 78, 71, 65, 58, 51, 45, 39, 32, 26, 20, 12,  0,  0,  0,  0,  0,  0,
@@ -107,12 +109,12 @@ public final class CeltMode {
     final int nbEBands;
     final int effEBands;
     final float[] preemph;
-    final short[] eBands;
+    final short[] eBands; // Definition for each "pseudo-critical band"
     final int maxLM;
     final int nbShortMdcts;
     final int shortMdctSize;
-    final int nbAllocVectors;
-    final short[] allocVectors;
+    final int nbAllocVectors; // Number of lines in the matrix below
+    final short[] allocVectors; // Number of bits in each band for several rates
     final short[] logN;
     final float[] window;
     // mdct_lookup mdct; // Gotta grab this one later

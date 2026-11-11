@@ -22,6 +22,10 @@ final class Bands {
     private static final short[] exp2_table8 = {
             16384, 17866, 19483, 21247, 23170, 25267, 27554, 30048
     };
+    // Indexing table for converting from natural Hadamard to ordery Hadamard
+    // This is essentially a bit-reversed Gray, on top of which we've added
+    // an inversion of the order because we want the DC at the end rather than
+    // the beginning. The lines are for N=2, 4, 8, 16
     private static final byte[] ordery_table = {
             1, 0,
             3, 0, 2, 1,
@@ -29,6 +33,7 @@ final class Bands {
             15, 0, 8, 7, 12, 3, 11, 4, 14, 1, 9, 6, 13, 2, 10, 5,
     };
 
+    // State shared by all the calls that code one band
     private final CeltMode m;
     private final int intensity;
     private final int spread;
@@ -39,6 +44,7 @@ final class Bands {
     private int remaining_bits;
     private int seed;
 
+    // Result of coding the split angle theta
     private boolean sctx_inv;
     private int sctx_imid;
     private int sctx_iside;
@@ -135,8 +141,7 @@ final class Bands {
                 }
             }
 
-            // Get a conservative estimate of the collapse_mask's for the bands we're
-            // going to be folding from.
+            // Get a conservative estimate of the collapse_mask's for the bands we're going to be folding from.
             int effective_lowband = -1;
             int x_cm;
             int y_cm;
@@ -158,8 +163,7 @@ final class Bands {
                     y_cm |= collapse_masks[fold_i * C + C - 1];
                 }
             } else {
-                // Otherwise, we'll be using the LCG to fold, so all blocks will (almost
-                // always) be non-zero.
+                // Otherwise, we'll be using the LCG to fold, so all blocks will (almost always) be non-zero.
                 x_cm = (1 << B) - 1;
                 y_cm = (1 << B) - 1;
             }
@@ -326,6 +330,10 @@ final class Bands {
         return qn;
     }
 
+    /**
+     * Decodes the angle theta that splits the band energy between two vectors:
+     * the two halves of a mono band, or mid and side of a stereo one.
+     */
     private void compute_theta(int N, int b, int B, int B0, int LM, boolean stereo, int fill) {
         // Decide on the resolution to give to the split parameter theta
         int pulse_cap = m.logN[i] + LM * (1 << BITRES);

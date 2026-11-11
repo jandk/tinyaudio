@@ -20,19 +20,21 @@ final class RangeDecoder {
     private static final int LAPLACE_NMIN = 16;
 
     private final byte[] buf;
+    private final int bufOff;
     private final int storage;
     private int end_offs;
     private int end_window;
     private int nend_bits;
-    private int nbits_total;
+    int nbits_total;
     private int offs;
     private int rng;
     private int val;
     private int ext;
     private int rem;
 
-    RangeDecoder(byte[] buf, int storage) {
+    RangeDecoder(byte[] buf, int bufOff, int storage) {
         this.buf = buf;
+        this.bufOff = bufOff;
         this.storage = storage;
         this.end_offs = 0;
         this.end_window = 0;
@@ -167,11 +169,11 @@ final class RangeDecoder {
     }
 
     private int ec_read_byte() {
-        return (offs < storage) ? Byte.toUnsignedInt(buf[offs++]) : 0;
+        return (offs < storage) ? Byte.toUnsignedInt(buf[bufOff + offs++]) : 0;
     }
 
     private int ec_read_byte_from_end() {
-        return (end_offs < storage) ? Byte.toUnsignedInt(buf[storage - ++end_offs]) : 0;
+        return (end_offs < storage) ? Byte.toUnsignedInt(buf[bufOff + storage - ++end_offs]) : 0;
     }
 
     //

@@ -184,6 +184,15 @@ public final class CeltDecoder {
         int anti_collapse_rsv = isTransient != 0 && LM >= 2 && bits >= ((LM + 2) << BITRES) ? (1 << BITRES) : 0;
         bits -= anti_collapse_rsv;
 
+        int[] intensity = new int[1];
+        int[] dual_stereo = new int[1];
+        int[] balance = new int[1];
+        int codedBands = Rate.compute_allocation(mode, end, offsets, cap,
+            alloc_trim, intensity, dual_stereo, bits, balance, pulses,
+            fine_quant, fine_priority, C, LM, dec);
+
+        QuantBands.unquant_fine_energy(mode, end, oldBandE, fine_quant, dec, C);
+
         throw new UnsupportedOperationException();
     }
 }

@@ -4,28 +4,28 @@ import static be.twofold.tinyaudio.opus.celt.Utils.EC_ILOG;
 import static be.twofold.tinyaudio.opus.celt.Utils.celt_assert;
 
 final class RangeDecoder {
+    static final int BITRES = 3;
+
     private static final int EC_SYM_BITS = 8;
     private static final int EC_CODE_BITS = 32;
     private static final int EC_SYM_MAX = (1 << EC_SYM_BITS) - 1;
     private static final int EC_CODE_TOP = 1 << (EC_CODE_BITS - 1);
     private static final int EC_CODE_BOT = EC_CODE_TOP >>> EC_SYM_BITS;
     private static final int EC_CODE_EXTRA = ((EC_CODE_BITS - 2) % EC_SYM_BITS) + 1;
-
     private static final int EC_WINDOW_SIZE = Integer.SIZE;
     private static final int EC_UINT_BITS = 8;
-    static final int BITRES = 3;
 
     private static final int LAPLACE_LOG_MINP = 0;
     private static final int LAPLACE_MINP = 1 << LAPLACE_LOG_MINP;
     private static final int LAPLACE_NMIN = 16;
 
+    final int storage;
     private final byte[] buf;
     private final int bufOff;
-    final int storage;
+    int nbits_total;
     private int end_offs;
     private int end_window;
     private int nend_bits;
-    int nbits_total;
     private int offs;
     private int rng;
     private int val;
@@ -47,27 +47,23 @@ final class RangeDecoder {
         ec_dec_normalize();
     }
 
+    private int ec_read_byte() {
+        return (offs < storage) ? Byte.toUnsignedInt(buf[bufOff + offs++]) : 0;
+    }
+
+    private void ec_dec_normalize() {
+        while (Integer.compareUnsigned(rng, EC_CODE_BOT) <= 0) {
+            this.nbits_total += EC_SYM_BITS;
+            this.rng <<= EC_SYM_BITS;
+            int sym = rem;
+            this.rem = ec_read_byte();
+            sym = ((sym << EC_SYM_BITS) | rem) >>> (EC_SYM_BITS - EC_CODE_EXTRA);
+            this.val = ((val << EC_SYM_BITS) + (EC_SYM_MAX & ~sym)) & (EC_CODE_TOP - 1);
+        }
+    }
+
     int rng() {
         return rng;
-    }
-
-    int ec_decode(int _ft) {
-        this.ext = Integer.divideUnsigned(rng, _ft);
-        int s = Integer.divideUnsigned(val, ext);
-        return _ft - Math.min(s + 1, _ft);
-    }
-
-    int ec_decode_bin(int _bits) {
-        this.ext = rng >>> _bits;
-        int s = Integer.divideUnsigned(val, ext);
-        return (1 << _bits) - Math.min(s + 1, 1 << _bits);
-    }
-
-    void ec_dec_update(int _fl, int _fh, int _ft) {
-        int s = ext * (_ft - _fh);
-        this.val -= s;
-        this.rng = (_fl != 0) ? (ext * (_fh - _fl)) : (rng - s);
-        ec_dec_normalize();
     }
 
     int ec_dec_bit_logp(int _logp) {
@@ -118,6 +114,19 @@ final class RangeDecoder {
         }
     }
 
+    int ec_decode(int _ft) {
+        this.ext = Integer.divideUnsigned(rng, _ft);
+        int s = Integer.divideUnsigned(val, ext);
+        return _ft - Math.min(s + 1, _ft);
+    }
+
+    void ec_dec_update(int _fl, int _fh, int _ft) {
+        int s = ext * (_ft - _fh);
+        this.val -= s;
+        this.rng = (_fl != 0) ? (ext * (_fh - _fl)) : (rng - s);
+        ec_dec_normalize();
+    }
+
     int ec_dec_bits(int _bits) {
         int window = end_window;
         int available = nend_bits;
@@ -136,6 +145,10 @@ final class RangeDecoder {
         return ret;
     }
 
+    private int ec_read_byte_from_end() {
+        return (end_offs < storage) ? Byte.toUnsignedInt(buf[bufOff + storage - ++end_offs]) : 0;
+    }
+
     int ec_tell() {
         return nbits_total - EC_ILOG(rng);
     }
@@ -152,33 +165,6 @@ final class RangeDecoder {
         }
         return nbits - l;
     }
-
-    //
-    // Helpers
-    //
-
-    private void ec_dec_normalize() {
-        while (Integer.compareUnsigned(rng, EC_CODE_BOT) <= 0) {
-            this.nbits_total += EC_SYM_BITS;
-            this.rng <<= EC_SYM_BITS;
-            int sym = rem;
-            this.rem = ec_read_byte();
-            sym = ((sym << EC_SYM_BITS) | rem) >>> (EC_SYM_BITS - EC_CODE_EXTRA);
-            this.val = ((val << EC_SYM_BITS) + (EC_SYM_MAX & ~sym)) & (EC_CODE_TOP - 1);
-        }
-    }
-
-    private int ec_read_byte() {
-        return (offs < storage) ? Byte.toUnsignedInt(buf[bufOff + offs++]) : 0;
-    }
-
-    private int ec_read_byte_from_end() {
-        return (end_offs < storage) ? Byte.toUnsignedInt(buf[bufOff + storage - ++end_offs]) : 0;
-    }
-
-    //
-    // Laplace
-    //
 
     int ec_laplace_decode(int fs, int decay) {
         int val = 0;
@@ -213,5 +199,11 @@ final class RangeDecoder {
         celt_assert(fm < Math.min(fl + fs, 32768));
         ec_dec_update(fl, Math.min(fl + fs, 32768), 32768);
         return val;
+    }
+
+    int ec_decode_bin(int _bits) {
+        this.ext = rng >>> _bits;
+        int s = Integer.divideUnsigned(val, ext);
+        return (1 << _bits) - Math.min(s + 1, 1 << _bits);
     }
 }

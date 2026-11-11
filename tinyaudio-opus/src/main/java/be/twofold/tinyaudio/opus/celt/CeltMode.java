@@ -75,14 +75,6 @@ public final class CeltMode {
         193, 193, 193, 194, 194, 194, 184, 184, 173, 139, 65, 39, 204, 204, 204,
         204, 204, 204, 204, 204, 201, 201, 201, 201, 198, 198, 198, 187, 187, 175,
         140, 66, 40,};
-
-    static {
-        for (int i = 0; i < 120; i++) {
-            double s = Math.sin(0.5 * Math.PI * (i + 0.5) / 120);
-            window120[i] = (float) Math.sin(0.5 * Math.PI * s * s);
-        }
-    }
-
     public static final CeltMode mode48000_960_120 = new CeltMode(
         48000,
         120,
@@ -102,6 +94,13 @@ public final class CeltMode {
         cache_bits50,
         cache_caps50
     );
+
+    static {
+        for (int i = 0; i < 120; i++) {
+            double s = Math.sin(0.5 * Math.PI * (i + 0.5) / 120);
+            window120[i] = (float) Math.sin(0.5 * Math.PI * s * s);
+        }
+    }
 
     final int Fs;
     final int overlap;

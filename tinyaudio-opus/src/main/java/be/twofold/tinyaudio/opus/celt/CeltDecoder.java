@@ -18,9 +18,8 @@ public final class CeltDecoder {
 
     private final CeltMode mode;
     private final int channels;
-    private int rng;
-
     private final float[] oldBandE;
+    private int rng;
 
     public CeltDecoder(CeltMode mode, int channels) {
         this.mode = Objects.requireNonNull(mode);
@@ -30,40 +29,6 @@ public final class CeltDecoder {
 
     public int rng() {
         return rng;
-    }
-
-    static void tf_decode(int end, int isTransient, int[] tf_res, int LM, RangeDecoder dec) {
-        int budget = dec.storage * 8;
-        int tell = dec.ec_tell();
-        int logp = isTransient != 0 ? 2 : 4;
-        int tf_select_rsv = LM > 0 && tell + logp + 1 <= budget ? 1 : 0;
-        budget -= tf_select_rsv;
-        int tf_changed = 0;
-        int curr = 0;
-        for (int i = 0; i < end; i++) {
-            if (tell + logp <= budget) {
-                curr ^= dec.ec_dec_bit_logp(logp);
-                tell = dec.ec_tell();
-                tf_changed |= curr;
-            }
-            tf_res[i] = curr;
-            logp = isTransient != 0 ? 4 : 5;
-        }
-        int tf_select = 0;
-        if (tf_select_rsv != 0 &&
-            tf_select_table[LM][4 * isTransient + tf_changed] != tf_select_table[LM][4 * isTransient + 2 + tf_changed]) {
-            tf_select = dec.ec_dec_bit_logp(1);
-        }
-        for (int i = 0; i < end; i++) {
-            tf_res[i] = tf_select_table[LM][4 * isTransient + 2 * tf_select + tf_res[i]];
-        }
-    }
-
-    static void init_caps(CeltMode m, int[] cap, int LM, int C) {
-        for (int i = 0; i < m.nbEBands; i++) {
-            int N = (m.eBands[i + 1] - m.eBands[i]) << LM;
-            cap[i] = (m.cacheCaps[m.nbEBands * (2 * LM + C - 1) + i] + 64) * C * N >> 2;
-        }
     }
 
     public int celt_decode_with_ec(byte[] data, int dataOff, int len, float[] pcm, int pcmOff, int frame_size, int C, int end) {
@@ -204,5 +169,39 @@ public final class CeltDecoder {
         // TODO: Anti-collapse and synthesis
         rng = dec.rng();
         return frame_size;
+    }
+
+    static void tf_decode(int end, int isTransient, int[] tf_res, int LM, RangeDecoder dec) {
+        int budget = dec.storage * 8;
+        int tell = dec.ec_tell();
+        int logp = isTransient != 0 ? 2 : 4;
+        int tf_select_rsv = LM > 0 && tell + logp + 1 <= budget ? 1 : 0;
+        budget -= tf_select_rsv;
+        int tf_changed = 0;
+        int curr = 0;
+        for (int i = 0; i < end; i++) {
+            if (tell + logp <= budget) {
+                curr ^= dec.ec_dec_bit_logp(logp);
+                tell = dec.ec_tell();
+                tf_changed |= curr;
+            }
+            tf_res[i] = curr;
+            logp = isTransient != 0 ? 4 : 5;
+        }
+        int tf_select = 0;
+        if (tf_select_rsv != 0 &&
+            tf_select_table[LM][4 * isTransient + tf_changed] != tf_select_table[LM][4 * isTransient + 2 + tf_changed]) {
+            tf_select = dec.ec_dec_bit_logp(1);
+        }
+        for (int i = 0; i < end; i++) {
+            tf_res[i] = tf_select_table[LM][4 * isTransient + 2 * tf_select + tf_res[i]];
+        }
+    }
+
+    static void init_caps(CeltMode m, int[] cap, int LM, int C) {
+        for (int i = 0; i < m.nbEBands; i++) {
+            int N = (m.eBands[i + 1] - m.eBands[i]) << LM;
+            cap[i] = (m.cacheCaps[m.nbEBands * (2 * LM + C - 1) + i] + 64) * C * N >> 2;
+        }
     }
 }

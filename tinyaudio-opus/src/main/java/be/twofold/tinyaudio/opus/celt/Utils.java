@@ -14,12 +14,12 @@ final class Utils {
         assert condition : message;
     }
 
-    static float celt_sqrt(float x) {
-        return (float) Math.sqrt(x);
-    }
-
     static float celt_rsqrt(float x) {
         return 1.f / celt_sqrt(x);
+    }
+
+    static float celt_sqrt(float x) {
+        return (float) Math.sqrt(x);
     }
 
     static float celt_cos_norm(float x) {

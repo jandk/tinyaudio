@@ -1,4 +1,4 @@
-package be.twofold.tinyaudio.vorbis.mdct;
+package be.twofold.tinyaudio.core.internal;
 
 import java.util.Objects;
 

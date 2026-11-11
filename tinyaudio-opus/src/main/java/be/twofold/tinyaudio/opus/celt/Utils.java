@@ -6,6 +6,10 @@ final class Utils {
     private Utils() {
     }
 
+    static float celt_exp2(float x) {
+        return (float) Math.exp(0.6931471805599453094 * x);
+    }
+
     static void celt_assert(boolean condition) {
         assert condition;
     }

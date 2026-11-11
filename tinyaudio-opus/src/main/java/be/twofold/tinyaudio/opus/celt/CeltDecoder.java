@@ -1,11 +1,14 @@
 package be.twofold.tinyaudio.opus.celt;
 
+import java.util.Arrays;
 import java.util.Objects;
 
 import static be.twofold.tinyaudio.opus.celt.RangeDecoder.BITRES;
 import static be.twofold.tinyaudio.opus.celt.Utils.celt_assert;
 
 public final class CeltDecoder {
+    private static final int MAX_PERIOD = 1024;
+    private static final int DECODE_BUFFER_SIZE = 2048;
     private static final byte[] trim_icdf = {126, 124, 119, 109, 87, 41, 19, 9, 4, 2, 0};
     private static final byte[] spread_icdf = {25, 23, 2, 0};
     private static final byte[] tapset_icdf = {2, 1, 0};
@@ -18,13 +21,30 @@ public final class CeltDecoder {
 
     private final CeltMode mode;
     private final int channels;
-    private final float[] oldBandE;
+    private final float[] preemph_memD = new float[2];
+    private final float[] _decode_mem; /* Size = channels*(DECODE_BUFFER_SIZE+mode->overlap) */
+    private final float[] oldEBands;
+    private final float[] oldLogE;
+    private final float[] oldLogE2;
+
+    private int postfilter_period;
+    private int postfilter_period_old;
+    private float postfilter_gain;
+    private float postfilter_gain_old;
+    private int postfilter_tapset;
+    private int postfilter_tapset_old;
+
     private int rng;
 
     public CeltDecoder(CeltMode mode, int channels) {
         this.mode = Objects.requireNonNull(mode);
         this.channels = channels;
-        this.oldBandE = new float[2 * mode.nbEBands];
+        this._decode_mem = new float[channels * (DECODE_BUFFER_SIZE + mode.overlap)];
+        this.oldEBands = new float[2 * mode.nbEBands];
+        this.oldLogE = new float[2 * mode.nbEBands];
+        this.oldLogE2 = new float[2 * mode.nbEBands];
+        Arrays.fill(oldLogE, -28.f);
+        Arrays.fill(oldLogE2, -28.f);
     }
 
     public int rng() {
@@ -87,7 +107,7 @@ public final class CeltDecoder {
         // Decode the global flags (first symbols in the stream)
         int intra_ener = tell + 3 <= total_bits ? dec.ec_dec_bit_logp(3) : 0;
         // Get band energies
-        QuantBands.unquant_coarse_energy(mode, end, oldBandE, intra_ener, dec, C, LM);
+        QuantBands.unquant_coarse_energy(mode, end, oldEBands, intra_ener, dec, C, LM);
 
         int[] tf_res = new int[mode.nbEBands];
         tf_decode(end, isTransient, tf_res, LM, dec);
@@ -146,7 +166,7 @@ public final class CeltDecoder {
             alloc_trim, intensity, dual_stereo, bits, balance, pulses,
             fine_quant, fine_priority, C, LM, dec);
 
-        QuantBands.unquant_fine_energy(mode, end, oldBandE, fine_quant, dec, C);
+        QuantBands.unquant_fine_energy(mode, end, oldEBands, fine_quant, dec, C);
 
         // Decode fixed codebook
         int N = mode.shortMdctSize << LM;
@@ -157,14 +177,30 @@ public final class CeltDecoder {
             len * (8 << BITRES) - anti_collapse_rsv, balance[0], dec, LM, codedBands, rng,
             channels == 1);
 
-        int anti_collapse_on = 0;
-        if (anti_collapse_rsv > 0) {
-            anti_collapse_on = dec.ec_dec_bits(1);
+        boolean anti_collapse_on = anti_collapse_rsv > 0 && dec.ec_dec_bits(1) != 0;
+
+        QuantBands.unquant_energy_finalise(mode, end, oldEBands, fine_quant, fine_priority, len * 8 - dec.ec_tell(), dec, C);
+
+        if (anti_collapse_on) {
+            Bands.anti_collapse(mode, X, collapse_masks, LM, C, N, end, oldEBands, oldLogE, oldLogE2, pulses, rng);
         }
 
-        QuantBands.unquant_energy_finalise(mode, end, oldBandE, fine_quant, fine_priority, len * 8 - dec.ec_tell(), dec, C);
+        int CC = channels;
+        int[] decode_memOff = new int[CC];
+        int[] out_memOff = new int[CC];
+        int[] overlap_memOff = new int[CC];
+        for (int c = 0; c < CC; c++) {
+            decode_memOff[c] = c * (DECODE_BUFFER_SIZE + mode.overlap);
+            out_memOff[c] = decode_memOff[c] + DECODE_BUFFER_SIZE - MAX_PERIOD;
+            overlap_memOff[c] = decode_memOff[c] + DECODE_BUFFER_SIZE;
+        }
 
-        // TODO: Anti-collapse and synthesis
+        int[] out_synOff = new int[CC];
+        for (int c = 0; c < CC; c++) {
+            System.arraycopy(_decode_mem, decode_memOff[c] + N, _decode_mem, decode_memOff[c], DECODE_BUFFER_SIZE - N);
+            out_synOff[c] = out_memOff[c] + MAX_PERIOD - N;
+        }
+
         rng = dec.rng();
         return frame_size;
     }

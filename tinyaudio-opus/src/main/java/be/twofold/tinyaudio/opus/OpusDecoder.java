@@ -4,6 +4,7 @@ import be.twofold.tinyaudio.core.AudioDecoder;
 import be.twofold.tinyaudio.core.AudioInfo;
 import be.twofold.tinyaudio.core.PacketSource;
 import be.twofold.tinyaudio.opus.celt.CeltDecoder;
+import be.twofold.tinyaudio.opus.celt.CeltMode;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -37,7 +38,7 @@ public final class OpusDecoder implements AudioDecoder {
         this.packets = Objects.requireNonNull(packets);
         this.identification = Objects.requireNonNull(identification);
 
-        this.celt_dec = new CeltDecoder();
+        this.celt_dec = new CeltDecoder(CeltMode.mode48000_960_120, identification.channels());
         this.channels = identification.channels();
     }
 

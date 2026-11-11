@@ -1,11 +1,21 @@
 package be.twofold.tinyaudio.opus.celt;
 
+import java.util.Objects;
+
 import static be.twofold.tinyaudio.opus.celt.Utils.celt_assert;
 
 public final class CeltDecoder {
     private static final byte[] tapset_icdf = {2, 1, 0};
 
+    private final CeltMode mode;
     private int rng;
+
+    private final float[] oldBandE;
+
+    public CeltDecoder(CeltMode mode, int channels) {
+        this.mode = Objects.requireNonNull(mode);
+        this.oldBandE = new float[2 * mode.nbEBands];
+    }
 
     public int rng() {
         return rng;
@@ -13,7 +23,6 @@ public final class CeltDecoder {
 
     public int celt_decode_with_ec(byte[] data, int dataOff, int len, float[] pcm, int pcmOff, int frame_size, int C, int end) {
         RangeDecoder dec = new RangeDecoder(data, dataOff, len);
-        CeltMode mode = CeltMode.mode48000_960_120;
         int LM;
         for (LM = 0; LM <= mode.maxLM; LM++) {
             if (mode.shortMdctSize << LM == frame_size) {
@@ -75,7 +84,10 @@ public final class CeltDecoder {
             shortBlocks = 0;
         }
 
+        // Decode the global flags (first symbols in the stream)
         int intra_ener = tell + 3 <= total_bits ? dec.ec_dec_bit_logp(3) : 0;
+        // Get band energies
+        QuantBands.unquant_coarse_energy(mode, end, oldBandE, intra_ener, dec, C, LM);
         throw new UnsupportedOperationException();
     }
 }

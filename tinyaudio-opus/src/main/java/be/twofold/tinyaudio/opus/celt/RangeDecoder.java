@@ -21,7 +21,7 @@ final class RangeDecoder {
 
     private final byte[] buf;
     private final int bufOff;
-    private final int storage;
+    final int storage;
     private int end_offs;
     private int end_window;
     private int nend_bits;

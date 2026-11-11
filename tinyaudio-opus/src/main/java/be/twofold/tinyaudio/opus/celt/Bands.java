@@ -1,5 +1,7 @@
 package be.twofold.tinyaudio.opus.celt;
 
+import java.util.Arrays;
+
 import static be.twofold.tinyaudio.opus.celt.RangeDecoder.BITRES;
 import static be.twofold.tinyaudio.opus.celt.Utils.*;
 
@@ -31,6 +33,14 @@ final class Bands {
             3, 0, 2, 1,
             7, 0, 4, 3, 6, 1, 5, 2,
             15, 0, 8, 7, 12, 3, 11, 4, 14, 1, 9, 6, 13, 2, 10, 5,
+    };
+    // Mean energy in each band quantized in Q6 and converted back to float
+    private static final float[] eMeans = {
+        6.437500f, 6.250000f, 5.750000f, 5.312500f, 5.062500f,
+        4.812500f, 4.500000f, 4.375000f, 4.875000f, 4.687500f,
+        4.562500f, 4.437500f, 4.875000f, 4.625000f, 4.312500f,
+        4.500000f, 4.375000f, 4.625000f, 4.750000f, 4.437500f,
+        3.750000f, 3.750000f, 3.750000f, 3.750000f, 3.750000f
     };
 
     // State shared by all the calls that code one band
@@ -68,6 +78,91 @@ final class Bands {
         this.ec = ec;
         this.disable_inv = disable_inv;
         this.seed = seed;
+    }
+
+    /**
+     * This prevents energy collapse for transients with multiple short MDCTs.
+     */
+    static void anti_collapse(
+        CeltMode m, float[] X_, int[] collapse_masks, int LM, int C, int size, int end, float[] logE, float[] prev1logE,
+        float[] prev2logE, int[] pulses, int seed
+    ) {
+        for (int i = 0; i < end; i++) {
+            int N0 = m.eBands[i + 1] - m.eBands[i];
+            // depth in 1/8 bits
+            int depth = (1 + pulses[i]) / ((m.eBands[i + 1] - m.eBands[i]) << LM);
+
+            float thresh = .5f * celt_exp2(-.125f * depth);
+            float sqrt_1 = celt_rsqrt(N0 << LM);
+
+            for (int c = 0; c < C; c++) {
+                float prev1 = prev1logE[c * m.nbEBands + i];
+                float prev2 = prev2logE[c * m.nbEBands + i];
+                if (C == 1) {
+                    prev1 = Math.max(prev1, prev1logE[m.nbEBands + i]);
+                    prev2 = Math.max(prev2, prev2logE[m.nbEBands + i]);
+                }
+                float Ediff = logE[c * m.nbEBands + i] - Math.min(prev1, prev2);
+                Ediff = Math.max(0, Ediff);
+
+                // r needs to be multiplied by 2 or 2*sqrt(2) depending on LM because
+                // short blocks don't have the same energy as long
+                float r = 2.f * celt_exp2(-Ediff);
+                if (LM == 3) {
+                    r *= 1.41421356f;
+                }
+                r = Math.min(thresh, r);
+                r = r * sqrt_1;
+                int XOff = c * size + (m.eBands[i] << LM);
+                boolean renormalize = false;
+                for (int k = 0; k < 1 << LM; k++) {
+                    // Detect collapse
+                    if ((collapse_masks[i * C + c] & 1 << k) == 0) {
+                        // Fill with noise
+                        for (int j = 0; j < N0; j++) {
+                            seed = celt_lcg_rand(seed);
+                            X_[XOff + (j << LM) + k] = (((seed & 0x8000) != 0) ? r : -r);
+                        }
+                        renormalize = true;
+                    }
+                }
+                // We just added some energy, so we need to renormalise
+                if (renormalize) {
+                    Vq.renormalise_vector(X_, XOff, N0 << LM, 1.0f);
+                }
+            }
+        }
+    }
+
+    private static int celt_lcg_rand(int seed) {
+        return (1664525 * seed) + 1013904223;
+    }
+
+    /**
+     * De-normalise the energy to produce the synthesis from the unit-energy bands.
+     */
+    static void denormalise_bands(CeltMode m, float[] X, int XOff, float[] freq, int freqOff, float[] bandLogE, int bandLogEOff, int end, int M, int downsample, int silence) {
+        short[] eBands = m.eBands;
+        int N = M * m.shortMdctSize;
+        int bound = M * eBands[end];
+        if (downsample != 1) {
+            bound = Math.min(bound, N / downsample);
+        }
+        if (silence != 0) {
+            bound = 0;
+            end = 0;
+        }
+
+        int foff = freqOff;
+        for (int i = 0; i < end; i++) {
+            // Cap on band energy (RFC 8251, Section 8)
+            float g = celt_exp2(Math.min(32.0f, bandLogE[bandLogEOff + i] + eMeans[i]));
+            int band_end = M * eBands[i + 1];
+            for (int j = M * eBands[i]; j < band_end; j++) {
+                freq[foff++] = X[XOff++] * g;
+            }
+        }
+        Arrays.fill(freq, freqOff + bound, freqOff + N, 0);
     }
 
     /**
@@ -197,64 +292,6 @@ final class Bands {
             update_lowband = b > (N << BITRES);
         }
         return ctx.seed;
-    }
-
-    /**
-     * This prevents energy collapse for transients with multiple short MDCTs.
-     */
-    static void anti_collapse(
-        CeltMode m, float[] X_, int[] collapse_masks, int LM, int C, int size, int end, float[] logE, float[] prev1logE,
-        float[] prev2logE, int[] pulses, int seed
-    ) {
-        for (int i = 0; i < end; i++) {
-            int N0 = m.eBands[i + 1] - m.eBands[i];
-            // depth in 1/8 bits
-            int depth = (1 + pulses[i]) / ((m.eBands[i + 1] - m.eBands[i]) << LM);
-
-            float thresh = .5f * celt_exp2(-.125f * depth);
-            float sqrt_1 = celt_rsqrt(N0 << LM);
-
-            for (int c = 0; c < C; c++) {
-                float prev1 = prev1logE[c * m.nbEBands + i];
-                float prev2 = prev2logE[c * m.nbEBands + i];
-                if (C == 1) {
-                    prev1 = Math.max(prev1, prev1logE[m.nbEBands + i]);
-                    prev2 = Math.max(prev2, prev2logE[m.nbEBands + i]);
-                }
-                float Ediff = logE[c * m.nbEBands + i] - Math.min(prev1, prev2);
-                Ediff = Math.max(0, Ediff);
-
-                // r needs to be multiplied by 2 or 2*sqrt(2) depending on LM because
-                // short blocks don't have the same energy as long
-                float r = 2.f * celt_exp2(-Ediff);
-                if (LM == 3) {
-                    r *= 1.41421356f;
-                }
-                r = Math.min(thresh, r);
-                r = r * sqrt_1;
-                int XOff = c * size + (m.eBands[i] << LM);
-                boolean renormalize = false;
-                for (int k = 0; k < 1 << LM; k++) {
-                    // Detect collapse
-                    if ((collapse_masks[i * C + c] & 1 << k) == 0) {
-                        // Fill with noise
-                        for (int j = 0; j < N0; j++) {
-                            seed = celt_lcg_rand(seed);
-                            X_[XOff + (j << LM) + k] = (((seed & 0x8000) != 0) ? r : -r);
-                        }
-                        renormalize = true;
-                    }
-                }
-                // We just added some energy, so we need to renormalise
-                if (renormalize) {
-                    Vq.renormalise_vector(X_, XOff, N0 << LM, 1.0f);
-                }
-            }
-        }
-    }
-
-    private static int celt_lcg_rand(int seed) {
-        return (1664525 * seed) + 1013904223;
     }
 
     private void deinterleave_hadamard(float[] X, int XOff, int N0, int stride, boolean hadamard) {

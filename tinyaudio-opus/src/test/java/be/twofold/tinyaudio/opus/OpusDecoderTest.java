@@ -1,6 +1,5 @@
 package be.twofold.tinyaudio.opus;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -16,7 +15,6 @@ class OpusDecoderTest {
     };
 
     @Test
-    @Disabled("CELT decode not finished")
     void testVector01() throws IOException {
         ByteBuffer bit = ByteBuffer.wrap(readResource("/testvector01.bit")); // big-endian by default
         OpusDecoder decoder = new OpusDecoder(new EmptySource(), OpusIdentification.read(ByteBuffer.wrap(OPUS_HEAD)));

@@ -17,12 +17,14 @@ public final class CeltDecoder {
     };
 
     private final CeltMode mode;
+    private final int channels;
     private int rng;
 
     private final float[] oldBandE;
 
     public CeltDecoder(CeltMode mode, int channels) {
         this.mode = Objects.requireNonNull(mode);
+        this.channels = channels;
         this.oldBandE = new float[2 * mode.nbEBands];
     }
 
@@ -73,12 +75,7 @@ public final class CeltDecoder {
             }
         }
         celt_assert(LM <= mode.maxLM);
-        celt_decode_test(dec, len, LM, C, end);
-        rng = dec.rng();
-        return frame_size;
-    }
 
-    int celt_decode_test(RangeDecoder dec, int len, int LM, int C, int end) {
         int total_bits = len * 8;
         int tell = dec.ec_tell();
 
@@ -119,12 +116,7 @@ public final class CeltDecoder {
             isTransient = 0;
         }
 
-        int shortBlocks;
-        if (isTransient != 0) {
-            // shortBlocks = M;
-        } else {
-            shortBlocks = 0;
-        }
+        int shortBlocks = isTransient != 0 ? 1 << LM : 0;
 
         // Decode the global flags (first symbols in the stream)
         int intra_ener = tell + 3 <= total_bits ? dec.ec_dec_bit_logp(3) : 0;
@@ -193,6 +185,24 @@ public final class CeltDecoder {
 
         QuantBands.unquant_fine_energy(mode, end, oldBandE, fine_quant, dec, C);
 
-        throw new UnsupportedOperationException();
+        /* Decode fixed codebook */
+        int N = mode.shortMdctSize << LM;
+        float[] X = new float[C * N];
+        int[] collapse_masks = new int[C * mode.nbEBands];
+        rng = Bands.quant_all_bands(mode, end, X, C == 2 ? X : null, N, collapse_masks,
+            pulses, shortBlocks, spread_decision, dual_stereo[0] != 0, intensity[0], tf_res,
+            len * (8 << BITRES) - anti_collapse_rsv, balance[0], dec, LM, codedBands, rng,
+            channels == 1);
+
+        int anti_collapse_on = 0;
+        if (anti_collapse_rsv > 0) {
+            anti_collapse_on = dec.ec_dec_bits(1);
+        }
+
+        QuantBands.unquant_energy_finalise(mode, end, oldBandE, fine_quant, fine_priority, len * 8 - dec.ec_tell(), dec, C);
+
+        // TODO: Anti-collapse and synthesis
+        rng = dec.rng();
+        return frame_size;
     }
 }

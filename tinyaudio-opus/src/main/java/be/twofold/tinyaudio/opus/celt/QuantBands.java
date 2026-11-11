@@ -8,6 +8,7 @@ final class QuantBands {
     private static final float[] pred_coef = {29440 / 32768.0f, 26112 / 32768.0f, 21248 / 32768.0f, 16384 / 32768.0f};
     private static final float[] beta_coef = {30147 / 32768.0f, 22282 / 32768.0f, 12124 / 32768.0f, +6554 / 32768.0f};
     private static final float beta_intra = 4915 / 32768.0f;
+
     private static final short[][][] e_prob_model = {{
         {72, 127, 65, 129, 66, 128, 65, 128, 64, 128, 62, 128, 64, 128,
             64, 128, 92, 78, 92, 79, 92, 78, 90, 79, 116, 41, 115, 40,
@@ -58,8 +59,7 @@ final class QuantBands {
         float[] prev = {0, 0};
         short[] prob_model = e_prob_model[LM][intra];
         for (int i = 0; i < end; i++) {
-            int c = 0;
-            do {
+            for (int c = 0; c < C; c++) {
                 int qi;
                 /* It would be better to express this invariant as a
                    test on C at function entry, but that isn't enough
@@ -83,7 +83,7 @@ final class QuantBands {
                 float tmp = (coef * oldEBands[i + (c * m.nbEBands)]) + prev[c] + q;
                 oldEBands[i + (c * m.nbEBands)] = tmp;
                 prev[c] = (prev[c] + q) - (beta * q);
-            } while (++c < C);
+            }
         }
     }
 
@@ -97,14 +97,13 @@ final class QuantBands {
             if (dec.ec_tell() + C * fine_quant[i] > dec.storage * 8) {
                 continue;
             }
-            int c = 0;
-            do {
+            for (int c = 0; c < C; c++) {
                 int q2;
                 float offset;
                 q2 = dec.ec_dec_bits(fine_quant[i]);
                 offset = (q2 + .5f) * (1 << (14 - fine_quant[i])) * (1.f / 16384) - .5f;
                 oldEBands[i + c * m.nbEBands] += offset;
-            } while (++c < C);
+            }
         }
     }
 
@@ -115,15 +114,14 @@ final class QuantBands {
                 if (fine_quant[i] >= MAX_FINE_BITS || fine_priority[i] != prio) {
                     continue;
                 }
-                int c = 0;
-                do {
+                for (int c = 0; c < C; c++) {
                     int q2;
                     float offset;
                     q2 = dec.ec_dec_bits(1);
                     offset = (q2 - .5f) * (1 << (14 - fine_quant[i] - 1)) * (1.f / 16384);
                     oldEBands[i + c * m.nbEBands] += offset;
                     bits_left--;
-                } while (++c < C);
+                }
             }
         }
     }

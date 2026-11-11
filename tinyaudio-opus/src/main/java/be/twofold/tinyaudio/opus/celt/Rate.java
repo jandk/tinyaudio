@@ -7,8 +7,6 @@ final class Rate {
     private static final int LOG_MAX_PSEUDO = 6;
     private static final int MAX_FINE_BITS = 8;
     private static final int FINE_OFFSET = 21;
-    private static final int QTHETA_OFFSET = 4;
-    private static final int QTHETA_OFFSET_TWOPHASE = 16;
 
     private static final int ALLOC_STEPS = 6;
 
@@ -343,11 +341,11 @@ final class Rate {
         return codedBands;
     }
 
-    private static int get_pulses(int i) {
+    static int get_pulses(int i) {
         return i < 8 ? i : (8 + (i & 7)) << ((i >> 3) - 1);
     }
 
-    private static int bits2pulses(CeltMode m, int band, int LM, int bits) {
+    static int bits2pulses(CeltMode m, int band, int LM, int bits) {
         int cacheOff = m.cacheIndex[(LM + 1) * m.nbEBands + band];
         bits--;
 
@@ -369,7 +367,7 @@ final class Rate {
         }
     }
 
-    private static int pulses2bits(CeltMode m, int band, int LM, int pulses) {
+    static int pulses2bits(CeltMode m, int band, int LM, int pulses) {
         int cacheOff = m.cacheIndex[(LM + 1) * m.nbEBands + band];
         return pulses == 0 ? 0 : m.cacheBits[cacheOff + pulses] + 1;
     }

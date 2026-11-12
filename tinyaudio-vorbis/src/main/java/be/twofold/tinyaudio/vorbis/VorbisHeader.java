@@ -4,6 +4,8 @@ import be.twofold.tinyaudio.core.Packet;
 import be.twofold.tinyaudio.core.PacketSource;
 import be.twofold.tinyaudio.core.internal.IOUtils;
 import be.twofold.tinyaudio.core.internal.VorbisComment;
+import be.twofold.tinyaudio.vorbis.internal.Identification;
+import be.twofold.tinyaudio.vorbis.internal.Setup;
 
 import java.io.IOException;
 import java.nio.BufferUnderflowException;

@@ -1,9 +1,5 @@
-package be.twofold.tinyaudio.vorbis;
+package be.twofold.tinyaudio.vorbis.internal;
 
-import be.twofold.tinyaudio.core.AudioInfo;
-import be.twofold.tinyaudio.core.BlockAudioDecoder;
-import be.twofold.tinyaudio.core.Packet;
-import be.twofold.tinyaudio.core.PacketSource;
 import be.twofold.tinyaudio.core.internal.BitReader;
 import be.twofold.tinyaudio.vorbis.mdct.MDCT;
 
@@ -12,8 +8,7 @@ import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.Objects;
 
-public final class VorbisDecoder extends BlockAudioDecoder {
-    private final PacketSource packets;
+public final class VorbisDecoder {
     private final Identification identification;
     private final Setup setup;
     private final float[][] spectrum;
@@ -35,11 +30,8 @@ public final class VorbisDecoder extends BlockAudioDecoder {
     private final float[] window1;
 
     private int previousBlockSize;
-    private long produced;
 
-    VorbisDecoder(PacketSource packets, Identification identification, Setup setup) {
-        super(identification.audioChannels(), Math.max(identification.blockSize0(), identification.blockSize1()));
-        this.packets = Objects.requireNonNull(packets);
+    public VorbisDecoder(Identification identification, Setup setup) {
         this.identification = Objects.requireNonNull(identification);
         this.setup = Objects.requireNonNull(setup);
 
@@ -67,30 +59,20 @@ public final class VorbisDecoder extends BlockAudioDecoder {
         return w;
     }
 
-    @Override
-    public AudioInfo info() {
-        return new AudioInfo(
-            "ogg", "vorbis", "ogg",
-            identification.audioSampleRate(),
-            identification.audioChannels(),
-            -1 // vorbis has it at the end of the stream
-        );
-    }
-
-    @Override
-    protected int decodeBlock(short[][] pcm) throws IOException {
-        Packet packet = packets.next();
-        if (packet == null) {
-            return -1;
-        }
-
+    /**
+     * Decodes one audio packet into planar float samples in {@code [-1, 1]}. Returns the number of samples per channel,
+     * which is 0 for the first audio packet and for packets that aren't audio.
+     *
+     * @param pcm {@code [channels][blockSize1 / 2]}
+     */
+    public int decodeBlock(byte[] data, int dataOff, int len, float[][] pcm) throws IOException {
         if (previousBlockSize != 0) {
             for (int ch = 0; ch < identification.audioChannels(); ch++) {
                 System.arraycopy(spectrum[ch], previousBlockSize / 2, overlap[ch], 0, previousBlockSize / 2);
             }
         }
 
-        var bits = new BitReader(packet.getData(), ByteOrder.LITTLE_ENDIAN);
+        var bits = new BitReader(data, dataOff, len, ByteOrder.LITTLE_ENDIAN);
         if (bits.readBool()) { // packet type
             return 0;
         }
@@ -199,27 +181,13 @@ public final class VorbisDecoder extends BlockAudioDecoder {
                 overlapAdd(overlap[ch], spectrum[ch], previousBlockSize, n);
             }
             frames = previousBlockSize / 4 + n / 4;
-            for (int ch = 0; ch < pcm.length; ch++) {
-                float[] src = overlap[ch];
-                short[] dst = pcm[ch];
-                for (int i = 0; i < frames; i++) {
-                    int value = (int) Math.rint(src[i] * 32768.0f);
-                    dst[i] = (short) Math.max(Short.MIN_VALUE, Math.min(Short.MAX_VALUE, value));
-                }
+            for (int ch = 0; ch < identification.audioChannels(); ch++) {
+                System.arraycopy(overlap[ch], 0, pcm[ch], 0, frames);
             }
-        }
-        if (packet.isFinished() && packet.getPosition() >= 0) {
-            frames = (int) Math.max(0, Math.min(frames, packet.getPosition() - produced));
         }
 
         previousBlockSize = n;
-        produced += frames;
         return frames;
-    }
-
-    @Override
-    public void close() throws IOException {
-        packets.close();
     }
 
     private void overlapAdd(float[] previous, float[] current, int previousN, int currentN) {

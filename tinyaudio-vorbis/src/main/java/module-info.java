@@ -1,6 +1,6 @@
 module be.twofold.tinyaudio.vorbis {
-    requires be.twofold.tinyaudio.ogg;
     requires be.twofold.tinyaudio.core;
+    requires be.twofold.tinyaudio.ogg;
 
     exports be.twofold.tinyaudio.vorbis;
 

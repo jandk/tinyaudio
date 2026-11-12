@@ -1,4 +1,6 @@
-package be.twofold.tinyaudio.vorbis;
+package be.twofold.tinyaudio.vorbis.internal;
+
+import be.twofold.tinyaudio.core.internal.MathUtils;
 
 final class Util {
     private static final int VQ_FEXP = 10;
@@ -21,7 +23,7 @@ final class Util {
         }
 
         exp = exp - (VQ_FMAN - 1) - VQ_FEXP_BIAS;
-        exp = Math.max(-63, Math.min(63, exp));
+        exp = MathUtils.clamp(exp, -63, 63);
         return Math.scalb(mant, exp);
     }
 }

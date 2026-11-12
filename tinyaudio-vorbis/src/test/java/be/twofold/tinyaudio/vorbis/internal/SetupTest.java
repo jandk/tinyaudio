@@ -1,4 +1,4 @@
-package be.twofold.tinyaudio.vorbis;
+package be.twofold.tinyaudio.vorbis.internal;
 
 import be.twofold.tinyaudio.core.internal.BitReader;
 import org.junit.jupiter.api.Test;

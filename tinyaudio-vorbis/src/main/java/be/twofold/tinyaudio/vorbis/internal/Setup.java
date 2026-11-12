@@ -1,6 +1,7 @@
-package be.twofold.tinyaudio.vorbis;
+package be.twofold.tinyaudio.vorbis.internal;
 
 import be.twofold.tinyaudio.core.internal.BitReader;
+import be.twofold.tinyaudio.vorbis.VorbisException;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -8,7 +9,7 @@ import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
 
-final class Setup {
+public final class Setup {
     private final List<Codebook> codebooks;
     private final List<Floor> floors;
     private final List<Residue> residues;
@@ -23,7 +24,7 @@ final class Setup {
         this.modes = List.copyOf(modes);
     }
 
-    static Setup read(ByteBuffer buffer, int audioChannels) throws IOException {
+    public static Setup read(ByteBuffer buffer, int audioChannels) throws IOException {
         BitReader bits = new BitReader(
             buffer.array(),
             buffer.arrayOffset() + buffer.position(),

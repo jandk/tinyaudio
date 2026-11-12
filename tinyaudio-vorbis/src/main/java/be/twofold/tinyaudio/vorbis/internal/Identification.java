@@ -1,9 +1,11 @@
-package be.twofold.tinyaudio.vorbis;
+package be.twofold.tinyaudio.vorbis.internal;
+
+import be.twofold.tinyaudio.vorbis.VorbisException;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-final class Identification {
+public final class Identification {
     private static final int BYTES = 23;
 
     private final int audioChannels;
@@ -32,7 +34,7 @@ final class Identification {
         this.blockSize1Log2 = blockSize1Log2;
     }
 
-    static Identification read(ByteBuffer buffer) throws IOException {
+    public static Identification read(ByteBuffer buffer) throws IOException {
         if (buffer.remaining() < BYTES) {
             throw new VorbisException("Invalid identification header size: " + buffer.remaining());
         }
@@ -84,31 +86,31 @@ final class Identification {
         return blockSizeLog2;
     }
 
-    int audioChannels() {
+    public int audioChannels() {
         return audioChannels;
     }
 
-    int audioSampleRate() {
+    public int audioSampleRate() {
         return audioSampleRate;
     }
 
-    int bitrateMaximum() {
+    public int bitrateMaximum() {
         return bitrateMaximum;
     }
 
-    int bitrateNominal() {
+    public int bitrateNominal() {
         return bitrateNominal;
     }
 
-    int bitrateMinimum() {
+    public int bitrateMinimum() {
         return bitrateMinimum;
     }
 
-    int blockSize0() {
+    public int blockSize0() {
         return 1 << blockSize0Log2;
     }
 
-    int blockSize1() {
+    public int blockSize1() {
         return 1 << blockSize1Log2;
     }
 }

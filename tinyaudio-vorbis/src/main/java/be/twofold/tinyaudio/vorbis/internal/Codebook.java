@@ -1,6 +1,7 @@
-package be.twofold.tinyaudio.vorbis;
+package be.twofold.tinyaudio.vorbis.internal;
 
 import be.twofold.tinyaudio.core.internal.BitReader;
+import be.twofold.tinyaudio.vorbis.VorbisException;
 
 import java.io.IOException;
 import java.util.Arrays;

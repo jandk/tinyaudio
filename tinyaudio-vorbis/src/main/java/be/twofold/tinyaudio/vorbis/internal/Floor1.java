@@ -1,6 +1,8 @@
-package be.twofold.tinyaudio.vorbis;
+package be.twofold.tinyaudio.vorbis.internal;
 
 import be.twofold.tinyaudio.core.internal.BitReader;
+import be.twofold.tinyaudio.core.internal.MathUtils;
+import be.twofold.tinyaudio.vorbis.VorbisException;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -305,7 +307,7 @@ final class Floor1 implements Floor {
         }
 
         for (int i = 0; i < posts; i++) {
-            finalY[i] = Math.max(0, Math.min(range - 1, finalY[i]));
+            finalY[i] = MathUtils.clamp(finalY[i], 0, range - 1);
         }
 
         int lx = 0;

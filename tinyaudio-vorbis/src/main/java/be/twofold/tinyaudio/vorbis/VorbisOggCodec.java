@@ -15,6 +15,6 @@ public final class VorbisOggCodec implements OggCodec {
             return Optional.empty();
         }
         VorbisHeader header = VorbisHeader.read(first, packets);
-        return Optional.of(new VorbisDecoder(packets, header.identification(), header.setup()));
+        return Optional.of(new VorbisAudioDecoder(packets, header.identification(), header.setup()));
     }
 }

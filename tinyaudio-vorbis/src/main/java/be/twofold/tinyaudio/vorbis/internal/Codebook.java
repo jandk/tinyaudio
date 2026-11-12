@@ -190,6 +190,20 @@ final class Codebook {
         return bits.isOverrun() ? -1 : (int) word >>> 8;
     }
 
+    boolean decodeVSet(BitReader bits, float[] a, int aOff, int n) {
+        for (int i = 0; i < n; ) {
+            int entry = decode(bits);
+            if (entry < 0) {
+                return false;
+            }
+            int base = entry * dimensions;
+            for (int j = 0; i < n && j < dimensions; i++, j++) {
+                a[aOff + i] = vectors[base + j];
+            }
+        }
+        return true;
+    }
+
     private long[] makeWords() throws VorbisException {
         int usedEntries = 0;
         for (int length : codewordLengths) {
@@ -266,7 +280,7 @@ final class Codebook {
                 } else {
                     m = multiplicands[e * dimensions + i];
                 }
-                float value = m * delta + minimum + last;
+                float value = (float) ((double) m * delta + minimum + last);
                 if (sequenceP) {
                     last = value;
                 }

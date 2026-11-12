@@ -213,7 +213,7 @@ final class Floor1 implements Floor {
     }
 
     @Override
-    public boolean decode(BitReader bits, List<Codebook> codebooks, int[] floorY) {
+    public boolean decode(BitReader bits, List<Codebook> codebooks, float[] floorY) {
         if (!bits.readBool()) {
             return true;
         }
@@ -257,7 +257,7 @@ final class Floor1 implements Floor {
     }
 
     @Override
-    public void synthesize(int[] floorY, float[] spectrum, int n2) {
+    public void synthesize(float[] floorY, float[] spectrum, int n2) {
         int range = RANGES[multiplier - 1];
         int posts = xList.length;
 
@@ -266,8 +266,8 @@ final class Floor1 implements Floor {
         step2Flag[1] = true;
 
         int[] finalY = new int[posts];
-        finalY[0] = floorY[0];
-        finalY[1] = floorY[1];
+        finalY[0] = (int) floorY[0];
+        finalY[1] = (int) floorY[1];
 
         for (int i = 2; i < posts; i++) {
             int lowNeighborOffset = lowNeighbors[i];
@@ -277,7 +277,7 @@ final class Floor1 implements Floor {
                 xList[highNeighborOffset], finalY[highNeighborOffset],
                 xList[i]
             );
-            int val = floorY[i];
+            int val = (int) floorY[i];
             int highRoom = range - predicted;
             int lowRoom = predicted;
 

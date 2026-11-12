@@ -7,18 +7,18 @@ import java.io.IOException;
 import java.util.List;
 
 interface Floor {
-    static Floor unpack(BitReader bits, int codebookCount) throws IOException {
+    static Floor unpack(BitReader bits, List<Codebook> codebooks) throws IOException {
         int floorType = bits.read(16);
         if (floorType == 0) {
-            throw new VorbisException("Floor 0 is not supported");
+            return Floor0.unpack(bits, codebooks);
         } else if (floorType == 1) {
-            return Floor1.unpack(bits, codebookCount);
+            return Floor1.unpack(bits, codebooks.size());
         } else {
             throw new VorbisException("Invalid floor type");
         }
     }
 
-    boolean decode(BitReader bits, List<Codebook> codebooks, int[] floorY);
+    boolean decode(BitReader bits, List<Codebook> codebooks, float[] floorY);
 
-    void synthesize(int[] floorY, float[] spectrum, int n2);
+    void synthesize(float[] floorY, float[] spectrum, int n2);
 }

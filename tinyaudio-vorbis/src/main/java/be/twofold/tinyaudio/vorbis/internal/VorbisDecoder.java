@@ -14,7 +14,7 @@ public final class VorbisDecoder {
     private final float[][] spectrum;
 
     // Floor
-    private final int[][] floorY;
+    private final float[][] floorY;
     private final boolean[] floorUnused;
 
     // Residue
@@ -37,7 +37,7 @@ public final class VorbisDecoder {
 
         spectrum = new float[identification.audioChannels()][identification.blockSize1()];
 
-        floorY = new int[identification.audioChannels()][65];
+        floorY = new float[identification.audioChannels()][256];
         floorUnused = new boolean[identification.audioChannels()];
         noResidue = new boolean[identification.audioChannels()];
         pcmBundle = new float[identification.audioChannels()][];

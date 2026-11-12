@@ -37,7 +37,7 @@ public final class Setup {
     static Setup read(BitReader bits, int audioChannels) throws IOException {
         List<Codebook> codebooks = readList(bits, 8, Codebook::unpack);
         readList(bits, 6, Setup::unpackTimeValue);
-        List<Floor> floors = readList(bits, 6, in -> Floor.unpack(in, codebooks.size()));
+        List<Floor> floors = readList(bits, 6, in -> Floor.unpack(in, codebooks));
         List<Residue> residues = readList(bits, 6, in -> Residue.unpack(in, codebooks));
         List<Mapping> mappings = readList(bits, 6, in -> Mapping.unpack(in, audioChannels, floors.size(), residues.size()));
         List<Mode> modes = readList(bits, 6, in -> Mode.unpack(in, mappings.size()));

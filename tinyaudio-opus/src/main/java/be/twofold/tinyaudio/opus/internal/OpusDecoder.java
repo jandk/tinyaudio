@@ -1,24 +1,17 @@
-package be.twofold.tinyaudio.opus;
+package be.twofold.tinyaudio.opus.internal;
 
-import be.twofold.tinyaudio.core.AudioDecoder;
-import be.twofold.tinyaudio.core.AudioInfo;
-import be.twofold.tinyaudio.core.PacketSource;
+import be.twofold.tinyaudio.opus.OpusException;
 import be.twofold.tinyaudio.opus.celt.CeltDecoder;
 import be.twofold.tinyaudio.opus.celt.CeltMode;
 
-import java.io.IOException;
 import java.util.Arrays;
-import java.util.Objects;
 
-public final class OpusDecoder implements AudioDecoder {
+public final class OpusDecoder {
     private static final int OPUS_BANDWIDTH_NARROWBAND = 1101;    // < 4kHz bandpass @hideinitializer
     private static final int OPUS_BANDWIDTH_MEDIUMBAND = 1102;    // < 6kHz bandpass @hideinitializer
     private static final int OPUS_BANDWIDTH_WIDEBAND = 1103;      // < 8kHz bandpass @hideinitializer
     private static final int OPUS_BANDWIDTH_SUPERWIDEBAND = 1104; // <12kHz bandpass @hideinitializer
     private static final int OPUS_BANDWIDTH_FULLBAND = 1105;      // <20kHz bandpass @hideinitializer
-
-    private final PacketSource packets;
-    private final OpusIdentification identification;
 
     private final int[] frames = new int[49];
     private final int[] size = new int[48]; // 48 x 2.5 ms = 120 ms
@@ -26,75 +19,56 @@ public final class OpusDecoder implements AudioDecoder {
     private final CeltDecoder celt_dec;
     private final int channels;
     private final int Fs = 48000; // Sampling rate (at the API level)
-
+    private int rng;
     // Everything beyond this point gets cleared on a reset
     private int stream_channels;
     private int bandwidth;
     private int frame_size;
-    int rangeFinal;
 
-    OpusDecoder(PacketSource packets, OpusIdentification identification) {
-        this.packets = Objects.requireNonNull(packets);
-        this.identification = Objects.requireNonNull(identification);
-
-        this.celt_dec = new CeltDecoder(CeltMode.mode48000_960_120, identification.channels());
-        this.channels = identification.channels();
+    public OpusDecoder(int channels) {
+        this.celt_dec = new CeltDecoder(CeltMode.mode48000_960_120, channels);
+        this.channels = channels;
     }
 
-    @Override
-    public AudioInfo info() {
-        return new AudioInfo(
-            "ogg", "opus", "opus",
-            48000, // Fixed
-            identification.channels(),
-            -1 // vorbis has it at the end of the stream
-        );
+    public int rng() {
+        return rng;
     }
 
-    @Override
-    public int read(short[][] pcm, int offset, int length) throws IOException {
-        return 0;
-    }
-
-    @Override
-    public void close() throws IOException {
-        packets.close();
-    }
-
-    /**
-     * Decodes one CELT frame of the current packet (frame size {@code frame_size}).
-     */
-    private int opus_decode_frame(byte[] data, int dataOff, int len, float[] pcm, int pcmOff) {
-        // A frame of 0 or 1 bytes (1 or 2 including the ToC) is lost: output silence
-        if (len <= 1) {
-            Arrays.fill(pcm, pcmOff, pcmOff + frame_size * channels, 0);
-            rangeFinal = 0;
-            return frame_size;
+    public int opus_decode_native(byte[] data, int dataOff, int len, float[] pcm, int pcmOff, int frame_size,
+                                  boolean self_delimited) throws OpusException {
+        // SILK-only and hybrid packets are not supported: only CELT is built in.
+        // Reject them before touching any decoder state.
+        byte toc = data[dataOff];
+        if ((toc & 0x80) == 0) {
+            throw new OpusException("OPUS_INVALID_PACKET");
         }
 
-        int endband = 21;
-        switch (bandwidth) {
-            case OPUS_BANDWIDTH_NARROWBAND:
-                endband = 13;
-                break;
-            case OPUS_BANDWIDTH_MEDIUMBAND:
-            case OPUS_BANDWIDTH_WIDEBAND:
-                endband = 17;
-                break;
-            case OPUS_BANDWIDTH_SUPERWIDEBAND:
-                endband = 19;
-                break;
-            case OPUS_BANDWIDTH_FULLBAND:
-                endband = 21;
-                break;
+        int packet_frame_size = opus_packet_get_samples_per_frame(toc, Fs);
+        int count = opus_packet_parse_impl(data, dataOff, len, self_delimited, frames, size);
+        if (count * packet_frame_size > frame_size) {
+            throw new OpusException("OPUS_BUFFER_TOO_SMALL");
         }
 
-        celt_dec.celt_decode_with_ec(data, dataOff, len, pcm, pcmOff, frame_size, stream_channels, endband);
-        rangeFinal = celt_dec.rng();
-        return frame_size;
+        // The packet is valid: only now update the decoder state
+        bandwidth = opus_packet_get_bandwidth(toc);
+        this.frame_size = packet_frame_size;
+        this.stream_channels = opus_packet_get_nb_channels(toc);
+
+        int nb_samples = 0;
+        for (int i = 0; i < count; i++) {
+            int ret = opus_decode_frame(data, frames[i], size[i], pcm, pcmOff);
+            pcmOff += ret * channels;
+            nb_samples += ret;
+        }
+        return nb_samples;
     }
 
-    private int opus_packet_parse_impl(byte[] data, int dataOff, int len, boolean self_delimited, int[] frames, int[] size) throws OpusException {
+    private int opus_packet_get_samples_per_frame(byte toc, int Fs) {
+        return (Fs << ((toc >> 3) & 0x3)) / 400;
+    }
+
+    private int opus_packet_parse_impl(byte[] data, int dataOff, int len, boolean self_delimited, int[] frames,
+                                       int[] size) throws OpusException {
         if (len == 0) {
             throw new OpusException("OPUS_INVALID_PACKET");
         }
@@ -235,45 +209,46 @@ public final class OpusDecoder implements AudioDecoder {
         return count;
     }
 
-    int opus_decode_native(byte[] data, int dataOff, int len, float[] pcm, int pcmOff, int frame_size, boolean self_delimited) throws OpusException {
-        // SILK-only and hybrid packets are not supported: only CELT is built in.
-        // Reject them before touching any decoder state.
-        byte toc = data[dataOff];
-        if ((toc & 0x80) == 0) {
-            throw new OpusException("OPUS_INVALID_PACKET");
-        }
-
-        int packet_frame_size = opus_packet_get_samples_per_frame(toc, Fs);
-        int count = opus_packet_parse_impl(data, dataOff, len, self_delimited, frames, size);
-        if (count * packet_frame_size > frame_size) {
-            throw new OpusException("OPUS_BUFFER_TOO_SMALL");
-        }
-
-        // The packet is valid: only now update the decoder state
-        bandwidth = opus_packet_get_bandwidth(toc);
-        this.frame_size = packet_frame_size;
-        this.stream_channels = opus_packet_get_nb_channels(toc);
-
-        int nb_samples = 0;
-        for (int i = 0; i < count; i++) {
-            int ret = opus_decode_frame(data, frames[i], size[i], pcm, pcmOff);
-            pcmOff += ret * channels;
-            nb_samples += ret;
-        }
-        return nb_samples;
-    }
-
     private int opus_packet_get_bandwidth(byte toc) {
         int bandwidth = OPUS_BANDWIDTH_MEDIUMBAND + ((toc >> 5) & 0x3);
         return bandwidth == OPUS_BANDWIDTH_MEDIUMBAND ? OPUS_BANDWIDTH_NARROWBAND : bandwidth;
     }
 
-    private int opus_packet_get_samples_per_frame(byte toc, int Fs) {
-        return (Fs << ((toc >> 3) & 0x3)) / 400;
-    }
-
     private int opus_packet_get_nb_channels(byte toc) {
         return (toc & 0x4) != 0 ? 2 : 1;
+    }
+
+    /**
+     * Decodes one CELT frame of the current packet (frame size {@code frame_size}).
+     */
+    private int opus_decode_frame(byte[] data, int dataOff, int len, float[] pcm, int pcmOff) {
+        // A frame of 0 or 1 bytes (1 or 2 including the ToC) is lost: output silence
+        if (len <= 1) {
+            Arrays.fill(pcm, pcmOff, pcmOff + frame_size * channels, 0);
+            rng = 0;
+            return frame_size;
+        }
+
+        int endband = 21;
+        switch (bandwidth) {
+            case OPUS_BANDWIDTH_NARROWBAND:
+                endband = 13;
+                break;
+            case OPUS_BANDWIDTH_MEDIUMBAND:
+            case OPUS_BANDWIDTH_WIDEBAND:
+                endband = 17;
+                break;
+            case OPUS_BANDWIDTH_SUPERWIDEBAND:
+                endband = 19;
+                break;
+            case OPUS_BANDWIDTH_FULLBAND:
+                endband = 21;
+                break;
+        }
+
+        celt_dec.celt_decode_with_ec(data, dataOff, len, pcm, pcmOff, frame_size, stream_channels, endband);
+        rng = celt_dec.rng();
+        return frame_size;
     }
 
     private int parse_size(byte[] data, int dataOff, int len) {

@@ -16,7 +16,6 @@ public final class OpusOggCodec implements OggCodec {
             return Optional.empty();
         }
         OpusHeader header = OpusHeader.read(first, packets);
-        System.out.println("header.identification() = " + header.identification());
-        throw new OpusException("Opus decoding is not implemented yet");
+        return Optional.of(new OpusAudioDecoder(packets, header.identification()));
     }
 }

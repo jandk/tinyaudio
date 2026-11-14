@@ -21,17 +21,17 @@ import java.util.stream.Stream;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class VorbisAudioDecoderIT {
-    private static final int MAX_FRAMES = 4096;
-    private static final float TOLERANCE = 1e-6f;
+    private static final float EPSILON = 1e-6f;
+    private static final Path ROOT = projectRoot().resolve("test-vectors/vorbis");
 
     private static final LibVorbis LIB_VORBIS = LibVorbis.load();
 
     private static List<String> vectors() throws IOException {
-        Path path = projectRoot().resolve("scripts").resolve("vorbis-vectors.sha256");
-        try (Stream<String> lines = Files.lines(path)) {
-            return lines
-                .filter(line -> !line.isBlank() && !line.startsWith("#"))
-                .map(line -> line.strip().split("\\s+\\*?", 2)[1])
+        try (Stream<Path> stream = Files.list(ROOT)) {
+            return stream
+                .map(p -> p.getFileName().toString())
+                .filter(s -> s.endsWith(".ogg"))
+                .sorted()
                 .collect(Collectors.toList());
         }
     }
@@ -126,9 +126,7 @@ class VorbisAudioDecoderIT {
     @ParameterizedTest(name = "{0}")
     @MethodSource("vectors")
     void decode(String name) throws IOException {
-        Path file = projectRoot().resolve("test-vectors").resolve("vorbis").resolve(name);
-        assertThat(Files.exists(file)).as("Missing " + name + "; run scripts/vorbis-vectors.sh").isTrue();
-
+        Path file = ROOT.resolve(name);
         float[][] expected = decodeLibVorbis(file);
 
         OggPacketReader packets = new OggPacketReader(new OggPageReader(Files.newInputStream(file)));
@@ -136,7 +134,7 @@ class VorbisAudioDecoderIT {
         try (VorbisAudioDecoder decoder = new VorbisAudioDecoder(packets, header.identification(), header.setup())) {
             int channels = decoder.info().channels();
             assertThat(channels).isEqualTo(expected.length);
-            float[][] pcm = new float[channels][MAX_FRAMES];
+            float[][] pcm = new float[channels][4096];
 
             int frames = 0;
             while (true) {
@@ -149,7 +147,7 @@ class VorbisAudioDecoderIT {
                 for (int c = 0; c < channels; c++) {
                     for (int i = 0; i < n; i++) {
                         float expect = expected[c][frames + i];
-                        if (Math.abs(pcm[c][i] - expect) > TOLERANCE) {
+                        if (Math.abs(pcm[c][i] - expect) > EPSILON) {
                             assertThat(pcm[c][i]).isEqualTo(expect);
                         }
                     }

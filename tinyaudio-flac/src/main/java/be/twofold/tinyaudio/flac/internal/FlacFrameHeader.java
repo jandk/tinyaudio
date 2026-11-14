@@ -1,11 +1,11 @@
-package be.twofold.tinyaudio.flac;
+package be.twofold.tinyaudio.flac.internal;
 
 import be.twofold.tinyaudio.core.internal.CRC;
+import be.twofold.tinyaudio.flac.FlacException;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 
-final class FlacFrameHeader {
+public final class FlacFrameHeader {
     private final boolean variableBlockSize;
     private final int blockSize;
     private final int sampleRate;
@@ -32,7 +32,7 @@ final class FlacFrameHeader {
         this.codedNumber = codedNumber;
     }
 
-    static FlacFrameHeader read(ByteBuffer buffer) throws IOException {
+    public static FlacFrameHeader read(ByteBuffer buffer) throws FlacException {
         int position = buffer.position();
         int b0 = Byte.toUnsignedInt(buffer.get());
         int b1 = Byte.toUnsignedInt(buffer.get());
@@ -96,7 +96,7 @@ final class FlacFrameHeader {
         }
     }
 
-    private static int bitsPerSample(int bitsPerSampleBits) throws IOException {
+    private static int bitsPerSample(int bitsPerSampleBits) throws FlacException {
         switch (bitsPerSampleBits) {
             case 0:
                 return -1;
@@ -117,7 +117,7 @@ final class FlacFrameHeader {
         }
     }
 
-    private static long codedNumber(ByteBuffer buffer) throws IOException {
+    private static long codedNumber(ByteBuffer buffer) throws FlacException {
         int b = Byte.toUnsignedInt(buffer.get());
         if (b < 0x80) {
             return b;
@@ -145,7 +145,7 @@ final class FlacFrameHeader {
         return codedNumber;
     }
 
-    private static int blockSize(int blockSizeBits, ByteBuffer buffer) throws IOException {
+    private static int blockSize(int blockSizeBits, ByteBuffer buffer) throws FlacException {
         switch (blockSizeBits) {
             case 1:
                 return 192;
@@ -172,7 +172,7 @@ final class FlacFrameHeader {
         }
     }
 
-    private static int sampleRate(int sampleRateBits, ByteBuffer buffer) throws IOException {
+    private static int sampleRate(int sampleRateBits, ByteBuffer buffer) throws FlacException {
         switch (sampleRateBits) {
             case 0:
                 return -1;
@@ -213,15 +213,15 @@ final class FlacFrameHeader {
         return variableBlockSize;
     }
 
-    int blockSize() {
+    public int blockSize() {
         return blockSize;
     }
 
-    int sampleRate() {
+    public int sampleRate() {
         return sampleRate;
     }
 
-    int numberOfChannels() {
+    public int numberOfChannels() {
         return numberOfChannels;
     }
 
@@ -229,7 +229,7 @@ final class FlacFrameHeader {
         return channelCorrelation;
     }
 
-    int bitsPerSample() {
+    public int bitsPerSample() {
         return bitsPerSample;
     }
 

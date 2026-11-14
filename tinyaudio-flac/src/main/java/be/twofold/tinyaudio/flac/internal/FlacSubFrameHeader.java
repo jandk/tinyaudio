@@ -1,6 +1,7 @@
-package be.twofold.tinyaudio.flac;
+package be.twofold.tinyaudio.flac.internal;
 
 import be.twofold.tinyaudio.core.internal.BitReader;
+import be.twofold.tinyaudio.flac.FlacException;
 
 import java.util.Objects;
 

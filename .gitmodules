@@ -1,0 +1,4 @@
+[submodule "test-vectors/flac"]
+	path = test-vectors/flac
+	url = https://github.com/ietf-wg-cellar/flac-test-files
+	shallow = true

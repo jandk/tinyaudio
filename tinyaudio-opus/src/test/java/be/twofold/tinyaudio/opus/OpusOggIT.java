@@ -19,7 +19,7 @@ class OpusOggIT {
     private static final int MAX_FRAMES = 5760;
 
     @ParameterizedTest(name = "{0}")
-    @ValueSource(strings = {"mono", "stereo", "51", "71"})
+    @ValueSource(strings = {"mono", "stereo", "51", "71", "clip"})
     void decode(String name) throws IOException {
         ByteBuffer reference = ByteBuffer.wrap(readResource(name + ".pcm")).order(ByteOrder.LITTLE_ENDIAN);
 

@@ -47,11 +47,11 @@ final class FlacHeader {
     }
 
     static FlacHeader read(Packet first, PacketSource packets) throws IOException {
-        if (first.getData().length < OGG_HEADER_SIZE + 4 + StreamInfo.BYTES) {
+        if (first.data().length < OGG_HEADER_SIZE + 4 + StreamInfo.BYTES) {
             throw new FlacException("Ogg FLAC header packet too short");
         }
 
-        ByteBuffer buffer = ByteBuffer.wrap(first.getData());
+        ByteBuffer buffer = ByteBuffer.wrap(first.data());
         if (!IOUtils.matches(buffer, OGG_MAGIC)) {
             throw new FlacException("Invalid Ogg FLAC header");
         }
@@ -71,7 +71,7 @@ final class FlacHeader {
             if (packet == null) {
                 throw new FlacException("Stream ended before the last metadata block");
             }
-            ByteBuffer block = ByteBuffer.wrap(packet.getData());
+            ByteBuffer block = ByteBuffer.wrap(packet.data());
             if (block.remaining() < 4) {
                 throw new FlacException("Metadata packet too short");
             }

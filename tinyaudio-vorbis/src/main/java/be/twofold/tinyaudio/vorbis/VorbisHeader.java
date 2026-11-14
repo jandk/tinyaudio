@@ -48,11 +48,11 @@ final class VorbisHeader {
         if (packet == null) {
             throw new VorbisException("Stream ended before header packet of type " + type);
         }
-        if (!isHeader(packet.getData(), type)) {
+        if (!isHeader(packet.data(), type)) {
             throw new VorbisException("Expected header packet of type " + type);
         }
 
-        return ByteBuffer.wrap(packet.getData())
+        return ByteBuffer.wrap(packet.data())
             .position(1 + MAGIC.length)
             .order(ByteOrder.LITTLE_ENDIAN);
     }

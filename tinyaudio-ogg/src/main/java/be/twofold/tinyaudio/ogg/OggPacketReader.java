@@ -28,7 +28,7 @@ public final class OggPacketReader implements PacketSource {
         this.serialNumber = serialNumber;
     }
 
-    public Integer getSerialNumber() {
+    public Integer serialNumber() {
         return serialNumber;
     }
 
@@ -52,20 +52,20 @@ public final class OggPacketReader implements PacketSource {
 
             // Packet continues on the next page, grab the data
             if (!page.endsPacket(end - 1)) {
-                chunks.add(Arrays.copyOfRange(page.getPayload(), offset, offset + length));
+                chunks.add(Arrays.copyOfRange(page.payload(), offset, offset + length));
                 continue;
             }
 
             // Packet ends here, so just copy the data
             byte[] data = chunks.isEmpty()
-                ? Arrays.copyOfRange(page.getPayload(), offset, offset + length)
-                : combine(page.getPayload(), offset, length);
+                ? Arrays.copyOfRange(page.payload(), offset, offset + length)
+                : combine(page.payload(), offset, length);
 
-            boolean last = end - 1 == page.lastPacketEnd();
+            boolean last = end == page.lastPacketEnd();
             finished = last && page.isEndOfStream();
             Packet packet = new Packet(
                 data,
-                last ? page.getGranulePosition() : -1,
+                last ? page.granulePosition() : -1,
                 finished,
                 gap
             );
@@ -92,17 +92,17 @@ public final class OggPacketReader implements PacketSource {
                 if (!page.isBeginOfStream()) {
                     continue;
                 }
-                serialNumber = page.getBitstreamSerialNumber();
+                serialNumber = page.bitstreamSerialNumber();
             }
 
             // Serial number mismatch, gap this page
-            if (page.getBitstreamSerialNumber() != serialNumber) {
+            if (page.bitstreamSerialNumber() != serialNumber) {
                 continue;
             }
 
             // Sequence gap means pages were lost. Codecs need to know.
-            boolean sequenceGap = page.getPageSequenceNumber() != sequence;
-            sequence = page.getPageSequenceNumber() + 1;
+            boolean sequenceGap = page.pageSequenceNumber() != sequence;
+            sequence = page.pageSequenceNumber() + 1;
             gap |= sequenceGap;
             segment = 0;
 

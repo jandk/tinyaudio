@@ -12,8 +12,8 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public final class OggPage {
-    private static final int FIXED_SIZE = 27;
-    static final int MAX_PAGE_SIZE = FIXED_SIZE + 255 + 255 * 255;
+    private static final int HEADER_SIZE = 27;
+    static final int MAX_PAGE_SIZE = HEADER_SIZE + 255 + 255 * 255;
     static final byte[] MAGIC = {'O', 'g', 'g', 'S'};
 
     private final byte headerTypeFlag;
@@ -39,36 +39,36 @@ public final class OggPage {
         this.payload = Objects.requireNonNull(payload);
     }
 
-    public long getGranulePosition() {
+    public long granulePosition() {
         return granulePosition;
     }
 
-    public int getBitstreamSerialNumber() {
+    public int bitstreamSerialNumber() {
         return bitstreamSerialNumber;
     }
 
-    public int getPageSequenceNumber() {
+    public int pageSequenceNumber() {
         return pageSequenceNumber;
     }
 
-    public byte[] getPayload() {
+    public byte[] payload() {
         return payload;
     }
 
     public static OggPage read(InputStream in) throws IOException {
-        ByteBuffer buffer = IOUtils.readBuffer(in, FIXED_SIZE, ByteOrder.LITTLE_ENDIAN);
+        ByteBuffer buffer = IOUtils.readBuffer(in, HEADER_SIZE, ByteOrder.LITTLE_ENDIAN);
         if (!IOUtils.matches(buffer, MAGIC)) {
             throw new OggException("Invalid capture pattern");
         }
         byte streamStructureVersion = buffer.get();
         if (streamStructureVersion != 0) {
-            throw new OggException("Invalid stream structure version: " + buffer.get());
+            throw new OggException("Invalid stream structure version: " + streamStructureVersion);
         }
         byte headerTypeFlag = buffer.get();
         long granulePosition = buffer.getLong();
         int bitstreamSerialNumber = buffer.getInt();
         int pageSequenceNumber = buffer.getInt();
-        int crcChecksum = buffer.getInt();
+        int expectedCrc = buffer.getInt();
         buffer.putInt(22, 0); // clear crc
         int segmentCount = Byte.toUnsignedInt(buffer.get());
 
@@ -86,7 +86,7 @@ public final class OggPage {
         crc.update(payload);
         int crcValue = (int) crc.getValue();
 
-        if (crcValue != crcChecksum) {
+        if (crcValue != expectedCrc) {
             throw new OggException("Invalid CRC checksum");
         }
 
@@ -155,10 +155,10 @@ public final class OggPage {
     public int lastPacketEnd() {
         for (int i = segments.length - 1; i >= 0; i--) {
             if (endsPacket(i)) {
-                return i;
+                return i + 1;
             }
         }
-        return -1;
+        return 0;
     }
 
     @Override

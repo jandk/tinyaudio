@@ -14,9 +14,9 @@ import java.util.stream.Collectors;
 
 public final class OggAudioDecoderProvider implements AudioDecoderProvider {
     private static final List<OggCodec> CODECS = ServiceLoader
-            .load(OggCodec.class).stream()
-            .map(ServiceLoader.Provider::get)
-            .collect(Collectors.toList());
+        .load(OggCodec.class).stream()
+        .map(ServiceLoader.Provider::get)
+        .collect(Collectors.toList());
 
     @Override
     public Optional<AudioDecoder> open(byte[] head, InputStream in) throws IOException {
@@ -24,14 +24,14 @@ public final class OggAudioDecoderProvider implements AudioDecoderProvider {
             return Optional.empty();
         }
 
-        OggPacketReader reader = new OggPacketReader(new OggPageReader(in));
-        Packet first = reader.next();
+        OggPacketReader packets = new OggPacketReader(new OggPageReader(in));
+        Packet first = packets.next();
         if (first == null) {
             return Optional.empty();
         }
 
         for (OggCodec codec : CODECS) {
-            Optional<AudioDecoder> decoder = codec.open(first, reader);
+            Optional<AudioDecoder> decoder = codec.open(first, packets);
             if (decoder.isPresent()) {
                 return decoder;
             }

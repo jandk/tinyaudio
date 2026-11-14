@@ -11,7 +11,7 @@ import java.util.Optional;
 public final class VorbisOggCodec implements OggCodec {
     @Override
     public Optional<AudioDecoder> open(Packet first, PacketSource packets) throws IOException {
-        if (!VorbisHeader.isHeader(first.getData(), 1)) {
+        if (!VorbisHeader.isHeader(first.data(), 1)) {
             return Optional.empty();
         }
         VorbisHeader header = VorbisHeader.read(first, packets);

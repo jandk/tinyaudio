@@ -15,19 +15,19 @@ public final class Packet {
         this.gap = gap;
     }
 
-    public byte[] getData() {
+    public byte[] data() {
         return data;
     }
 
-    public long getPosition() {
+    public long position() {
         return position;
     }
 
-    public boolean isFinished() {
+    public boolean finished() {
         return finished;
     }
 
-    public boolean isGap() {
+    public boolean gap() {
         return gap;
     }
 

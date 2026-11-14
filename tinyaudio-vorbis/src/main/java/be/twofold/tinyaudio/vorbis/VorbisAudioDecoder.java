@@ -46,18 +46,18 @@ public final class VorbisAudioDecoder extends BlockAudioDecoder {
             return -1;
         }
 
-        byte[] data = packet.getData();
+        byte[] data = packet.data();
         int frames = decoder.decodeBlock(data, 0, data.length, pcm);
 
         granulePosition += frames;
-        long position = packet.getPosition();
+        long position = packet.position();
         if (position == -1) {
             return frames;
         }
 
         int extra = (int) Math.max(0, Math.min(granulePosition - position, frames));
         granulePosition = position;
-        if (packet.isFinished()) {
+        if (packet.finished()) {
             return frames - extra;
         }
         if (synced) {

@@ -13,7 +13,7 @@ import java.util.Optional;
 public final class FlacOggCodec implements OggCodec {
     @Override
     public Optional<AudioDecoder> open(Packet first, PacketSource packets) throws IOException {
-        if (!IOUtils.startsWith(first.getData(), FlacHeader.OGG_MAGIC)) {
+        if (!IOUtils.startsWith(first.data(), FlacHeader.OGG_MAGIC)) {
             return Optional.empty();
         }
         FlacHeader header = FlacHeader.read(first, packets);

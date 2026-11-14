@@ -47,7 +47,7 @@ class VorbisAudioDecoderIT {
     }
 
     private LibVorbis.OggPacket makeOggPacket(Packet packet, long packetNo) {
-        byte[] data = packet.getData();
+        byte[] data = packet.data();
         Memory memory = new Memory(Math.max(1, data.length)); // Memory(0) throws
         memory.write(0, data, 0, data.length);
 
@@ -55,8 +55,8 @@ class VorbisAudioDecoderIT {
         oggPacket.packet = memory;
         oggPacket.bytes = new NativeLong(data.length);
         oggPacket.bos = new NativeLong(packetNo == 0 ? 1 : 0);
-        oggPacket.eos = new NativeLong(packet.isFinished() ? 1 : 0);
-        oggPacket.granulePos = packet.getPosition(); // -1 except on the last packet of a page, like libogg
+        oggPacket.eos = new NativeLong(packet.finished() ? 1 : 0);
+        oggPacket.granulePos = packet.position(); // -1 except on the last packet of a page, like libogg
         oggPacket.packetNo = packetNo;
         return oggPacket;
     }

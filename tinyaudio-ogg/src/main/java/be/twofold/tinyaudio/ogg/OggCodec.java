@@ -8,7 +8,5 @@ import java.io.IOException;
 import java.util.Optional;
 
 public interface OggCodec {
-
     Optional<AudioDecoder> open(Packet first, PacketSource packets) throws IOException;
-
 }

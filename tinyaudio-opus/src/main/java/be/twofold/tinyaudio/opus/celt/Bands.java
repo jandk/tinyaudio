@@ -495,21 +495,8 @@ final class Bands {
         System.arraycopy(tmp, 0, X, XOff, N);
     }
 
-    /**
-     * Uses the second method from http://www.azillionmonkeys.com/qed/sqroot.html. The main idea is to search for the
-     * largest binary digit {@code b} such that {@code (g+b)*(g+b) <= _val}, and add it to the solution {@code g}.
-     */
     private int isqrt32(int _val) {
-        int g = 0;
-        for (int bshift = (EC_ILOG(_val) - 1) >> 1; bshift >= 0; bshift--) {
-            int b = 1 << bshift;
-            int t = ((g << 1) + b) << bshift;
-            if (t <= _val) {
-                g += b;
-                _val -= t;
-            }
-        }
-        return g;
+        return (int) Math.sqrt(_val);
     }
 
     /**

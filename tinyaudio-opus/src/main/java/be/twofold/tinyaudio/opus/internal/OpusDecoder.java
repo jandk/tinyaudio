@@ -40,7 +40,7 @@ public final class OpusDecoder {
         // Reject them before touching any decoder state.
         byte toc = data[dataOff];
         if ((toc & 0x80) == 0) {
-            throw new OpusException("OPUS_INVALID_PACKET");
+            throw new UnsupportedOperationException("SILK and Hybrid are not supported");
         }
 
         int packet_frame_size = opus_packet_get_samples_per_frame(toc, Fs);

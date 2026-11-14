@@ -53,7 +53,7 @@ class OpusAudioDecoderIT {
         if (id == 1 || id == 7 || id == 11) {
             testOpus(file);
         } else { // SILK or hybrid
-            skipIfThrows(file, OpusException.class);
+            skipIfThrows(file, UnsupportedOperationException.class);
         }
     }
 

@@ -2,6 +2,7 @@ package be.twofold.tinyaudio.flac.internal;
 
 import be.twofold.tinyaudio.core.internal.CRC;
 import be.twofold.tinyaudio.flac.FlacException;
+import be.twofold.tinyaudio.flac.metadata.StreamInfo;
 
 import java.nio.ByteBuffer;
 
@@ -44,22 +45,22 @@ public final class FlacFrameHeader {
         }
 
         boolean variableBlockSize = (b1 & 0x01) != 0;
-        int numberOfChannels = numberOfChannels(b3 >> 4);
-        ChannelType channelCorrelation = channelCorrelation(b3 >> 4);
-        int bitsPerSample = bitsPerSample((b3 >> 1) & 0x07);
+        int numberOfChannels = parseNumberOfChannels(b3 >> 4);
+        ChannelType channelCorrelation = parseChannelCorrelation(b3 >> 4);
+        int bitsPerSample = parseBitsPerSample((b3 >> 1) & 0x07);
         if ((b3 & 1) != 0) {
             throw new FlacException("Reserved bit must be zero");
         }
 
-        long codedNumber = codedNumber(buffer);
-        int blockSize = blockSize(b2 >> 4, buffer);
-        int sampleRate = sampleRate(b2 & 0x0F, buffer);
+        long codedNumber = parseCodedNumber(buffer);
+        int blockSize = parseBlockSize(b2 >> 4, buffer);
+        int sampleRate = parseSampleRate(b2 & 0x0F, buffer);
 
         ByteBuffer crcBuffer = buffer.duplicate().position(position).limit(buffer.position());
         var crc = CRC.FLAC_HEADER.get();
         crc.update(crcBuffer);
         if ((byte) crc.getValue() != buffer.get()) {
-            throw new FlacException("Invalid audio frame crc");
+            throw new FlacException("Invalid frame header crc");
         }
 
         return new FlacFrameHeader(
@@ -73,7 +74,7 @@ public final class FlacFrameHeader {
         );
     }
 
-    private static int numberOfChannels(int channelBits) throws FlacException {
+    private static int parseNumberOfChannels(int channelBits) throws FlacException {
         if (channelBits < 8) {
             return channelBits + 1;
         } else if (channelBits < 11) {
@@ -81,7 +82,7 @@ public final class FlacFrameHeader {
         } else throw new FlacException("Invalid channel bits: " + channelBits);
     }
 
-    private static ChannelType channelCorrelation(int channelBits) {
+    private static ChannelType parseChannelCorrelation(int channelBits) {
         switch (channelBits) {
             case 1:
                 return ChannelType.LEFT_RIGHT;
@@ -96,7 +97,7 @@ public final class FlacFrameHeader {
         }
     }
 
-    private static int bitsPerSample(int bitsPerSampleBits) throws FlacException {
+    private static int parseBitsPerSample(int bitsPerSampleBits) throws FlacException {
         switch (bitsPerSampleBits) {
             case 0:
                 return -1;
@@ -117,7 +118,7 @@ public final class FlacFrameHeader {
         }
     }
 
-    private static long codedNumber(ByteBuffer buffer) throws FlacException {
+    private static long parseCodedNumber(ByteBuffer buffer) throws FlacException {
         int b = Byte.toUnsignedInt(buffer.get());
         if (b < 0x80) {
             return b;
@@ -134,7 +135,7 @@ public final class FlacFrameHeader {
         for (int i = 0; i < extra; i++) {
             int continuation = Byte.toUnsignedInt(buffer.get());
             if ((continuation & 0xC0) != 0x80) {
-                throw new FlacException("Invalid continuation byte: " + b);
+                throw new FlacException("Invalid continuation byte: " + continuation);
             }
             codedNumber = (codedNumber << 6) | (continuation & 0x3F);
         }
@@ -145,7 +146,7 @@ public final class FlacFrameHeader {
         return codedNumber;
     }
 
-    private static int blockSize(int blockSizeBits, ByteBuffer buffer) throws FlacException {
+    private static int parseBlockSize(int blockSizeBits, ByteBuffer buffer) throws FlacException {
         switch (blockSizeBits) {
             case 1:
                 return 192;
@@ -172,7 +173,7 @@ public final class FlacFrameHeader {
         }
     }
 
-    private static int sampleRate(int sampleRateBits, ByteBuffer buffer) throws FlacException {
+    private static int parseSampleRate(int sampleRateBits, ByteBuffer buffer) throws FlacException {
         switch (sampleRateBits) {
             case 0:
                 return -1;
@@ -235,6 +236,20 @@ public final class FlacFrameHeader {
 
     long codedNumber() {
         return codedNumber;
+    }
+
+    public boolean matchesFirst(StreamInfo info) {
+        return blockSize <= info.maxBlockSizeOrDefault()
+            && numberOfChannels == info.channels()
+            && (sampleRate == -1 || sampleRate == info.sampleRate())
+            && (bitsPerSample == -1 || bitsPerSample == info.bitsPerSample());
+    }
+
+    public boolean matches(StreamInfo info, FlacFrameHeader first) {
+        return blockSize <= info.maxBlockSizeOrDefault()
+            && numberOfChannels == info.channels()
+            && sampleRate == first.sampleRate
+            && bitsPerSample == first.bitsPerSample;
     }
 
     enum ChannelType {

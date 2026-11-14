@@ -1,7 +1,7 @@
 package be.twofold.tinyaudio.flac;
 
 import be.twofold.tinyaudio.flac.metadata.StreamInfo;
-import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.catchThrowable;
 
 class FlacAudioDecoderIT {
     private static final Path ROOT = projectRoot().resolve("test-vectors/flac");
@@ -81,16 +81,23 @@ class FlacAudioDecoderIT {
         testFlac(file);
     }
 
-    @Disabled
     @ParameterizedTest(name = "{0}")
     @MethodSource("uncommon")
     void decodeUncommon(String file) throws Exception {
-        if (file.contains("/05")) {
-            assertThatExceptionOfType(UnsupportedOperationException.class)
-                .isThrownBy(() -> testFlac(file))
-                .withMessageContaining("32");
+        int index = file.lastIndexOf('/');
+        int id = Integer.parseInt(file.substring(index + 1, index + 1 + 2));
+        if (id >= 1 && id <= 4 || id == 5) { // unsupported features
+            skipIfThrows(file, UnsupportedOperationException.class);
+        } else if (id >= 10 && id <= 11) { // no streaminfo
+            skipIfThrows(file, FlacException.class);
         } else {
             testFlac(file);
         }
+    }
+
+    private static void skipIfThrows(String file, Class<? extends Throwable> type) {
+        Throwable thrown = catchThrowable(() -> testFlac(file));
+        assertThat(thrown).isInstanceOf(type);
+        Assumptions.abort(thrown.getMessage());
     }
 }

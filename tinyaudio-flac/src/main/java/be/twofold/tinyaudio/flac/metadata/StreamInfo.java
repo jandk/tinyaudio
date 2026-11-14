@@ -13,8 +13,8 @@ public final class StreamInfo implements MetadataBlock {
     private final int minFrameSize;
     private final int maxFrameSize;
     private final int sampleRate;
-    private final byte channels;
-    private final byte bitsPerSample;
+    private final int channels;
+    private final int bitsPerSample;
     private final long totalSamples;
     private final byte[] md5Sum;
 
@@ -24,8 +24,8 @@ public final class StreamInfo implements MetadataBlock {
         int minFrameSize,
         int maxFrameSize,
         int sampleRate,
-        byte channels,
-        byte bitsPerSample,
+        int channels,
+        int bitsPerSample,
         long totalSamples,
         byte[] md5Sum
     ) throws FlacException {
@@ -96,11 +96,11 @@ public final class StreamInfo implements MetadataBlock {
         return sampleRate;
     }
 
-    public byte channels() {
+    public int channels() {
         return channels;
     }
 
-    public byte bitsPerSample() {
+    public int bitsPerSample() {
         return bitsPerSample;
     }
 

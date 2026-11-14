@@ -5,18 +5,18 @@ import be.twofold.tinyaudio.flac.FlacException;
 
 import java.util.Objects;
 
-final class FlacSubFrameHeader {
+final class FlacSubframeHeader {
     private final Type subframeType;
     private final int order;
     private final int wastedBits;
 
-    FlacSubFrameHeader(Type subframeType, int order, int wastedBits) {
+    FlacSubframeHeader(Type subframeType, int order, int wastedBits) {
         this.subframeType = Objects.requireNonNull(subframeType);
         this.order = order;
         this.wastedBits = wastedBits;
     }
 
-    static FlacSubFrameHeader read(BitReader bits) throws FlacException {
+    static FlacSubframeHeader read(BitReader bits) throws FlacException {
         if (bits.readBool()) {
             throw new FlacException("Invalid subframe header");
         }
@@ -26,7 +26,7 @@ final class FlacSubFrameHeader {
         int order = order(subframeTypeBits);
         int wastedBits = bits.readBool() ? bits.readUnary() + 1 : 0;
 
-        return new FlacSubFrameHeader(
+        return new FlacSubframeHeader(
             subframeType,
             order,
             wastedBits
@@ -57,15 +57,15 @@ final class FlacSubFrameHeader {
         }
     }
 
-    Type getSubframeType() {
+    Type subframeType() {
         return subframeType;
     }
 
-    int getOrder() {
+    int order() {
         return order;
     }
 
-    int getWastedBits() {
+    int wastedBits() {
         return wastedBits;
     }
 

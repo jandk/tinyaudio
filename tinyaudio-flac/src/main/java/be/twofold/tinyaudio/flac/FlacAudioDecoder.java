@@ -17,7 +17,6 @@ public final class FlacAudioDecoder extends BlockAudioDecoder {
     private final String container;
     private final int[][] pcmInt;
 
-
     FlacAudioDecoder(PacketSource packets, StreamInfo streamInfo, String container) {
         super(streamInfo.channels(), streamInfo.maxBlockSizeOrDefault());
 
@@ -57,7 +56,6 @@ public final class FlacAudioDecoder extends BlockAudioDecoder {
                 }
             }
         }
-
         return samples;
     }
 
@@ -74,5 +72,4 @@ public final class FlacAudioDecoder extends BlockAudioDecoder {
     public void close() throws IOException {
         packets.close();
     }
-
 }

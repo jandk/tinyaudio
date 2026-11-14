@@ -21,6 +21,7 @@ final class FlacPacketSource implements PacketSource {
     private final CRC crc = CRC.FLAC_FRAME.get();
     private final InputStream in;
     private final StreamInfo streamInfo;
+    private FlacFrameHeader first;
     private long position;
     private boolean finished;
 
@@ -42,6 +43,9 @@ final class FlacPacketSource implements PacketSource {
         fill(MAX_HEADER_SIZE);
         FlacFrameHeader header = readHeader(0);
         position += header.blockSize();
+        if (first == null) {
+            first = header;
+        }
 
         int size = findFrameEnd();
         byte[] data = Arrays.copyOfRange(buffer, start, start + size);
@@ -129,15 +133,16 @@ final class FlacPacketSource implements PacketSource {
             return false;
         }
 
+        FlacFrameHeader header;
         try {
-            FlacFrameHeader header = readHeader(offset);
-            return header.blockSize() <= streamInfo.maxBlockSizeOrDefault()
-                && header.sampleRate() == streamInfo.sampleRate()
-                && header.numberOfChannels() == streamInfo.channels()
-                && header.bitsPerSample() == streamInfo.bitsPerSample();
+            header = readHeader(offset);
         } catch (FlacException | EOFException e) {
             return false;
         }
+        if (!header.matches(streamInfo, first)) {
+            throw new UnsupportedOperationException("Stream parameters change mid-stream");
+        }
+        return true;
     }
 
     @Override

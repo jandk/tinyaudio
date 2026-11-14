@@ -19,6 +19,7 @@ public final class FlacDecoder {
     };
 
     private final StreamInfo streamInfo;
+    private FlacFrameHeader first;
     private int[] coefficients;
     private int rightShift;
     private long sampleCount;
@@ -42,12 +43,14 @@ public final class FlacDecoder {
 
         BitReader bits = new BitReader(buffer.array(), buffer.position(), buffer.remaining(), ByteOrder.BIG_ENDIAN);
         for (int ch = 0; ch < header.numberOfChannels(); ch++) {
-            FlacSubFrameHeader subFrameHeader = FlacSubFrameHeader.read(bits);
-
+            FlacSubframeHeader subframeHeader = FlacSubframeHeader.read(bits);
             boolean side = header.channelCorrelation() != null && header.channelCorrelation().side() == ch;
-            int bitsPerSample = header.bitsPerSample() - subFrameHeader.getWastedBits() + (side ? 1 : 0);
+            int bitsPerSample = streamInfo.bitsPerSample() - subframeHeader.wastedBits() + (side ? 1 : 0);
+            if (bitsPerSample <= 0) {
+                throw new FlacException("Invalid wasted bits");
+            }
 
-            switch (subFrameHeader.getSubframeType()) {
+            switch (subframeHeader.subframeType()) {
                 case CONSTANT:
                     decodeConstant(bits, pcm[ch], blockSize, bitsPerSample);
                     break;
@@ -55,14 +58,14 @@ public final class FlacDecoder {
                     decodeVerbatim(bits, pcm[ch], blockSize, bitsPerSample);
                     break;
                 case FIXED:
-                    decodeFixed(bits, pcm[ch], blockSize, bitsPerSample, subFrameHeader.getOrder());
+                    decodeFixed(bits, pcm[ch], blockSize, bitsPerSample, subframeHeader.order());
                     break;
                 case LPC:
-                    decodeLpc(bits, pcm[ch], blockSize, bitsPerSample, subFrameHeader.getOrder());
+                    decodeLpc(bits, pcm[ch], blockSize, bitsPerSample, subframeHeader.order());
                     break;
             }
 
-            applyWastedBits(pcm[ch], blockSize, subFrameHeader.getWastedBits());
+            applyWastedBits(pcm[ch], blockSize, subframeHeader.wastedBits());
         }
         if (bits.isOverrun()) {
             throw new FlacException("Frame data truncated");
@@ -96,10 +99,14 @@ public final class FlacDecoder {
 
         int precision = bits.read(4) + 1;
         if (precision == 16) {
-            throw new FlacException("precision 16");
+            throw new FlacException("Invalid LPC precision");
         }
 
         rightShift = bits.readSigned(5);
+        if (rightShift < 0) {
+            throw new FlacException("Invalid LPC right shift");
+        }
+
         coefficients = new int[order];
         readInts(bits, coefficients, 0, order, precision);
         decodeCodedResidual(bits, samples, blockSize, order);
@@ -153,6 +160,9 @@ public final class FlacDecoder {
     }
 
     private void applyWastedBits(int[] samples, int blockSize, int wastedBits) {
+        if (wastedBits == 0) {
+            return;
+        }
         for (int i = 0; i < blockSize; i++) {
             samples[i] <<= wastedBits;
         }
@@ -207,6 +217,15 @@ public final class FlacDecoder {
     }
 
     private void validateFrameHeader(FlacFrameHeader header, boolean last) throws FlacException {
+        if (first == null) {
+            if (!header.matchesFirst(streamInfo)) {
+                throw new FlacException("First frame header does not match stream info");
+            }
+            first = header;
+        } else if (!header.matches(streamInfo, first)) {
+            throw new FlacException("Frame header does not match first frame");
+        }
+
         int minimumBlockSize = streamInfo.minBlockSize();
         int maximumBlockSize = streamInfo.maxBlockSizeOrDefault();
         int blockSize = header.blockSize();
@@ -214,15 +233,6 @@ public final class FlacDecoder {
         boolean checkMin = minimumBlockSize > 0 && !last;
         if (checkMin && blockSize < minimumBlockSize || blockSize > maximumBlockSize) {
             throw new FlacException("Block size (" + blockSize + ") not between " + minimumBlockSize + " and " + maximumBlockSize);
-        }
-        if (header.sampleRate() != streamInfo.sampleRate()) {
-            throw new FlacException("Sample rate (" + header.sampleRate() + ") not " + streamInfo.sampleRate());
-        }
-        if (header.numberOfChannels() != streamInfo.channels()) {
-            throw new FlacException("Channel count (" + header.numberOfChannels() + ") not " + streamInfo.channels());
-        }
-        if (header.bitsPerSample() != streamInfo.bitsPerSample()) {
-            throw new FlacException("Bit depth (" + header.bitsPerSample() + ") not " + streamInfo.bitsPerSample());
         }
     }
 }

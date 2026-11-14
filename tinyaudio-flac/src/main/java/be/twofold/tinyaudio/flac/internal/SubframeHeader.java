@@ -5,49 +5,49 @@ import be.twofold.tinyaudio.flac.FlacException;
 
 import java.util.Objects;
 
-final class FlacSubframeHeader {
-    private final Type subframeType;
+final class SubframeHeader {
+    private final SubframeType type;
     private final int order;
     private final int wastedBits;
 
-    FlacSubframeHeader(Type subframeType, int order, int wastedBits) {
-        this.subframeType = Objects.requireNonNull(subframeType);
+    SubframeHeader(SubframeType type, int order, int wastedBits) {
+        this.type = Objects.requireNonNull(type);
         this.order = order;
         this.wastedBits = wastedBits;
     }
 
-    static FlacSubframeHeader read(BitReader bits) throws FlacException {
+    static SubframeHeader read(BitReader bits) throws FlacException {
         if (bits.readBool()) {
             throw new FlacException("Invalid subframe header");
         }
 
-        int subframeTypeBits = bits.read(6);
-        Type subframeType = subframeType(subframeTypeBits);
-        int order = order(subframeTypeBits);
+        int typeBits = bits.read(6);
+        SubframeType type = parseType(typeBits);
+        int order = parseOrder(typeBits);
         int wastedBits = bits.readBool() ? bits.readUnary() + 1 : 0;
 
-        return new FlacSubframeHeader(
-            subframeType,
+        return new SubframeHeader(
+            type,
             order,
             wastedBits
         );
     }
 
-    private static Type subframeType(int bits) throws FlacException {
+    private static SubframeType parseType(int bits) throws FlacException {
         if (bits == 0) {
-            return Type.CONSTANT;
+            return SubframeType.CONSTANT;
         } else if (bits == 1) {
-            return Type.VERBATIM;
+            return SubframeType.VERBATIM;
         } else if (bits >= 8 && bits <= 12) {
-            return Type.FIXED;
+            return SubframeType.FIXED;
         } else if (bits >= 32 && bits <= 63) {
-            return Type.LPC;
+            return SubframeType.LPC;
         } else {
             throw new FlacException("Invalid subframe type");
         }
     }
 
-    private static int order(int bits) {
+    private static int parseOrder(int bits) {
         if (bits >= 8 && bits <= 12) {
             return bits - 8;
         } else if (bits >= 32 && bits <= 63) {
@@ -57,8 +57,8 @@ final class FlacSubframeHeader {
         }
     }
 
-    Type subframeType() {
-        return subframeType;
+    SubframeType type() {
+        return type;
     }
 
     int order() {
@@ -69,10 +69,4 @@ final class FlacSubframeHeader {
         return wastedBits;
     }
 
-    enum Type {
-        CONSTANT,
-        VERBATIM,
-        FIXED,
-        LPC,
-    }
 }

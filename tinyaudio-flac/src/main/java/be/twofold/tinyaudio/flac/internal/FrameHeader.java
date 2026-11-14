@@ -6,34 +6,34 @@ import be.twofold.tinyaudio.flac.metadata.StreamInfo;
 
 import java.nio.ByteBuffer;
 
-public final class FlacFrameHeader {
+public final class FrameHeader {
     private final boolean variableBlockSize;
     private final int blockSize;
     private final int sampleRate;
-    private final int numberOfChannels;
-    private final ChannelType channelCorrelation;
+    private final int channels;
+    private final ChannelAssignment channelAssignment;
     private final int bitsPerSample;
     private final long codedNumber;
 
-    FlacFrameHeader(
+    FrameHeader(
         boolean variableBlockSize,
         int blockSize,
         int sampleRate,
-        int numberOfChannels,
-        ChannelType channelCorrelation,
+        int channels,
+        ChannelAssignment channelAssignment,
         int bitsPerSample,
         long codedNumber
     ) {
         this.variableBlockSize = variableBlockSize;
         this.blockSize = blockSize;
         this.sampleRate = sampleRate;
-        this.numberOfChannels = numberOfChannels;
-        this.channelCorrelation = channelCorrelation;
+        this.channels = channels;
+        this.channelAssignment = channelAssignment;
         this.bitsPerSample = bitsPerSample;
         this.codedNumber = codedNumber;
     }
 
-    public static FlacFrameHeader read(ByteBuffer buffer) throws FlacException {
+    public static FrameHeader read(ByteBuffer buffer) throws FlacException {
         int position = buffer.position();
         int b0 = Byte.toUnsignedInt(buffer.get());
         int b1 = Byte.toUnsignedInt(buffer.get());
@@ -45,8 +45,8 @@ public final class FlacFrameHeader {
         }
 
         boolean variableBlockSize = (b1 & 0x01) != 0;
-        int numberOfChannels = parseNumberOfChannels(b3 >> 4);
-        ChannelType channelCorrelation = parseChannelCorrelation(b3 >> 4);
+        int channels = parseChannels(b3 >> 4);
+        ChannelAssignment channelAssignment = parseChannelAssignment(b3 >> 4);
         int bitsPerSample = parseBitsPerSample((b3 >> 1) & 0x07);
         if ((b3 & 1) != 0) {
             throw new FlacException("Reserved bit must be zero");
@@ -63,18 +63,18 @@ public final class FlacFrameHeader {
             throw new FlacException("Invalid frame header crc");
         }
 
-        return new FlacFrameHeader(
+        return new FrameHeader(
             variableBlockSize,
             blockSize,
             sampleRate,
-            numberOfChannels,
-            channelCorrelation,
+            channels,
+            channelAssignment,
             bitsPerSample,
             codedNumber
         );
     }
 
-    private static int parseNumberOfChannels(int channelBits) throws FlacException {
+    private static int parseChannels(int channelBits) throws FlacException {
         if (channelBits < 8) {
             return channelBits + 1;
         } else if (channelBits < 11) {
@@ -82,16 +82,16 @@ public final class FlacFrameHeader {
         } else throw new FlacException("Invalid channel bits: " + channelBits);
     }
 
-    private static ChannelType parseChannelCorrelation(int channelBits) {
+    private static ChannelAssignment parseChannelAssignment(int channelBits) {
         switch (channelBits) {
             case 1:
-                return ChannelType.LEFT_RIGHT;
+                return ChannelAssignment.LEFT_RIGHT;
             case 8:
-                return ChannelType.LEFT_SIDE;
+                return ChannelAssignment.LEFT_SIDE;
             case 9:
-                return ChannelType.SIDE_RIGHT;
+                return ChannelAssignment.SIDE_RIGHT;
             case 10:
-                return ChannelType.MID_SIDE;
+                return ChannelAssignment.MID_SIDE;
             default:
                 return null;
         }
@@ -222,12 +222,12 @@ public final class FlacFrameHeader {
         return sampleRate;
     }
 
-    public int numberOfChannels() {
-        return numberOfChannels;
+    public int channels() {
+        return channels;
     }
 
-    ChannelType channelCorrelation() {
-        return channelCorrelation;
+    ChannelAssignment channelAssignment() {
+        return channelAssignment;
     }
 
     public int bitsPerSample() {
@@ -240,33 +240,16 @@ public final class FlacFrameHeader {
 
     public boolean matchesFirst(StreamInfo info) {
         return blockSize <= info.maxBlockSizeOrDefault()
-            && numberOfChannels == info.channels()
+            && channels == info.channels()
             && (sampleRate == -1 || sampleRate == info.sampleRate())
             && (bitsPerSample == -1 || bitsPerSample == info.bitsPerSample());
     }
 
-    public boolean matches(StreamInfo info, FlacFrameHeader first) {
+    public boolean matches(StreamInfo info, FrameHeader first) {
         return blockSize <= info.maxBlockSizeOrDefault()
-            && numberOfChannels == info.channels()
+            && channels == info.channels()
             && sampleRate == first.sampleRate
             && bitsPerSample == first.bitsPerSample;
     }
 
-    enum ChannelType {
-        LEFT_RIGHT(-1),
-        LEFT_SIDE(1),
-        SIDE_RIGHT(0),
-        MID_SIDE(1),
-        ;
-
-        private final int side;
-
-        ChannelType(int side) {
-            this.side = side;
-        }
-
-        int side() {
-            return side;
-        }
-    }
 }

@@ -19,7 +19,7 @@ public final class FlacDecoder {
     };
 
     private final StreamInfo streamInfo;
-    private FlacFrameHeader first;
+    private FrameHeader first;
     private int[] coefficients;
     private int rightShift;
     private long sampleCount;
@@ -33,7 +33,7 @@ public final class FlacDecoder {
 
     public int decodeFrame(byte[] data, int off, int len, boolean finished, int[][] pcm) throws FlacException {
         ByteBuffer buffer = ByteBuffer.wrap(data, off, len);
-        FlacFrameHeader header = FlacFrameHeader.read(buffer);
+        FrameHeader header = FrameHeader.read(buffer);
         int blockSize = header.blockSize();
 
         long total = streamInfo.totalSamples();
@@ -42,15 +42,15 @@ public final class FlacDecoder {
         sampleCount += blockSize;
 
         BitReader bits = new BitReader(buffer.array(), buffer.position(), buffer.remaining(), ByteOrder.BIG_ENDIAN);
-        for (int ch = 0; ch < header.numberOfChannels(); ch++) {
-            FlacSubframeHeader subframeHeader = FlacSubframeHeader.read(bits);
-            boolean side = header.channelCorrelation() != null && header.channelCorrelation().side() == ch;
+        for (int ch = 0; ch < header.channels(); ch++) {
+            SubframeHeader subframeHeader = SubframeHeader.read(bits);
+            boolean side = header.channelAssignment() != null && header.channelAssignment().side() == ch;
             int bitsPerSample = streamInfo.bitsPerSample() - subframeHeader.wastedBits() + (side ? 1 : 0);
             if (bitsPerSample <= 0) {
                 throw new FlacException("Invalid wasted bits");
             }
 
-            switch (subframeHeader.subframeType()) {
+            switch (subframeHeader.type()) {
                 case CONSTANT:
                     decodeConstant(bits, pcm[ch], blockSize, bitsPerSample);
                     break;
@@ -74,7 +74,7 @@ public final class FlacDecoder {
             throw new FlacException("Packet contains more than one frame");
         }
 
-        decorrelate(pcm, header.channelCorrelation(), blockSize);
+        decorrelate(pcm, header.channelAssignment(), blockSize);
         return blockSize;
     }
 
@@ -168,15 +168,15 @@ public final class FlacDecoder {
         }
     }
 
-    private void decorrelate(int[][] samples, FlacFrameHeader.ChannelType type, int blockSize) {
-        if (type == null || type == FlacFrameHeader.ChannelType.LEFT_RIGHT) {
+    private void decorrelate(int[][] samples, ChannelAssignment assignment, int blockSize) {
+        if (assignment == null || assignment == ChannelAssignment.LEFT_RIGHT) {
             return;
         }
 
         int[] c0 = samples[0];
         int[] c1 = samples[1];
 
-        switch (type) {
+        switch (assignment) {
             case LEFT_SIDE:
                 for (int i = 0; i < blockSize; i++) {
                     int side = c1[i];
@@ -216,7 +216,7 @@ public final class FlacDecoder {
         }
     }
 
-    private void validateFrameHeader(FlacFrameHeader header, boolean last) throws FlacException {
+    private void validateFrameHeader(FrameHeader header, boolean last) throws FlacException {
         if (first == null) {
             if (!header.matchesFirst(streamInfo)) {
                 throw new FlacException("First frame header does not match stream info");

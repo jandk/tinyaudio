@@ -6,4 +6,5 @@ target/
 *.iml
 
 # Testing
+test-vectors/opus/
 test-vectors/vorbis/

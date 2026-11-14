@@ -77,7 +77,7 @@ public final class CeltDecoder {
         }
     }
 
-    public int celt_decode_with_ec(byte[] data, int dataOff, int len, float[] pcm, int pcmOff, int frame_size, int C, int end) {
+    public int celt_decode_with_ec(byte[] data, int dataOff, int len, float[][] pcm, int pcmOff, int frame_size, int C, int end) {
         RangeDecoder dec = new RangeDecoder(data, dataOff, len);
         int LM;
         for (LM = 0; LM <= mode.maxLM; LM++) {
@@ -405,13 +405,14 @@ public final class CeltDecoder {
         }
     }
 
-    private void deemphasis(float[] in, int[] inOff, float[] pcm, int pcmOff, int N, int C, int downsample,
+    private void deemphasis(float[] in, int[] inOff, float[][] pcm, int pcmOff, int N, int C, int downsample,
                             float[] coef, float[] mem) {
         int count = 0;
         for (int c = 0; c < C; c++) {
+            float[] channel = pcm[c];
             float m = mem[c];
             int x = inOff[c];
-            int y = pcmOff + c;
+            int y = pcmOff;
             for (int j = 0; j < N; j++) {
                 // VERY_SMALL keeps the filter memory out of denormals in silence
                 float tmp = in[x] + VERY_SMALL + m;
@@ -421,10 +422,10 @@ public final class CeltDecoder {
                 // Technically the store could be moved outside of the if because
                 // the stores we don't want will just be overwritten
                 if (count == 0) {
-                    pcm[y] = SCALEOUT(tmp);
+                    channel[y] = SCALEOUT(tmp);
                 }
                 if (++count == downsample) {
-                    y += C;
+                    y++;
                     count = 0;
                 }
             }

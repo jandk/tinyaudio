@@ -34,7 +34,7 @@ public final class OpusDecoder {
         return rng;
     }
 
-    public int opus_decode_native(byte[] data, int dataOff, int len, float[] pcm, int pcmOff, int frame_size,
+    public int opus_decode_native(byte[] data, int dataOff, int len, float[][] pcm, int pcmOff, int frame_size,
                                   boolean self_delimited) throws OpusException {
         // SILK-only and hybrid packets are not supported: only CELT is built in.
         // Reject them before touching any decoder state.
@@ -57,22 +57,23 @@ public final class OpusDecoder {
         int nb_samples = 0;
         for (int i = 0; i < count; i++) {
             int ret = opus_decode_frame(data, frames[i], size[i], pcm, pcmOff);
-            pcmOff += ret * channels;
+            pcmOff += ret;
             nb_samples += ret;
         }
         return nb_samples;
     }
 
-    private int opus_packet_get_samples_per_frame(byte toc, int Fs) {
+    int opus_packet_get_samples_per_frame(byte toc, int Fs) {
         return (Fs << ((toc >> 3) & 0x3)) / 400;
     }
 
-    private int opus_packet_parse_impl(byte[] data, int dataOff, int len, boolean self_delimited, int[] frames,
-                                       int[] size) throws OpusException {
+    int opus_packet_parse_impl(byte[] data, int dataOff, int len, boolean self_delimited, int[] frames,
+                               int[] size) throws OpusException {
         if (len == 0) {
             throw new OpusException("OPUS_INVALID_PACKET");
         }
 
+        int startOff = dataOff;
         byte toc = data[dataOff++];
         len--;
         int count;
@@ -221,10 +222,12 @@ public final class OpusDecoder {
     /**
      * Decodes one CELT frame of the current packet (frame size {@code frame_size}).
      */
-    private int opus_decode_frame(byte[] data, int dataOff, int len, float[] pcm, int pcmOff) {
+    private int opus_decode_frame(byte[] data, int dataOff, int len, float[][] pcm, int pcmOff) {
         // A frame of 0 or 1 bytes (1 or 2 including the ToC) is lost: output silence
         if (len <= 1) {
-            Arrays.fill(pcm, pcmOff, pcmOff + frame_size * channels, 0);
+            for (int c = 0; c < channels; c++) {
+                Arrays.fill(pcm[c], pcmOff, pcmOff + frame_size, 0);
+            }
             rng = 0;
             return frame_size;
         }

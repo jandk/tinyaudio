@@ -4,6 +4,7 @@ import be.twofold.tinyaudio.core.AudioInfo;
 import be.twofold.tinyaudio.core.BlockAudioDecoder;
 import be.twofold.tinyaudio.core.Packet;
 import be.twofold.tinyaudio.core.PacketSource;
+import be.twofold.tinyaudio.core.internal.PcmUtils;
 import be.twofold.tinyaudio.opus.internal.OpusDecoder;
 
 import java.io.IOException;
@@ -14,7 +15,7 @@ public final class OpusAudioDecoder extends BlockAudioDecoder {
     private final PacketSource packets;
     private final OpusIdentification identification;
     private final OpusDecoder decoder;
-    private final float[] pcmFloat;
+    private final float[][] pcmFloat;
 
     private int skip;
     int rangeFinal;
@@ -24,7 +25,7 @@ public final class OpusAudioDecoder extends BlockAudioDecoder {
         this.packets = Objects.requireNonNull(packets);
         this.identification = Objects.requireNonNull(identification);
         this.decoder = new OpusDecoder(identification.channels());
-        this.pcmFloat = new float[identification.channels() * MAX_BLOCK_SIZE];
+        this.pcmFloat = new float[identification.channels()][MAX_BLOCK_SIZE];
         this.skip = identification.preSkip();
     }
 
@@ -52,23 +53,12 @@ public final class OpusAudioDecoder extends BlockAudioDecoder {
         int start = Math.min(skip, samples);
         skip -= start;
 
-        int channels = identification.channels();
-        for (int c = 0; c < channels; c++) {
-            short[] channel = pcm[c];
-            for (int s = start, i = start * channels + c; s < samples; s++, i += channels) {
-                channel[s - start] = floatToPcm(pcmFloat[i]);
-            }
+        for (int c = 0; c < identification.channels(); c++) {
+            PcmUtils.floatToPcm(pcmFloat[c], start, 1, pcm[c], 0, samples - start);
         }
 
         this.rangeFinal = decoder.rng();
         return samples - start;
-    }
-
-    private short floatToPcm(float f) {
-        float x = f * 32768.0f; // CELT_SIG_SCALE
-        x = Math.max(x, -32768.0f);
-        x = Math.min(x, 32767.0f);
-        return (short) Math.rint(x);
     }
 
     @Override

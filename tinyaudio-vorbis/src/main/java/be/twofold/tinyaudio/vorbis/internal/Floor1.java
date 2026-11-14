@@ -83,7 +83,7 @@ final class Floor1 implements Floor {
     private final int[][] subclassBooks;
     private final int multiplier;
     private final int[] xList;
-    private final int[] order;
+    private final int[] sortOrder;
     private final int[] lowNeighbors;
     private final int[] highNeighbors;
 
@@ -103,7 +103,7 @@ final class Floor1 implements Floor {
         this.xList = xList;
 
         int posts = xList.length;
-        this.order = sortOrder();
+        this.sortOrder = makeSortOrder();
         this.lowNeighbors = new int[posts];
         this.highNeighbors = new int[posts];
         for (int i = 2; i < posts; i++) {
@@ -112,7 +112,7 @@ final class Floor1 implements Floor {
         }
     }
 
-    private int[] sortOrder() {
+    private int[] makeSortOrder() {
         int posts = xList.length;
         int[] order = new int[posts];
         for (int i = 0; i < posts; i++) {
@@ -315,18 +315,18 @@ final class Floor1 implements Floor {
         int hx = 0;
         int hy = ly;
         for (int k = 1; k < posts; k++) {
-            int p = order[k];
+            int p = sortOrder[k];
             if (step2Flag[p]) {
                 hx = xList[p];
                 hy = finalY[p] * multiplier;
-                renderLine(lx, ly, hx, hy, spectrum, n2);
+                renderLine(spectrum, lx, ly, hx, hy, n2);
                 lx = hx;
                 ly = hy;
             }
         }
 
         if (hx < n2) {
-            renderLine(hx, hy, n2, hy, spectrum, n2);
+            renderLine(spectrum, hx, hy, n2, hy, n2);
         }
     }
 
@@ -356,7 +356,7 @@ final class Floor1 implements Floor {
         return dy < 0 ? y0 - off : y0 + off;
     }
 
-    private static void renderLine(int x0, int y0, int x1, int y1, float[] v, int n) {
+    private static void renderLine(float[] v, int x0, int y0, int x1, int y1, int n) {
         int dy = y1 - y0;
         int adx = x1 - x0;
         int base = dy / adx;

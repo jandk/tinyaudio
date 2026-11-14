@@ -18,7 +18,7 @@ final class Mode {
     }
 
     static Mode unpack(BitReader bits, int mappingCount) throws IOException {
-        boolean blockFlag = bits.read(1) == 1;
+        boolean blockFlag = bits.readBool();
         int windowType = bits.read(16);
         if (windowType != 0) {
             throw new VorbisException("Invalid window type: " + windowType);

@@ -26,7 +26,7 @@ final class Mapping {
         this.angle = angle;
     }
 
-    static Mapping unpack(BitReader bits, int audioChannels, int floorCount, int residueCount) throws IOException {
+    static Mapping unpack(BitReader bits, int channels, int floorCount, int residueCount) throws IOException {
         int type = bits.read(16);
         if (type != 0) {
             throw new VorbisException("Invalid mapping type: " + type);
@@ -42,13 +42,13 @@ final class Mapping {
         if (bits.readBool()) {
             couplingSteps = bits.read(8) + 1;
 
-            int audioChannelLog = Util.ilog(audioChannels - 1);
+            int channelLog = Util.ilog(channels - 1);
             magnitude = new int[couplingSteps];
             angle = new int[couplingSteps];
             for (int i = 0; i < couplingSteps; i++) {
-                int mag = bits.read(audioChannelLog);
-                int ang = bits.read(audioChannelLog);
-                if (mag == ang || mag >= audioChannels || ang >= audioChannels) {
+                int mag = bits.read(channelLog);
+                int ang = bits.read(channelLog);
+                if (mag == ang || mag >= channels || ang >= channels) {
                     throw new VorbisException("Invalid coupling step: magnitude=" + mag + ", angle=" + ang);
                 }
                 magnitude[i] = mag;
@@ -61,9 +61,9 @@ final class Mapping {
             throw new VorbisException("Invalid reserved value: " + reserved);
         }
 
-        int[] mux = new int[audioChannels];
+        int[] mux = new int[channels];
         if (submaps > 1) {
-            for (int i = 0; i < audioChannels; i++) {
+            for (int i = 0; i < channels; i++) {
                 int submap = bits.read(4);
                 if (submap >= submaps) {
                     throw new VorbisException("Channel multiplex out of range: " + submap);
@@ -93,7 +93,8 @@ final class Mapping {
             submapFloor,
             submapResidue,
             magnitude,
-            angle);
+            angle
+        );
     }
 
     int[] mux() {
@@ -123,5 +124,4 @@ final class Mapping {
     int couplingSteps() {
         return magnitude.length;
     }
-
 }

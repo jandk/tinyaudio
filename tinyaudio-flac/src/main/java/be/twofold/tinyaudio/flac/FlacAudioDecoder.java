@@ -65,7 +65,7 @@ public final class FlacAudioDecoder extends BlockAudioDecoder {
             return -1;
         }
         byte[] data = packet.getData();
-        return decoder.decodeFrame(data, 0, data.length, packet.isFinished(), pcm);
+        return decoder.decodeFrame(data, 0, data.length, pcm, packet.isFinished());
     }
 
     @Override

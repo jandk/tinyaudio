@@ -31,7 +31,7 @@ public final class FlacDecoder {
         }
     }
 
-    public int decodeFrame(byte[] data, int off, int len, boolean finished, int[][] pcm) throws FlacException {
+    public int decodeFrame(byte[] data, int off, int len, int[][] pcm, boolean finished) throws FlacException {
         ByteBuffer buffer = ByteBuffer.wrap(data, off, len);
         FrameHeader header = FrameHeader.read(buffer);
         int blockSize = header.blockSize();

@@ -34,17 +34,17 @@ public final class VorbisDecoder {
         this.identification = Objects.requireNonNull(identification);
         this.setup = Objects.requireNonNull(setup);
 
-        spectrum = new float[identification.audioChannels()][identification.blockSize1()];
+        spectrum = new float[identification.channels()][identification.blockSize1()];
 
-        floorY = new float[identification.audioChannels()][256];
-        floorUnused = new boolean[identification.audioChannels()];
-        noResidue = new boolean[identification.audioChannels()];
-        pcmBundle = new float[identification.audioChannels()][];
-        zeroBundle = new boolean[identification.audioChannels()];
+        floorY = new float[identification.channels()][256];
+        floorUnused = new boolean[identification.channels()];
+        noResidue = new boolean[identification.channels()];
+        pcmBundle = new float[identification.channels()][];
+        zeroBundle = new boolean[identification.channels()];
         mdct0 = new MDCT(identification.blockSize0());
         mdct1 = new MDCT(identification.blockSize1());
 
-        overlap = new float[identification.audioChannels()][identification.blockSize1() / 2];
+        overlap = new float[identification.channels()][identification.blockSize1() / 2];
         window0 = slope(identification.blockSize0() / 2);
         window1 = slope(identification.blockSize1() / 2);
     }
@@ -66,7 +66,7 @@ public final class VorbisDecoder {
      */
     public int decodeBlock(byte[] data, int off, int len, float[][] pcm) {
         if (previousBlockSize != 0) {
-            for (int ch = 0; ch < identification.audioChannels(); ch++) {
+            for (int ch = 0; ch < identification.channels(); ch++) {
                 System.arraycopy(spectrum[ch], previousBlockSize / 2, overlap[ch], 0, previousBlockSize / 2);
             }
         }
@@ -98,14 +98,14 @@ public final class VorbisDecoder {
 
         // 4.3.2 floor curve decode
         Mapping mapping = setup.mappings().get(mode.mapping());
-        for (int ch = 0; ch < identification.audioChannels(); ch++) {
+        for (int ch = 0; ch < identification.channels(); ch++) {
             int submap = mapping.mux()[ch];
             Floor floor = setup.floors().get(mapping.submapFloor()[submap]);
             floorUnused[ch] = floor.decode(bits, setup.codebooks(), floorY[ch]);
         }
 
         // 4.3.3 nonzero vector propagate
-        System.arraycopy(floorUnused, 0, noResidue, 0, identification.audioChannels());
+        System.arraycopy(floorUnused, 0, noResidue, 0, identification.channels());
         for (int i = 0; i < mapping.couplingSteps(); i++) {
             int mag = mapping.magnitude()[i];
             int ang = mapping.angle()[i];
@@ -117,7 +117,7 @@ public final class VorbisDecoder {
         // 4.3.4 residue decode
         for (int i = 0; i < mapping.submaps(); i++) {
             int count = 0;
-            for (int j = 0; j < identification.audioChannels(); j++) {
+            for (int j = 0; j < identification.channels(); j++) {
                 if (mapping.mux()[j] == i) {
                     pcmBundle[count] = spectrum[j];
                     zeroBundle[count] = noResidue[j];
@@ -126,7 +126,7 @@ public final class VorbisDecoder {
             }
 
             Residue residue = setup.residues().get(mapping.submapResidue()[i]);
-            residue.decode(bits, setup.codebooks(), n / 2, pcmBundle, zeroBundle, count);
+            residue.decode(bits, setup.codebooks(), zeroBundle, pcmBundle, count, n / 2);
         }
 
         // 4.3.5 inverse coupling
@@ -157,7 +157,7 @@ public final class VorbisDecoder {
         }
 
         // 4.3.6 dot product
-        for (int ch = 0; ch < identification.audioChannels(); ch++) {
+        for (int ch = 0; ch < identification.channels(); ch++) {
             if (floorUnused[ch]) {
                 Arrays.fill(spectrum[ch], 0, n / 2, 0.0f);
             } else {
@@ -169,18 +169,18 @@ public final class VorbisDecoder {
 
         // 4.3.7 inverse mdct
         MDCT mdct = mode.blockFlag() ? mdct1 : mdct0;
-        for (int ch = 0; ch < identification.audioChannels(); ch++) {
+        for (int ch = 0; ch < identification.channels(); ch++) {
             mdct.backward(spectrum[ch], 0);
         }
 
         // 4.3.8 overlap add, in place in the overlap buffer. The first packet only primes it.
         int frames = 0;
         if (previousBlockSize != 0) {
-            for (int ch = 0; ch < identification.audioChannels(); ch++) {
+            for (int ch = 0; ch < identification.channels(); ch++) {
                 overlapAdd(overlap[ch], spectrum[ch], previousBlockSize, n);
             }
             frames = previousBlockSize / 4 + n / 4;
-            for (int ch = 0; ch < identification.audioChannels(); ch++) {
+            for (int ch = 0; ch < identification.channels(); ch++) {
                 System.arraycopy(overlap[ch], 0, pcm[ch], 0, frames);
             }
         }

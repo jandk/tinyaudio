@@ -24,22 +24,22 @@ public final class Setup {
         this.modes = List.copyOf(modes);
     }
 
-    public static Setup read(ByteBuffer buffer, int audioChannels) throws IOException {
+    public static Setup read(ByteBuffer buffer, int channels) throws IOException {
         BitReader bits = new BitReader(
             buffer.array(),
             buffer.arrayOffset() + buffer.position(),
             buffer.remaining(),
             ByteOrder.LITTLE_ENDIAN
         );
-        return read(bits, audioChannels);
+        return read(bits, channels);
     }
 
-    static Setup read(BitReader bits, int audioChannels) throws IOException {
+    static Setup read(BitReader bits, int channels) throws IOException {
         List<Codebook> codebooks = readList(bits, 8, Codebook::unpack);
         readList(bits, 6, Setup::unpackTimeValue);
         List<Floor> floors = readList(bits, 6, in -> Floor.unpack(in, codebooks));
         List<Residue> residues = readList(bits, 6, in -> Residue.unpack(in, codebooks));
-        List<Mapping> mappings = readList(bits, 6, in -> Mapping.unpack(in, audioChannels, floors.size(), residues.size()));
+        List<Mapping> mappings = readList(bits, 6, in -> Mapping.unpack(in, channels, floors.size(), residues.size()));
         List<Mode> modes = readList(bits, 6, in -> Mode.unpack(in, mappings.size()));
 
         if (!bits.readBool()) { // framing flag

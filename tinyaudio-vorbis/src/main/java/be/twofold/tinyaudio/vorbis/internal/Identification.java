@@ -8,8 +8,8 @@ import java.nio.ByteBuffer;
 public final class Identification {
     private static final int BYTES = 23;
 
-    private final int audioChannels;
-    private final int audioSampleRate;
+    private final int channels;
+    private final int sampleRate;
     private final int bitrateMaximum;
     private final int bitrateNominal;
     private final int bitrateMinimum;
@@ -17,16 +17,16 @@ public final class Identification {
     private final int blockSize1Log2;
 
     Identification(
-        int audioChannels,
-        int audioSampleRate,
+        int channels,
+        int sampleRate,
         int bitrateMaximum,
         int bitrateNominal,
         int bitrateMinimum,
         int blockSize0Log2,
         int blockSize1Log2
     ) {
-        this.audioChannels = audioChannels;
-        this.audioSampleRate = audioSampleRate;
+        this.channels = channels;
+        this.sampleRate = sampleRate;
         this.bitrateMaximum = bitrateMaximum;
         this.bitrateNominal = bitrateNominal;
         this.bitrateMinimum = bitrateMinimum;
@@ -43,22 +43,22 @@ public final class Identification {
             throw new VorbisException("Invalid vorbis version: " + vorbisVersion);
         }
 
-        int audioChannels = Byte.toUnsignedInt(buffer.get());
-        if (audioChannels == 0) {
-            throw new VorbisException("Invalid audio channels: " + audioChannels);
+        int channels = Byte.toUnsignedInt(buffer.get());
+        if (channels == 0) {
+            throw new VorbisException("Invalid channels: " + channels);
         }
 
-        int audioSampleRate = buffer.getInt();
-        if (audioSampleRate <= 0) {
-            throw new VorbisException("Invalid audio sample rate: " + audioSampleRate);
+        int sampleRate = buffer.getInt();
+        if (sampleRate <= 0) {
+            throw new VorbisException("Invalid sample rate: " + sampleRate);
         }
 
         int bitrateMaximum = buffer.getInt();
         int bitrateNominal = buffer.getInt();
         int bitrateMinimum = buffer.getInt();
-        int blockSize = buffer.get();
-        int blockSize0Log2 = checkBlockSize(blockSize & 0x0F);
-        int blockSize1Log2 = checkBlockSize((blockSize >> 4) & 0x0F);
+        int blockSizes = buffer.get();
+        int blockSize0Log2 = checkBlockSize(blockSizes & 0x0F);
+        int blockSize1Log2 = checkBlockSize((blockSizes >> 4) & 0x0F);
         if (blockSize0Log2 > blockSize1Log2) {
             throw new VorbisException("Invalid block size: " + blockSize0Log2 + " > " + blockSize1Log2);
         }
@@ -69,8 +69,8 @@ public final class Identification {
         }
 
         return new Identification(
-            audioChannels,
-            audioSampleRate,
+            channels,
+            sampleRate,
             bitrateMaximum,
             bitrateNominal,
             bitrateMinimum,
@@ -86,12 +86,12 @@ public final class Identification {
         return blockSizeLog2;
     }
 
-    public int audioChannels() {
-        return audioChannels;
+    public int channels() {
+        return channels;
     }
 
-    public int audioSampleRate() {
-        return audioSampleRate;
+    public int sampleRate() {
+        return sampleRate;
     }
 
     public int bitrateMaximum() {

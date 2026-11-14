@@ -30,7 +30,7 @@ final class VorbisHeader {
     static VorbisHeader read(Packet first, PacketSource packets) throws IOException {
         Identification identification = Identification.read(header(first, 1));
         VorbisComment comment = readComment(packets);
-        Setup setup = Setup.read(header(packets.next(), 5), identification.audioChannels());
+        Setup setup = Setup.read(header(packets.next(), 5), identification.channels());
 
         return new VorbisHeader(
             identification,
@@ -71,7 +71,7 @@ final class VorbisHeader {
         return identification;
     }
 
-    public VorbisComment comment() {
+    VorbisComment comment() {
         return comment;
     }
 

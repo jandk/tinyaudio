@@ -97,7 +97,7 @@ final class Residue {
         return books.length;
     }
 
-    public void decode(BitReader bits, List<Codebook> codebooks, int n2, float[][] pcmBundle, boolean[] zeroBundle, int count) {
+    void decode(BitReader bits, List<Codebook> codebooks, boolean[] zeroBundle, float[][] pcmBundle, int count, int n2) {
         for (int i = 0; i < count; i++) {
             Arrays.fill(pcmBundle[i], 0, n2, 0.0f);
         }
@@ -120,8 +120,8 @@ final class Residue {
             return;
         }
 
-        Codebook classBook = codebooks.get(this.classBook);
-        int classWords = classBook.dimensions();
+        Codebook classCodebook = codebooks.get(classBook);
+        int classWords = classCodebook.dimensions();
         int partitionsToRead = toRead / partitionSize;
         int[][] classes = new int[vectorCount][partitionsToRead + classWords - 1];
 
@@ -133,7 +133,7 @@ final class Residue {
                         if (type != 2 && zeroBundle[j]) {
                             continue;
                         }
-                        int temp = classBook.decode(bits);
+                        int temp = classCodebook.decode(bits);
                         if (temp < 0) {
                             return;
                         }
@@ -151,7 +151,7 @@ final class Residue {
                         int book = books[classes[j][partition]][pass];
                         if (book >= 0) {
                             int offset = limitBegin + partition * partitionSize;
-                            if (!decodePartition(bits, codebooks.get(book), pcmBundle, j, count, offset)) {
+                            if (!decodePartition(bits, codebooks.get(book), pcmBundle, j, offset, count)) {
                                 return;
                             }
                         }
@@ -170,7 +170,7 @@ final class Residue {
         return true;
     }
 
-    private boolean decodePartition(BitReader bits, Codebook codebook, float[][] pcmBundle, int j, int count, int off) {
+    private boolean decodePartition(BitReader bits, Codebook codebook, float[][] pcmBundle, int j, int pcmOff, int count) {
         int dim = codebook.dimensions();
         float[] values = codebook.vectors();
         int rows = partitionSize / dim;
@@ -185,13 +185,13 @@ final class Residue {
                 float value = values[base + d];
                 switch (type) {
                     case 0:
-                        pcmBundle[j][off + r + d * rows] += value;
+                        pcmBundle[j][pcmOff + r + d * rows] += value;
                         break;
                     case 1:
-                        pcmBundle[j][off + r * dim + d] += value;
+                        pcmBundle[j][pcmOff + r * dim + d] += value;
                         break;
                     default:
-                        int t = off + r * dim + d;
+                        int t = pcmOff + r * dim + d;
                         pcmBundle[t % count][t / count] += value;
                         break;
                 }

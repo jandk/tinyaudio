@@ -22,20 +22,19 @@ public final class VorbisAudioDecoder extends BlockAudioDecoder {
     private boolean synced;
 
     VorbisAudioDecoder(PacketSource packets, Identification identification, Setup setup) {
-        super(identification.audioChannels(), Math.max(identification.blockSize0(), identification.blockSize1()));
+        super(identification.channels(), identification.blockSize1());
         this.packets = Objects.requireNonNull(packets);
         this.identification = Objects.requireNonNull(identification);
         this.decoder = new VorbisDecoder(identification, setup);
-        this.pcmFloat = new float[identification.audioChannels()][Math.max(identification.blockSize0(),
-            identification.blockSize1())];
+        this.pcmFloat = new float[identification.channels()][identification.blockSize1()];
     }
 
     @Override
     public AudioInfo info() {
         return new AudioInfo(
             "ogg", "vorbis", "ogg",
-            identification.audioSampleRate(),
-            identification.audioChannels(),
+            identification.sampleRate(),
+            identification.channels(),
             -1 // vorbis has it at the end of the stream
         );
     }
@@ -65,8 +64,8 @@ public final class VorbisAudioDecoder extends BlockAudioDecoder {
             return frames;
         }
         synced = true;
-        for (int c = 0; c < identification.audioChannels(); c++) {
-            System.arraycopy(pcm[c], extra, pcm[c], 0, frames - extra);
+        for (int ch = 0; ch < identification.channels(); ch++) {
+            System.arraycopy(pcm[ch], extra, pcm[ch], 0, frames - extra);
         }
         return frames - extra;
     }
@@ -74,7 +73,7 @@ public final class VorbisAudioDecoder extends BlockAudioDecoder {
     @Override
     protected int decodeBlock(short[][] pcm) throws IOException {
         int frames = decodeFloat(pcmFloat);
-        for (int ch = 0; ch < identification.audioChannels(); ch++) {
+        for (int ch = 0; ch < identification.channels(); ch++) {
             PcmUtils.floatToPcm(pcmFloat[ch], 0, 1, pcm[ch], 0, Math.max(frames, 0));
         }
         return frames;

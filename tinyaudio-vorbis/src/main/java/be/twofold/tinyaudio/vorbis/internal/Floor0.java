@@ -50,9 +50,9 @@ final class Floor0 implements Floor {
         }
         int amplitudeOffset = bits.read(8);
 
-        int numberOfBooks = bits.read(4) + 1;
-        int[] books = new int[numberOfBooks];
-        for (int i = 0; i < numberOfBooks; i++) {
+        int bookCount = bits.read(4) + 1;
+        int[] books = new int[bookCount];
+        for (int i = 0; i < bookCount; i++) {
             int book = bits.read(8);
             if (book >= codebooks.size()) {
                 throw new VorbisException("Floor 0 book out of range: " + book);

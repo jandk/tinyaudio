@@ -12,7 +12,7 @@ import java.util.Optional;
 public final class OpusOggCodec implements OggCodec {
     @Override
     public Optional<AudioDecoder> open(Packet first, PacketSource packets) throws IOException {
-        if (!IOUtils.startsWith(first.getData(), OpusHeader.MAGIC)) {
+        if (!IOUtils.startsWith(first.data(), OpusHeader.MAGIC)) {
             return Optional.empty();
         }
         OpusHeader header = OpusHeader.read(first, packets);

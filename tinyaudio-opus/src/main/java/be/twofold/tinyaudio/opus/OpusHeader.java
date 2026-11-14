@@ -25,7 +25,7 @@ final class OpusHeader {
     }
 
     static OpusHeader read(Packet first, PacketSource packets) throws IOException {
-        ByteBuffer buffer = ByteBuffer.wrap(first.getData());
+        ByteBuffer buffer = ByteBuffer.wrap(first.data());
         OpusIdentification identification = OpusIdentification.read(buffer);
         VorbisComment comment = readComment(packets);
         return new OpusHeader(identification, comment);
@@ -37,7 +37,7 @@ final class OpusHeader {
             throw new OpusException("Expected 'OpusTags' header");
         }
 
-        ByteBuffer buffer = ByteBuffer.wrap(packet.getData())
+        ByteBuffer buffer = ByteBuffer.wrap(packet.data())
             .order(ByteOrder.LITTLE_ENDIAN);
         if (!IOUtils.matches(buffer, TAGS_MAGIC)) {
             throw new OpusException("Expected 'OpusTags' header");

@@ -46,7 +46,7 @@ public final class OpusAudioDecoder extends BlockAudioDecoder {
         }
 
         int samples = decoder.opus_decode_native(
-            packet.getData(), 0, packet.getData().length,
+            packet.data(), 0, packet.data().length,
             pcmFloat, 0, MAX_BLOCK_SIZE, false);
 
         int start = Math.min(skip, samples);

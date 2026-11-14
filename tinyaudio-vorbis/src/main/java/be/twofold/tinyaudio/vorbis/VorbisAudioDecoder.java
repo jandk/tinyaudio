@@ -18,7 +18,8 @@ public final class VorbisAudioDecoder extends BlockAudioDecoder {
     private final VorbisDecoder decoder;
     private final float[][] pcmFloat;
 
-    private long produced;
+    private long granulePosition;
+    private boolean synced;
 
     VorbisAudioDecoder(PacketSource packets, Identification identification, Setup setup) {
         super(identification.audioChannels(), Math.max(identification.blockSize0(), identification.blockSize1()));
@@ -39,23 +40,42 @@ public final class VorbisAudioDecoder extends BlockAudioDecoder {
         );
     }
 
-    @Override
-    protected int decodeBlock(short[][] pcm) throws IOException {
+    // TODO: Decode float for all?
+    int decodeFloat(float[][] pcm) throws IOException {
         Packet packet = packets.next();
         if (packet == null) {
             return -1;
         }
 
         byte[] data = packet.getData();
-        int frames = decoder.decodeBlock(data, 0, data.length, pcmFloat);
+        int frames = decoder.decodeBlock(data, 0, data.length, pcm);
 
-        if (packet.isFinished() && packet.getPosition() >= 0) {
-            frames = (int) Math.max(0, Math.min(frames, packet.getPosition() - produced));
+        granulePosition += frames;
+        long position = packet.getPosition();
+        if (position == -1) {
+            return frames;
         }
-        produced += frames;
 
+        int extra = (int) Math.max(0, Math.min(granulePosition - position, frames));
+        granulePosition = position;
+        if (packet.isFinished()) {
+            return frames - extra;
+        }
+        if (synced) {
+            return frames;
+        }
+        synced = true;
+        for (int c = 0; c < identification.audioChannels(); c++) {
+            System.arraycopy(pcm[c], extra, pcm[c], 0, frames - extra);
+        }
+        return frames - extra;
+    }
+
+    @Override
+    protected int decodeBlock(short[][] pcm) throws IOException {
+        int frames = decodeFloat(pcmFloat);
         for (int ch = 0; ch < identification.audioChannels(); ch++) {
-            PcmUtils.floatToPcm(pcmFloat[ch], 0, 1, pcm[ch], 0, frames);
+            PcmUtils.floatToPcm(pcmFloat[ch], 0, 1, pcm[ch], 0, Math.max(frames, 0));
         }
         return frames;
     }

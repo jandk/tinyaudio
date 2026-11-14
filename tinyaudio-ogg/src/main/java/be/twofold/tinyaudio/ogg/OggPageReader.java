@@ -10,7 +10,11 @@ public final class OggPageReader implements Closeable {
     }
 
     public OggPage next() throws IOException {
-        return atEndOfInput() ? null : OggPage.read(in);
+        try {
+            return OggPage.read(in);
+        } catch (EOFException e) {
+            return null;
+        }
     }
 
     public OggPage resync() throws IOException {
@@ -38,13 +42,6 @@ public final class OggPageReader implements Closeable {
             }
         }
         return true;
-    }
-
-    private boolean atEndOfInput() throws IOException {
-        in.mark(1);
-        boolean atEnd = in.read() == -1;
-        in.reset();
-        return atEnd;
     }
 
     @Override

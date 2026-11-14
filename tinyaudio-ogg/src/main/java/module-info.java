@@ -3,6 +3,10 @@ module be.twofold.tinyaudio.ogg {
 
     exports be.twofold.tinyaudio.ogg;
 
+    exports be.twofold.tinyaudio.ogg.internal to
+        be.twofold.tinyaudio.opus,
+        be.twofold.tinyaudio.vorbis;
+
     provides be.twofold.tinyaudio.core.AudioDecoderProvider
         with be.twofold.tinyaudio.ogg.OggAudioDecoderProvider;
 

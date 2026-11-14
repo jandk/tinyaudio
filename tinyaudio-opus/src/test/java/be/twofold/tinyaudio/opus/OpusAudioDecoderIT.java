@@ -120,7 +120,7 @@ class OpusAudioDecoderIT {
 
             return new Packet(
                 packet,
-                0,
+                -1,
                 false,
                 false
             );

@@ -5,6 +5,7 @@ import be.twofold.tinyaudio.core.BlockAudioDecoder;
 import be.twofold.tinyaudio.core.Packet;
 import be.twofold.tinyaudio.core.PacketSource;
 import be.twofold.tinyaudio.core.internal.PcmUtils;
+import be.twofold.tinyaudio.ogg.internal.OggTrim;
 import be.twofold.tinyaudio.opus.internal.OpusMsDecoder;
 
 import java.io.IOException;
@@ -16,6 +17,7 @@ public final class OpusAudioDecoder extends BlockAudioDecoder {
     private final OpusIdentification identification;
     private final OpusMsDecoder decoder;
     private final float[][] pcmFloat;
+    private final OggTrim trim = new OggTrim();
 
     private int skip;
     int rangeFinal;
@@ -56,15 +58,20 @@ public final class OpusAudioDecoder extends BlockAudioDecoder {
             pcmFloat, 0, MAX_BLOCK_SIZE
         );
 
-        int start = Math.min(skip, samples);
-        skip -= start;
+        trim.update(packet, samples);
+        int start = trim.start();
+        int count = trim.count();
+        int skipped = Math.min(skip, count);
+        skip -= skipped;
+        start += skipped;
+        count -= skipped;
 
         for (int c = 0; c < identification.channels(); c++) {
-            PcmUtils.floatToPcm(pcmFloat[c], start, 1, pcm[c], 0, samples - start);
+            PcmUtils.floatToPcm(pcmFloat[c], start, 1, pcm[c], 0, count);
         }
 
         this.rangeFinal = decoder.rng();
-        return samples - start;
+        return count;
     }
 
     @Override

@@ -5,7 +5,7 @@ import be.twofold.tinyaudio.core.BlockAudioDecoder;
 import be.twofold.tinyaudio.core.Packet;
 import be.twofold.tinyaudio.core.PacketSource;
 import be.twofold.tinyaudio.core.internal.PcmUtils;
-import be.twofold.tinyaudio.opus.internal.OpusDecoder;
+import be.twofold.tinyaudio.opus.internal.OpusMsDecoder;
 
 import java.io.IOException;
 import java.util.Objects;
@@ -14,7 +14,7 @@ public final class OpusAudioDecoder extends BlockAudioDecoder {
     private static final int MAX_BLOCK_SIZE = 5760; // 120ms at 48kHz
     private final PacketSource packets;
     private final OpusIdentification identification;
-    private final OpusDecoder decoder;
+    private final OpusMsDecoder decoder;
     private final float[][] pcmFloat;
 
     private int skip;
@@ -24,7 +24,12 @@ public final class OpusAudioDecoder extends BlockAudioDecoder {
         super(identification.channels(), MAX_BLOCK_SIZE);
         this.packets = Objects.requireNonNull(packets);
         this.identification = Objects.requireNonNull(identification);
-        this.decoder = new OpusDecoder(identification.channels());
+        this.decoder = new OpusMsDecoder(
+            identification.channels(),
+            identification.streamCount(),
+            identification.coupledCount(),
+            identification.mapping()
+        );
         this.pcmFloat = new float[identification.channels()][MAX_BLOCK_SIZE];
         this.skip = identification.preSkip();
     }
@@ -46,9 +51,10 @@ public final class OpusAudioDecoder extends BlockAudioDecoder {
             return -1;
         }
 
-        int samples = decoder.opus_decode_native(
+        int samples = decoder.opus_multistream_decode_native(
             packet.data(), 0, packet.data().length,
-            pcmFloat, 0, MAX_BLOCK_SIZE, false);
+            pcmFloat, 0, MAX_BLOCK_SIZE
+        );
 
         int start = Math.min(skip, samples);
         skip -= start;

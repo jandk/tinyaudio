@@ -1,6 +1,6 @@
 package be.twofold.tinyaudio.opus.celt;
 
-public final class CeltMode {
+final class CeltMode {
     // @formatter:off
     private static final short[] eband5ms = {
       // 0  200 400 600 800  1k 1.2 1.4 1.6  2k 2.4 2.8 3.2  4k 4.8 5.6 6.8  8k 9.6 12k 15.6
@@ -77,7 +77,8 @@ public final class CeltMode {
         193, 193, 193, 194, 194, 194, 184, 184, 173, 139, 65, 39, 204, 204, 204,
         204, 204, 204, 204, 204, 201, 201, 201, 201, 198, 198, 198, 187, 187, 175,
         140, 66, 40,};
-    public static final CeltMode mode48000_960_120 = new CeltMode(
+
+    static final CeltMode mode48000_960_120 = new CeltMode(
         48000,
         120,
         21,

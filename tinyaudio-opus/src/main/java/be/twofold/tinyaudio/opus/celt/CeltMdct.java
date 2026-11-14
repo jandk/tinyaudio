@@ -7,13 +7,14 @@ import be.twofold.tinyaudio.core.internal.MDCT;
  * <p>
  * Just need to do a little tweaking to make it work with Celt.
  */
-final class CeltMdct {
+public final class CeltMdct {
     // One transform per block size, indexed by shift: 1920, 960, 480 and 240 samples at 48 kHz
     private final MDCT[] mdct;
     private final float[] coeffs;
     private final float[] y;
 
-    CeltMdct(CeltMode mode) {
+    public CeltMdct() {
+        CeltMode mode = CeltMode.mode48000_960_120;
         int n = mode.shortMdctSize << (mode.maxLM + 1);
         mdct = new MDCT[mode.maxLM + 1];
         for (int shift = 0; shift <= mode.maxLM; shift++) {

@@ -2,7 +2,7 @@ package be.twofold.tinyaudio.opus.internal;
 
 import be.twofold.tinyaudio.opus.OpusException;
 import be.twofold.tinyaudio.opus.celt.CeltDecoder;
-import be.twofold.tinyaudio.opus.celt.CeltMode;
+import be.twofold.tinyaudio.opus.celt.CeltMdct;
 
 import java.util.Arrays;
 
@@ -24,14 +24,19 @@ public final class OpusDecoder {
     private int stream_channels;
     private int bandwidth;
     private int frame_size;
+    private int packet_offset;
 
-    public OpusDecoder(int channels) {
-        this.celt_dec = new CeltDecoder(CeltMode.mode48000_960_120, channels);
+    public OpusDecoder(int channels, CeltMdct mdct) {
+        this.celt_dec = new CeltDecoder(mdct, channels);
         this.channels = channels;
     }
 
     public int rng() {
         return rng;
+    }
+
+    int packet_offset() {
+        return packet_offset;
     }
 
     public int opus_decode_native(byte[] data, int dataOff, int len, float[][] pcm, int pcmOff, int frame_size,
@@ -207,6 +212,7 @@ public final class OpusDecoder {
         // The padding sits after the last frame, so the next self-delimited
         // packet starts past it.
         frames[count] = dataOff + pad;
+        packet_offset = frames[count] - startOff;
         return count;
     }
 
@@ -217,6 +223,34 @@ public final class OpusDecoder {
 
     private int opus_packet_get_nb_channels(byte toc) {
         return (toc & 0x4) != 0 ? 2 : 1;
+    }
+
+    int opus_packet_get_nb_samples(byte[] packet, int packetOff, int len, int Fs) throws OpusException {
+        int count = opus_packet_get_nb_frames(packet, packetOff, len);
+        int samples = count * opus_packet_get_samples_per_frame(packet[packetOff], Fs);
+        // Can't have more than 120 ms
+        if (samples * 25 > Fs * 3) {
+            throw new OpusException("OPUS_INVALID_PACKET");
+        } else {
+            return samples;
+        }
+    }
+
+    int opus_packet_get_nb_frames(byte[] packet, int packetOff, int len) throws OpusException {
+        if (len < 1) {
+            throw new OpusException("OPUS_BAD_ARG");
+        }
+
+        int count = packet[packetOff] & 0x3;
+        if (count == 0) {
+            return 1;
+        } else if (count != 3) {
+            return 2;
+        } else if (len < 2) {
+            throw new OpusException("OPUS_INVALID_PACKET");
+        } else {
+            return packet[packetOff + 1] & 0x3F;
+        }
     }
 
     /**

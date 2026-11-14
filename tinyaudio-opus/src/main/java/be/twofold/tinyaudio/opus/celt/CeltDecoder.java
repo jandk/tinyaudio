@@ -27,7 +27,7 @@ public final class CeltDecoder {
         {0.7998046875f, 0.1000976562f, 00000000000.f}
     };
 
-    private final CeltMode mode;
+    private final CeltMode mode = CeltMode.mode48000_960_120; // The only mode Opus uses
     private final CeltMdct mdct;
     private final int channels;
     private final int downsample;
@@ -46,9 +46,8 @@ public final class CeltDecoder {
 
     private int rng;
 
-    public CeltDecoder(CeltMode mode, int channels) {
-        this.mode = Objects.requireNonNull(mode);
-        this.mdct = new CeltMdct(mode);
+    public CeltDecoder(CeltMdct mdct, int channels) {
+        this.mdct = Objects.requireNonNull(mdct);
         this.channels = channels;
         this.downsample = resampling_factor(mode.Fs);
         this._decode_mem = new float[channels * (DECODE_BUFFER_SIZE + mode.overlap)];

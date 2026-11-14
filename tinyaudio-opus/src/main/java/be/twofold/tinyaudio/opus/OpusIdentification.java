@@ -4,8 +4,7 @@ import be.twofold.tinyaudio.core.internal.IOUtils;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
+import java.util.Arrays;
 
 final class OpusIdentification {
     private static final int BYTES = 19;
@@ -17,7 +16,7 @@ final class OpusIdentification {
     private final int mappingFamily;
     private final int streamCount;
     private final int coupledCount;
-    private final byte[] mapping;
+    private final int[] mapping;
 
     private OpusIdentification(
         int channels,
@@ -27,7 +26,7 @@ final class OpusIdentification {
         int mappingFamily,
         int streamCount,
         int coupledCount,
-        byte[] mapping
+        int[] mapping
     ) {
         this.channels = channels;
         this.preSkip = preSkip;
@@ -72,14 +71,19 @@ final class OpusIdentification {
         // Family 0 has no mapping table, so describe it as one stream with an identity mapping
         int streamCount = 1;
         int coupledCount = channels - 1;
-        byte[] mapping = {0, 1};
+        int[] mapping = channels == 1 ? new int[]{0} : new int[]{0, 1};
         if (mappingFamily != 0) {
             if (buffer.remaining() < 2 + channels) {
                 throw new OpusException("Truncated channel mapping table");
             }
             streamCount = Byte.toUnsignedInt(buffer.get());
             coupledCount = Byte.toUnsignedInt(buffer.get());
-            mapping = IOUtils.getBytes(buffer, channels);
+            byte[] rawMapping = IOUtils.getBytes(buffer, channels);
+
+            mapping = new int[channels];
+            for (int i = 0; i < mapping.length; i++) {
+                mapping[i] = Byte.toUnsignedInt(rawMapping[i]);
+            }
         }
 
         int streams = streamCount + coupledCount;
@@ -87,7 +91,7 @@ final class OpusIdentification {
             throw new OpusException("Invalid stream counts: " + streamCount + "/" + coupledCount);
         }
         for (int channel = 0; channel < channels; channel++) {
-            int index = Byte.toUnsignedInt(mapping[channel]);
+            int index = mapping[channel];
             if (index != 255 && index >= streams) { // 255 = silent channel
                 throw new OpusException("Invalid channel mapping index: " + index);
             }
@@ -143,16 +147,12 @@ final class OpusIdentification {
         return coupledCount;
     }
 
-    int mapping(int channel) {
-        return Byte.toUnsignedInt(mapping[channel]);
+    int[] mapping() {
+        return mapping;
     }
 
     @Override
     public String toString() {
-        String mappingString = IntStream.range(0, channels)
-            .mapToObj(i -> Integer.toString(mapping(i)))
-            .collect(Collectors.joining(", ", "[", "]"));
-
         return "OpusIdentification{" +
             "channels=" + channels + ", " +
             "preSkip=" + preSkip + ", " +
@@ -161,7 +161,7 @@ final class OpusIdentification {
             "mappingFamily=" + mappingFamily + ", " +
             "streamCount=" + streamCount + ", " +
             "coupledCount=" + coupledCount + ", " +
-            "mapping=" + mappingString +
+            "mapping=" + Arrays.toString(mapping) +
             "}";
     }
 }

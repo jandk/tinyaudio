@@ -122,8 +122,8 @@ public final class OggPacketReader implements PacketSource {
         }
     }
 
-    private byte[] combine(byte[] payload, int offset, int length) {
-        int total = length;
+    private byte[] combine(byte[] payload, int off, int len) {
+        int total = len;
         for (byte[] chunk : chunks) {
             total += chunk.length;
         }
@@ -134,7 +134,7 @@ public final class OggPacketReader implements PacketSource {
             System.arraycopy(chunk, 0, result, position, chunk.length);
             position += chunk.length;
         }
-        System.arraycopy(payload, offset, result, position, length);
+        System.arraycopy(payload, off, result, position, len);
         return result;
     }
 }

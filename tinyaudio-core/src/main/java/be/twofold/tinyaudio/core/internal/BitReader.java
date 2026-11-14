@@ -13,7 +13,7 @@ public final class BitReader {
         .byteArrayViewVarHandle(long[].class, ByteOrder.LITTLE_ENDIAN);
 
     private final byte[] source;
-    private final int offset;
+    private final int off;
     private final int end;
     private final boolean bigEndian;
     private int position;
@@ -24,13 +24,13 @@ public final class BitReader {
         this(source, 0, source.length, order);
     }
 
-    public BitReader(byte[] source, int offset, int length, ByteOrder order) {
-        Objects.checkFromIndexSize(offset, length, source.length);
+    public BitReader(byte[] source, int off, int len, ByteOrder order) {
+        Objects.checkFromIndexSize(off, len, source.length);
         this.source = source;
-        this.offset = offset;
-        this.end = offset + length;
+        this.off = off;
+        this.end = off + len;
         this.bigEndian = Objects.requireNonNull(order) == ByteOrder.BIG_ENDIAN;
-        this.position = offset;
+        this.position = off;
     }
 
     /**
@@ -46,7 +46,7 @@ public final class BitReader {
      * Unaffected by {@link #peek} and {@link #peekLong}.
      */
     int bitsRead() {
-        return (position - offset) * 8 - bitCount;
+        return (position - off) * 8 - bitCount;
     }
 
     /**

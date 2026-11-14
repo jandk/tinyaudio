@@ -3,7 +3,6 @@ package be.twofold.tinyaudio.vorbis.internal;
 import be.twofold.tinyaudio.core.internal.BitReader;
 import be.twofold.tinyaudio.vorbis.mdct.MDCT;
 
-import java.io.IOException;
 import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.Objects;
@@ -65,14 +64,14 @@ public final class VorbisDecoder {
      *
      * @param pcm {@code [channels][blockSize1 / 2]}
      */
-    public int decodeBlock(byte[] data, int dataOff, int len, float[][] pcm) throws IOException {
+    public int decodeBlock(byte[] data, int off, int len, float[][] pcm) {
         if (previousBlockSize != 0) {
             for (int ch = 0; ch < identification.audioChannels(); ch++) {
                 System.arraycopy(spectrum[ch], previousBlockSize / 2, overlap[ch], 0, previousBlockSize / 2);
             }
         }
 
-        var bits = new BitReader(data, dataOff, len, ByteOrder.LITTLE_ENDIAN);
+        var bits = new BitReader(data, off, len, ByteOrder.LITTLE_ENDIAN);
         if (bits.readBool()) { // packet type
             return 0;
         }

@@ -17,8 +17,8 @@ public abstract class BlockAudioDecoder implements AudioDecoder {
     protected abstract int decodeBlock(short[][] pcm) throws IOException;
 
     @Override
-    public int read(short[][] pcm, int offset, int length) throws IOException {
-        if (length == 0) {
+    public int read(short[][] pcm, int off, int len) throws IOException {
+        if (len == 0) {
             return 0;
         }
         while (position == available) {
@@ -30,9 +30,9 @@ public abstract class BlockAudioDecoder implements AudioDecoder {
             available = frames;
         }
 
-        int count = Math.min(length, available - position);
+        int count = Math.min(len, available - position);
         for (int ch = 0; ch < buffer.length; ch++) {
-            System.arraycopy(buffer[ch], position, pcm[ch], offset, count);
+            System.arraycopy(buffer[ch], position, pcm[ch], off, count);
         }
         position += count;
         return count;

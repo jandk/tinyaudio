@@ -190,15 +190,15 @@ final class Codebook {
         return bits.isOverrun() ? -1 : (int) word >>> 8;
     }
 
-    boolean decodeVSet(BitReader bits, float[] a, int aOff, int n) {
-        for (int i = 0; i < n; ) {
+    boolean decodeVSet(BitReader bits, float[] a, int off, int len) {
+        for (int i = 0; i < len; ) {
             int entry = decode(bits);
             if (entry < 0) {
                 return false;
             }
             int base = entry * dimensions;
-            for (int j = 0; i < n && j < dimensions; i++, j++) {
-                a[aOff + i] = vectors[base + j];
+            for (int j = 0; i < len && j < dimensions; i++, j++) {
+                a[off + i] = vectors[base + j];
             }
         }
         return true;

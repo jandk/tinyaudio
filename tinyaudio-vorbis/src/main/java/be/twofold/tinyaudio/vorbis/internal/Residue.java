@@ -170,7 +170,7 @@ final class Residue {
         return true;
     }
 
-    private boolean decodePartition(BitReader bits, Codebook codebook, float[][] pcmBundle, int j, int count, int offset) {
+    private boolean decodePartition(BitReader bits, Codebook codebook, float[][] pcmBundle, int j, int count, int off) {
         int dim = codebook.dimensions();
         float[] values = codebook.vectors();
         int rows = partitionSize / dim;
@@ -185,13 +185,13 @@ final class Residue {
                 float value = values[base + d];
                 switch (type) {
                     case 0:
-                        pcmBundle[j][offset + r + d * rows] += value;
+                        pcmBundle[j][off + r + d * rows] += value;
                         break;
                     case 1:
-                        pcmBundle[j][offset + r * dim + d] += value;
+                        pcmBundle[j][off + r * dim + d] += value;
                         break;
                     default:
-                        int t = offset + r * dim + d;
+                        int t = off + r * dim + d;
                         pcmBundle[t % count][t / count] += value;
                         break;
                 }

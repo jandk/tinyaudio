@@ -9,5 +9,5 @@ public interface AudioDecoder extends Closeable {
     /**
      * Reads planar 16-bit frames. Returns the frame count, or -1 at EOF.
      */
-    int read(short[][] pcm, int offset, int length) throws IOException;
+    int read(short[][] pcm, int off, int len) throws IOException;
 }

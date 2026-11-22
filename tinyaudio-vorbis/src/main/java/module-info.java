@@ -1,3 +1,6 @@
+/**
+ * Vorbis I decoding, in Ogg.
+ */
 module be.twofold.tinyaudio.vorbis {
     requires be.twofold.tinyaudio.core;
     requires be.twofold.tinyaudio.ogg;

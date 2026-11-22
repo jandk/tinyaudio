@@ -9,7 +9,16 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Optional;
 
+/**
+ * Opens native FLAC streams.
+ */
 public final class FlacAudioDecoderProvider implements AudioDecoderProvider {
+    /**
+     * Creates the service. Called by {@link java.util.ServiceLoader}.
+     */
+    public FlacAudioDecoderProvider() {
+    }
+
 
     @Override
     public Optional<AudioDecoder> open(byte[] head, InputStream in) throws IOException {

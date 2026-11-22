@@ -10,7 +10,16 @@ import be.twofold.tinyaudio.ogg.internal.OggCodec;
 import java.io.IOException;
 import java.util.Optional;
 
+/**
+ * Opens FLAC in Ogg. Used by the Ogg provider.
+ */
 public final class FlacOggCodec implements OggCodec {
+    /**
+     * Creates the service. Called by {@link java.util.ServiceLoader}.
+     */
+    public FlacOggCodec() {
+    }
+
     @Override
     public Optional<AudioDecoder> open(Packet first, PacketSource packets) throws IOException {
         if (!IOUtils.startsWith(first.data(), FlacHeader.OGG_MAGIC)) {

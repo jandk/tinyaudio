@@ -1,3 +1,6 @@
+/**
+ * Ogg container support. The codec modules plug in to it, so it is needed for Vorbis, Opus and FLAC in Ogg.
+ */
 module be.twofold.tinyaudio.ogg {
     requires be.twofold.tinyaudio.core;
 

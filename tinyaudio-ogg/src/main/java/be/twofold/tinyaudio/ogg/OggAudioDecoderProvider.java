@@ -16,11 +16,20 @@ import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.stream.Collectors;
 
+/**
+ * Opens Ogg streams, using the first codec that recognizes the stream.
+ */
 public final class OggAudioDecoderProvider implements AudioDecoderProvider {
     private static final List<OggCodec> CODECS = ServiceLoader
         .load(OggCodec.class).stream()
         .map(ServiceLoader.Provider::get)
         .collect(Collectors.toList());
+
+    /**
+     * Creates the service. Called by {@link java.util.ServiceLoader}.
+     */
+    public OggAudioDecoderProvider() {
+    }
 
     @Override
     public Optional<AudioDecoder> open(byte[] head, InputStream in) throws IOException {

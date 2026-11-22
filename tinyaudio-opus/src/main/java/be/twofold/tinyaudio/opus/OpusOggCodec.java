@@ -9,7 +9,16 @@ import be.twofold.tinyaudio.ogg.internal.OggCodec;
 import java.io.IOException;
 import java.util.Optional;
 
+/**
+ * Opens Opus in Ogg. Used by the Ogg provider.
+ */
 public final class OpusOggCodec implements OggCodec {
+    /**
+     * Creates the service. Called by {@link java.util.ServiceLoader}.
+     */
+    public OpusOggCodec() {
+    }
+
     @Override
     public Optional<AudioDecoder> open(Packet first, PacketSource packets) throws IOException {
         if (!IOUtils.startsWith(first.data(), OpusHeader.MAGIC)) {

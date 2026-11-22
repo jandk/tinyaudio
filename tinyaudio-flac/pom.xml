@@ -9,6 +9,7 @@
     </parent>
 
     <artifactId>tinyaudio-flac</artifactId>
+    <description>FLAC decoder for tinyaudio, native and in Ogg</description>
 
     <dependencies>
         <dependency>

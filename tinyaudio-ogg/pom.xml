@@ -9,6 +9,7 @@
     </parent>
 
     <artifactId>tinyaudio-ogg</artifactId>
+    <description>Ogg container reader for tinyaudio</description>
 
     <dependencies>
         <dependency>

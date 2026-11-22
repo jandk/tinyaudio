@@ -9,6 +9,7 @@
     </parent>
 
     <artifactId>tinyaudio-opus</artifactId>
+    <description>Opus decoder (CELT only) for tinyaudio</description>
 
     <dependencies>
         <dependency>

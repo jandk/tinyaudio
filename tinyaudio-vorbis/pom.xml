@@ -9,6 +9,7 @@
     </parent>
 
     <artifactId>tinyaudio-vorbis</artifactId>
+    <description>Vorbis decoder for tinyaudio</description>
 
     <dependencies>
         <dependency>

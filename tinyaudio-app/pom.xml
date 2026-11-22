@@ -9,6 +9,7 @@
     </parent>
 
     <artifactId>tinyaudio-app</artifactId>
+    <description>Command line player for tinyaudio, using javax.sound.sampled</description>
 
     <dependencies>
         <dependency>

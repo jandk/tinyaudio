@@ -9,4 +9,5 @@
     </parent>
 
     <artifactId>tinyaudio-core</artifactId>
+    <description>Core API and javax.sound.sampled integration for tinyaudio</description>
 </project>

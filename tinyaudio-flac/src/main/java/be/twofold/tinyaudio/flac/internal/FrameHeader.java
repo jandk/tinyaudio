@@ -84,8 +84,6 @@ public final class FrameHeader {
 
     private static ChannelAssignment parseChannelAssignment(int channelBits) {
         switch (channelBits) {
-            case 1:
-                return ChannelAssignment.LEFT_RIGHT;
             case 8:
                 return ChannelAssignment.LEFT_SIDE;
             case 9:
@@ -93,7 +91,7 @@ public final class FrameHeader {
             case 10:
                 return ChannelAssignment.MID_SIDE;
             default:
-                return null;
+                return ChannelAssignment.INDEPENDENT;
         }
     }
 

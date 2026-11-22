@@ -1,5 +1,5 @@
 /**
- * FLAC decoding, native and in Ogg. Streams with 32 bits per sample are not supported, opening one throws
+ * FLAC decoding, native and in Ogg, up to 24 bits per sample. Opening a stream with more bits throws
  * {@link be.twofold.tinyaudio.core.UnsupportedFormatException}.
  */
 module be.twofold.tinyaudio.flac {

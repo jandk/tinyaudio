@@ -52,7 +52,7 @@ public interface AudioDecoder extends Closeable {
      * @param path the file to decode
      * @return a decoder, positioned at the first frame
      * @throws UnsupportedFormatException if no decoder recognizes the file, or it uses a feature that is not
-     *                                    supported, like 32-bit FLAC
+     *                                    supported, like FLAC above 24 bits
      * @throws AudioFormatException       if the data is invalid
      * @throws IOException                if reading fails
      */
@@ -75,7 +75,7 @@ public interface AudioDecoder extends Closeable {
      * @param in the stream to decode, which is wrapped in a {@link BufferedInputStream} if it does not support mark
      * @return a decoder, positioned at the first frame
      * @throws UnsupportedFormatException if no decoder recognizes the stream, or it uses a feature that is not
-     *                                    supported, like 32-bit FLAC
+     *                                    supported, like FLAC above 24 bits
      * @throws AudioFormatException       if the data is invalid
      * @throws IOException                if reading fails
      */

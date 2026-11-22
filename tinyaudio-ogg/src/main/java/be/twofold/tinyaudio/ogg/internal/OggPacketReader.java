@@ -28,10 +28,6 @@ public final class OggPacketReader implements PacketSource {
         this.serialNumber = serialNumber;
     }
 
-    public Integer serialNumber() {
-        return serialNumber;
-    }
-
     @Override
     public Packet next() throws IOException {
         if (finished) {

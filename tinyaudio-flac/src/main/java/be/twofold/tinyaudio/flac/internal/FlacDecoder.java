@@ -27,7 +27,7 @@ public final class FlacDecoder {
 
     public FlacDecoder(StreamInfo streamInfo) throws UnsupportedFormatException {
         this.streamInfo = Objects.requireNonNull(streamInfo);
-        if (streamInfo.bitsPerSample() >= 32) {
+        if (streamInfo.bitsPerSample() > 24) {
             throw new UnsupportedFormatException("Unsupported bits per sample: " + streamInfo.bitsPerSample());
         }
     }
@@ -45,7 +45,7 @@ public final class FlacDecoder {
         BitReader bits = new BitReader(buffer.array(), buffer.position(), buffer.remaining(), ByteOrder.BIG_ENDIAN);
         for (int ch = 0; ch < header.channels(); ch++) {
             SubframeHeader subframeHeader = SubframeHeader.read(bits);
-            boolean side = header.channelAssignment() != null && header.channelAssignment().side() == ch;
+            boolean side = header.channelAssignment().side() == ch;
             int bitsPerSample = streamInfo.bitsPerSample() - subframeHeader.wastedBits() + (side ? 1 : 0);
             if (bitsPerSample <= 0) {
                 throw new AudioFormatException("Invalid wasted bits");
@@ -170,7 +170,7 @@ public final class FlacDecoder {
     }
 
     private void decorrelate(int[][] samples, ChannelAssignment assignment, int blockSize) {
-        if (assignment == null || assignment == ChannelAssignment.LEFT_RIGHT) {
+        if (assignment == ChannelAssignment.INDEPENDENT) {
             return;
         }
 

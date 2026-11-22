@@ -1,18 +1,14 @@
 package be.twofold.tinyaudio.opus;
 
 import be.twofold.tinyaudio.core.AudioInfo;
-import be.twofold.tinyaudio.core.BlockAudioDecoder;
-import be.twofold.tinyaudio.core.Packet;
-import be.twofold.tinyaudio.core.PacketSource;
-import be.twofold.tinyaudio.core.internal.MathUtils;
-import be.twofold.tinyaudio.core.internal.PcmUtils;
+import be.twofold.tinyaudio.core.internal.*;
 import be.twofold.tinyaudio.ogg.internal.OggTrim;
 import be.twofold.tinyaudio.opus.internal.OpusMsDecoder;
 
 import java.io.IOException;
 import java.util.Objects;
 
-public final class OpusAudioDecoder extends BlockAudioDecoder {
+final class OpusAudioDecoder extends BlockAudioDecoder {
     private static final int MAX_BLOCK_SIZE = 5760; // 120ms at 48kHz
     private final PacketSource packets;
     private final OpusIdentification identification;

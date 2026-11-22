@@ -1,6 +1,6 @@
 package be.twofold.tinyaudio.ogg.internal;
 
-import be.twofold.tinyaudio.core.Packet;
+import be.twofold.tinyaudio.core.internal.Packet;
 
 public final class OggTrim {
     private long decoded;

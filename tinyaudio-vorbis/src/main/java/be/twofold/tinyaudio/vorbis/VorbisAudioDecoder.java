@@ -1,9 +1,9 @@
 package be.twofold.tinyaudio.vorbis;
 
 import be.twofold.tinyaudio.core.AudioInfo;
-import be.twofold.tinyaudio.core.BlockAudioDecoder;
-import be.twofold.tinyaudio.core.Packet;
-import be.twofold.tinyaudio.core.PacketSource;
+import be.twofold.tinyaudio.core.internal.BlockAudioDecoder;
+import be.twofold.tinyaudio.core.internal.Packet;
+import be.twofold.tinyaudio.core.internal.PacketSource;
 import be.twofold.tinyaudio.core.internal.PcmUtils;
 import be.twofold.tinyaudio.ogg.internal.OggTrim;
 import be.twofold.tinyaudio.vorbis.internal.Identification;
@@ -13,7 +13,7 @@ import be.twofold.tinyaudio.vorbis.internal.VorbisDecoder;
 import java.io.IOException;
 import java.util.Objects;
 
-public final class VorbisAudioDecoder extends BlockAudioDecoder {
+final class VorbisAudioDecoder extends BlockAudioDecoder {
     private final PacketSource packets;
     private final Identification identification;
     private final VorbisDecoder decoder;

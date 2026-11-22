@@ -2,8 +2,8 @@ package be.twofold.tinyaudio.ogg;
 
 import be.twofold.tinyaudio.core.AudioDecoder;
 import be.twofold.tinyaudio.core.AudioDecoderProvider;
-import be.twofold.tinyaudio.core.Packet;
 import be.twofold.tinyaudio.core.internal.IOUtils;
+import be.twofold.tinyaudio.core.internal.Packet;
 
 import java.io.IOException;
 import java.io.InputStream;

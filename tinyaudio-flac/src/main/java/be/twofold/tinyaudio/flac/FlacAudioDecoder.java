@@ -1,16 +1,16 @@
 package be.twofold.tinyaudio.flac;
 
 import be.twofold.tinyaudio.core.AudioInfo;
-import be.twofold.tinyaudio.core.BlockAudioDecoder;
-import be.twofold.tinyaudio.core.Packet;
-import be.twofold.tinyaudio.core.PacketSource;
+import be.twofold.tinyaudio.core.internal.BlockAudioDecoder;
+import be.twofold.tinyaudio.core.internal.Packet;
+import be.twofold.tinyaudio.core.internal.PacketSource;
 import be.twofold.tinyaudio.flac.internal.FlacDecoder;
 import be.twofold.tinyaudio.flac.metadata.StreamInfo;
 
 import java.io.IOException;
 import java.util.Objects;
 
-public final class FlacAudioDecoder extends BlockAudioDecoder {
+final class FlacAudioDecoder extends BlockAudioDecoder {
     private final FlacDecoder decoder;
     private final PacketSource packets;
     private final StreamInfo streamInfo;

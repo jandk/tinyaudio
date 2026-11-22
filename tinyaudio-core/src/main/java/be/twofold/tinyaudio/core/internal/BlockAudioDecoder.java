@@ -1,4 +1,6 @@
-package be.twofold.tinyaudio.core;
+package be.twofold.tinyaudio.core.internal;
+
+import be.twofold.tinyaudio.core.AudioDecoder;
 
 import java.io.IOException;
 

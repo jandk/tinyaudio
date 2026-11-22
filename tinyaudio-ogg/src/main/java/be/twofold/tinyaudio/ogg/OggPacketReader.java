@@ -1,7 +1,7 @@
 package be.twofold.tinyaudio.ogg;
 
-import be.twofold.tinyaudio.core.Packet;
-import be.twofold.tinyaudio.core.PacketSource;
+import be.twofold.tinyaudio.core.internal.Packet;
+import be.twofold.tinyaudio.core.internal.PacketSource;
 
 import java.io.IOException;
 import java.util.ArrayList;

@@ -1,8 +1,8 @@
 package be.twofold.tinyaudio.flac;
 
-import be.twofold.tinyaudio.core.Packet;
-import be.twofold.tinyaudio.core.PacketSource;
 import be.twofold.tinyaudio.core.internal.CRC;
+import be.twofold.tinyaudio.core.internal.Packet;
+import be.twofold.tinyaudio.core.internal.PacketSource;
 import be.twofold.tinyaudio.flac.internal.FrameHeader;
 import be.twofold.tinyaudio.flac.metadata.StreamInfo;
 

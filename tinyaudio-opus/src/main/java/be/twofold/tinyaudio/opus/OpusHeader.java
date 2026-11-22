@@ -1,8 +1,8 @@
 package be.twofold.tinyaudio.opus;
 
-import be.twofold.tinyaudio.core.Packet;
-import be.twofold.tinyaudio.core.PacketSource;
 import be.twofold.tinyaudio.core.internal.IOUtils;
+import be.twofold.tinyaudio.core.internal.Packet;
+import be.twofold.tinyaudio.core.internal.PacketSource;
 import be.twofold.tinyaudio.core.internal.VorbisComment;
 
 import java.io.IOException;

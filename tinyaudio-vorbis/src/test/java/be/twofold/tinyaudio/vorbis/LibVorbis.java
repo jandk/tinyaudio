@@ -8,6 +8,9 @@ import java.nio.file.Path;
 
 public interface LibVorbis extends Library {
     static LibVorbis load() {
+        if (!Platform.isWindows()) {
+            return Native.load("vorbis", LibVorbis.class);
+        }
         try {
             Path path = Path.of(LibVorbis.class.getResource("/libvorbis-0.dll").toURI());
             return Native.load(path.toString(), LibVorbis.class);

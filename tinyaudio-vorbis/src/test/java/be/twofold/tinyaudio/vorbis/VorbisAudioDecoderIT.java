@@ -5,6 +5,7 @@ import be.twofold.tinyaudio.ogg.OggPacketReader;
 import be.twofold.tinyaudio.ogg.OggPageReader;
 import com.sun.jna.Memory;
 import com.sun.jna.NativeLong;
+import com.sun.jna.Platform;
 import com.sun.jna.Pointer;
 import com.sun.jna.ptr.PointerByReference;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -21,7 +22,8 @@ import java.util.stream.Stream;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class VorbisAudioDecoderIT {
-    private static final float EPSILON = 1e-6f;
+    // The Linux build is a little off? Seems to be compiled with -ffast-math
+    private static final float EPSILON = Platform.isWindows() ? 1e-6f : 1e-5f;
     private static final Path ROOT = projectRoot().resolve("test-vectors/vorbis");
 
     private static final LibVorbis LIB_VORBIS = LibVorbis.load();

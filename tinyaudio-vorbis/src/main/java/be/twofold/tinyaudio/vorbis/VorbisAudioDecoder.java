@@ -5,6 +5,7 @@ import be.twofold.tinyaudio.core.BlockAudioDecoder;
 import be.twofold.tinyaudio.core.Packet;
 import be.twofold.tinyaudio.core.PacketSource;
 import be.twofold.tinyaudio.core.internal.PcmUtils;
+import be.twofold.tinyaudio.ogg.internal.OggTrim;
 import be.twofold.tinyaudio.vorbis.internal.Identification;
 import be.twofold.tinyaudio.vorbis.internal.Setup;
 import be.twofold.tinyaudio.vorbis.internal.VorbisDecoder;
@@ -17,9 +18,7 @@ public final class VorbisAudioDecoder extends BlockAudioDecoder {
     private final Identification identification;
     private final VorbisDecoder decoder;
     private final float[][] pcmFloat;
-
-    private long granulePosition;
-    private boolean synced;
+    private final OggTrim oggTrim = new OggTrim();
 
     VorbisAudioDecoder(PacketSource packets, Identification identification, Setup setup) {
         super(identification.channels(), identification.blockSize1());
@@ -49,25 +48,15 @@ public final class VorbisAudioDecoder extends BlockAudioDecoder {
         byte[] data = packet.data();
         int frames = decoder.decodeBlock(data, 0, data.length, pcm);
 
-        granulePosition += frames;
-        long position = packet.position();
-        if (position == -1) {
-            return frames;
+        oggTrim.update(packet, frames);
+        int start = oggTrim.start();
+        int count = oggTrim.count();
+        if (start > 0) {
+            for (int ch = 0; ch < identification.channels(); ch++) {
+                System.arraycopy(pcm[ch], start, pcm[ch], 0, count);
+            }
         }
-
-        int extra = (int) Math.max(0, Math.min(granulePosition - position, frames));
-        granulePosition = position;
-        if (packet.finished()) {
-            return frames - extra;
-        }
-        if (synced) {
-            return frames;
-        }
-        synced = true;
-        for (int ch = 0; ch < identification.channels(); ch++) {
-            System.arraycopy(pcm[ch], extra, pcm[ch], 0, frames - extra);
-        }
-        return frames - extra;
+        return count;
     }
 
     @Override

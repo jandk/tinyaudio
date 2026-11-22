@@ -1,7 +1,7 @@
 package be.twofold.tinyaudio.vorbis.internal;
 
 import be.twofold.tinyaudio.core.internal.BitReader;
-import be.twofold.tinyaudio.vorbis.mdct.MDCT;
+import be.twofold.tinyaudio.core.internal.MDCT;
 
 import java.nio.ByteOrder;
 import java.util.Arrays;

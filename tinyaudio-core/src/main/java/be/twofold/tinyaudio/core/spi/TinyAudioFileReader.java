@@ -1,20 +1,16 @@
 package be.twofold.tinyaudio.core.spi;
 
 import be.twofold.tinyaudio.core.AudioDecoder;
-import be.twofold.tinyaudio.core.AudioDecoderProvider;
 import be.twofold.tinyaudio.core.AudioInfo;
+import be.twofold.tinyaudio.core.internal.DecoderDetector;
 
 import javax.sound.sampled.*;
 import javax.sound.sampled.spi.AudioFileReader;
 import java.io.*;
 import java.net.URL;
 import java.util.Map;
-import java.util.Optional;
-import java.util.ServiceLoader;
 
 public final class TinyAudioFileReader extends AudioFileReader {
-    private static final int HEAD_SIZE = 256;
-    private static final int REJECT_LIMIT = 1 << 17; // We need enough for max of an ogg page because buffering
     private static final int REWIND_LIMIT = 1 << 27; // 128MiB should be enough for anyone
 
     @Override
@@ -31,7 +27,7 @@ public final class TinyAudioFileReader extends AudioFileReader {
     public AudioFileFormat getAudioFileFormat(URL url)
         throws UnsupportedAudioFileException, IOException {
         try (InputStream in = new BufferedInputStream(url.openStream())) {
-            return fileFormat(open(in, REJECT_LIMIT).info());
+            return fileFormat(open(in, DecoderDetector.MARK_LIMIT).info());
         }
     }
 
@@ -39,14 +35,14 @@ public final class TinyAudioFileReader extends AudioFileReader {
     public AudioFileFormat getAudioFileFormat(File file)
         throws UnsupportedAudioFileException, IOException {
         try (InputStream in = new BufferedInputStream(new FileInputStream(file))) {
-            return fileFormat(open(in, REJECT_LIMIT).info());
+            return fileFormat(open(in, DecoderDetector.MARK_LIMIT).info());
         }
     }
 
     @Override
     public AudioInputStream getAudioInputStream(InputStream stream)
         throws UnsupportedAudioFileException, IOException {
-        AudioDecoder decoder = open(stream, REJECT_LIMIT);
+        AudioDecoder decoder = open(stream, DecoderDetector.MARK_LIMIT);
         AudioInfo info = decoder.info();
         return new AudioInputStream(new AudioDecoderInputStream(decoder), audioFormat(info), info.totalFrames());
     }
@@ -70,17 +66,8 @@ public final class TinyAudioFileReader extends AudioFileReader {
         }
 
         in.mark(markLimit);
-        byte[] head = in.readNBytes(HEAD_SIZE);
-        in.reset();
-
-        for (AudioDecoderProvider provider : ServiceLoader.load(AudioDecoderProvider.class)) {
-            Optional<AudioDecoder> decoder = provider.open(head, in);
-            if (decoder.isPresent()) {
-                return decoder.get();
-            }
-            in.reset();
-        }
-        throw new UnsupportedAudioFileException("No decoder found for stream");
+        return DecoderDetector.detect(in)
+            .orElseThrow(() -> new UnsupportedAudioFileException("No decoder found for stream"));
     }
 
     private AudioInputStream openOwned(InputStream in)

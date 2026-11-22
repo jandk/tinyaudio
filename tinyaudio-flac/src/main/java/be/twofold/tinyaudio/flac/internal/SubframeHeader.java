@@ -1,7 +1,7 @@
 package be.twofold.tinyaudio.flac.internal;
 
+import be.twofold.tinyaudio.core.AudioFormatException;
 import be.twofold.tinyaudio.core.internal.BitReader;
-import be.twofold.tinyaudio.flac.FlacException;
 
 import java.util.Objects;
 
@@ -16,9 +16,9 @@ final class SubframeHeader {
         this.wastedBits = wastedBits;
     }
 
-    static SubframeHeader read(BitReader bits) throws FlacException {
+    static SubframeHeader read(BitReader bits) throws AudioFormatException {
         if (bits.readBool()) {
-            throw new FlacException("Invalid subframe header");
+            throw new AudioFormatException("Invalid subframe header");
         }
 
         int typeBits = bits.read(6);
@@ -33,7 +33,7 @@ final class SubframeHeader {
         );
     }
 
-    private static SubframeType parseType(int bits) throws FlacException {
+    private static SubframeType parseType(int bits) throws AudioFormatException {
         if (bits == 0) {
             return SubframeType.CONSTANT;
         } else if (bits == 1) {
@@ -43,7 +43,7 @@ final class SubframeHeader {
         } else if (bits >= 32 && bits <= 63) {
             return SubframeType.LPC;
         } else {
-            throw new FlacException("Invalid subframe type");
+            throw new AudioFormatException("Invalid subframe type");
         }
     }
 

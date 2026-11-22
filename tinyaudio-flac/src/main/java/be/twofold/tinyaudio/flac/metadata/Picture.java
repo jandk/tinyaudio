@@ -1,7 +1,7 @@
 package be.twofold.tinyaudio.flac.metadata;
 
+import be.twofold.tinyaudio.core.AudioFormatException;
 import be.twofold.tinyaudio.core.internal.IOUtils;
-import be.twofold.tinyaudio.flac.FlacException;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -37,11 +37,11 @@ public final class Picture implements MetadataBlock {
         this.data = data.clone();
     }
 
-    public static Picture read(ByteBuffer buffer) throws FlacException {
+    public static Picture read(ByteBuffer buffer) throws AudioFormatException {
         int typeCode = buffer.getInt();
         PictureType type = PictureType.fromCode(typeCode);
         if (type == null) {
-            throw new FlacException("Invalid picture type code: " + typeCode);
+            throw new AudioFormatException("Invalid picture type code: " + typeCode);
         }
 
         String mimeType = IOUtils.getString(buffer, buffer.getInt(), StandardCharsets.US_ASCII);

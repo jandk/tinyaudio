@@ -1,7 +1,7 @@
 package be.twofold.tinyaudio.flac.metadata;
 
+import be.twofold.tinyaudio.core.AudioFormatException;
 import be.twofold.tinyaudio.core.internal.IOUtils;
-import be.twofold.tinyaudio.flac.FlacException;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -27,7 +27,7 @@ public final class CueSheet implements MetadataBlock {
         this.tracks = List.copyOf(tracks);
     }
 
-    public static CueSheet read(ByteBuffer buffer) throws FlacException {
+    public static CueSheet read(ByteBuffer buffer) throws AudioFormatException {
         String mediaCatalogNumber = IOUtils.getString(buffer, 128, StandardCharsets.US_ASCII).trim();
         long leadIn = buffer.getLong();
         boolean cdda = (buffer.get() & 0x80) != 0;
@@ -47,10 +47,10 @@ public final class CueSheet implements MetadataBlock {
         );
     }
 
-    static void checkPadding(ByteBuffer buffer, int length) throws FlacException {
+    static void checkPadding(ByteBuffer buffer, int length) throws AudioFormatException {
         for (int i = 0; i < length; i++) {
             if (buffer.get() != 0) {
-                throw new FlacException("Invalid padding");
+                throw new AudioFormatException("Invalid padding");
             }
         }
     }

@@ -1,7 +1,7 @@
 package be.twofold.tinyaudio.vorbis.internal;
 
+import be.twofold.tinyaudio.core.AudioFormatException;
 import be.twofold.tinyaudio.core.internal.BitReader;
-import be.twofold.tinyaudio.vorbis.VorbisException;
 
 import java.io.IOException;
 import java.util.List;
@@ -14,7 +14,7 @@ interface Floor {
         } else if (floorType == 1) {
             return Floor1.unpack(bits, codebooks.size());
         } else {
-            throw new VorbisException("Invalid floor type");
+            throw new AudioFormatException("Invalid floor type");
         }
     }
 

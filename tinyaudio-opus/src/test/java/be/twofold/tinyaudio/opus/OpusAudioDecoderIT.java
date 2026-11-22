@@ -1,5 +1,6 @@
 package be.twofold.tinyaudio.opus;
 
+import be.twofold.tinyaudio.core.UnsupportedFormatException;
 import be.twofold.tinyaudio.core.internal.Packet;
 import be.twofold.tinyaudio.core.internal.PacketSource;
 import org.junit.jupiter.api.Assumptions;
@@ -53,7 +54,7 @@ class OpusAudioDecoderIT {
         if (id == 1 || id == 7 || id == 11) {
             testOpus(file);
         } else { // SILK or hybrid
-            skipIfThrows(file, UnsupportedOperationException.class);
+            skipIfThrows(file, UnsupportedFormatException.class);
         }
     }
 

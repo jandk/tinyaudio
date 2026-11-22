@@ -40,8 +40,9 @@ public interface AudioDecoder extends Closeable {
      * @param off the offset in each array to start writing at
      * @param len the maximum number of frames to read
      * @return the number of frames read, or {@code -1} at the end of the stream
-     * @throws IOException                   if reading fails or the data is invalid
-     * @throws UnsupportedOperationException if the stream uses a feature that is not supported, like SILK in Opus
+     * @throws UnsupportedFormatException if the stream uses a feature that is not supported, like SILK in Opus
+     * @throws AudioFormatException       if the data is invalid
+     * @throws IOException                if reading fails
      */
     int read(short[][] pcm, int off, int len) throws IOException;
 
@@ -50,9 +51,10 @@ public interface AudioDecoder extends Closeable {
      *
      * @param path the file to decode
      * @return a decoder, positioned at the first frame
-     * @throws IOException                   if reading fails or the format is not recognized
-     * @throws UnsupportedOperationException if the format is recognized, but the stream uses a feature that is not
-     *                                       supported, like 32-bit FLAC
+     * @throws UnsupportedFormatException if no decoder recognizes the file, or it uses a feature that is not
+     *                                    supported, like 32-bit FLAC
+     * @throws AudioFormatException       if the data is invalid
+     * @throws IOException                if reading fails
      */
     static AudioDecoder open(Path path) throws IOException {
         InputStream in = Files.newInputStream(path);
@@ -72,9 +74,10 @@ public interface AudioDecoder extends Closeable {
      *
      * @param in the stream to decode, which is wrapped in a {@link BufferedInputStream} if it does not support mark
      * @return a decoder, positioned at the first frame
-     * @throws IOException                   if reading fails or the format is not recognized
-     * @throws UnsupportedOperationException if the format is recognized, but the stream uses a feature that is not
-     *                                       supported, like 32-bit FLAC
+     * @throws UnsupportedFormatException if no decoder recognizes the stream, or it uses a feature that is not
+     *                                    supported, like 32-bit FLAC
+     * @throws AudioFormatException       if the data is invalid
+     * @throws IOException                if reading fails
      */
     static AudioDecoder open(InputStream in) throws IOException {
         if (!in.markSupported()) {
@@ -82,6 +85,6 @@ public interface AudioDecoder extends Closeable {
         }
         in.mark(DecoderDetector.MARK_LIMIT);
         return DecoderDetector.detect(in)
-            .orElseThrow(() -> new IOException("No decoder found for stream"));
+            .orElseThrow(() -> new UnsupportedFormatException("No decoder found for stream"));
     }
 }

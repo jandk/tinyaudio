@@ -1,6 +1,6 @@
 package be.twofold.tinyaudio.ogg.internal;
 
-import be.twofold.tinyaudio.ogg.OggException;
+import be.twofold.tinyaudio.core.AudioFormatException;
 
 import java.io.*;
 
@@ -27,7 +27,7 @@ public final class OggPageReader implements Closeable {
             if (candidate) {
                 try {
                     return OggPage.read(in);
-                } catch (OggException | EOFException e) {
+                } catch (AudioFormatException | EOFException e) {
                     in.reset();
                 }
             }

@@ -1,6 +1,6 @@
 package be.twofold.tinyaudio.vorbis.internal;
 
-import be.twofold.tinyaudio.vorbis.VorbisException;
+import be.twofold.tinyaudio.core.AudioFormatException;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -36,21 +36,21 @@ public final class Identification {
 
     public static Identification read(ByteBuffer buffer) throws IOException {
         if (buffer.remaining() < BYTES) {
-            throw new VorbisException("Invalid identification header size: " + buffer.remaining());
+            throw new AudioFormatException("Invalid identification header size: " + buffer.remaining());
         }
         int vorbisVersion = buffer.getInt();
         if (vorbisVersion != 0) {
-            throw new VorbisException("Invalid vorbis version: " + vorbisVersion);
+            throw new AudioFormatException("Invalid vorbis version: " + vorbisVersion);
         }
 
         int channels = Byte.toUnsignedInt(buffer.get());
         if (channels == 0) {
-            throw new VorbisException("Invalid channels: " + channels);
+            throw new AudioFormatException("Invalid channels: " + channels);
         }
 
         int sampleRate = buffer.getInt();
         if (sampleRate <= 0) {
-            throw new VorbisException("Invalid sample rate: " + sampleRate);
+            throw new AudioFormatException("Invalid sample rate: " + sampleRate);
         }
 
         int bitrateMaximum = buffer.getInt();
@@ -60,12 +60,12 @@ public final class Identification {
         int blockSize0Log2 = checkBlockSize(blockSizes & 0x0F);
         int blockSize1Log2 = checkBlockSize((blockSizes >> 4) & 0x0F);
         if (blockSize0Log2 > blockSize1Log2) {
-            throw new VorbisException("Invalid block size: " + blockSize0Log2 + " > " + blockSize1Log2);
+            throw new AudioFormatException("Invalid block size: " + blockSize0Log2 + " > " + blockSize1Log2);
         }
 
         int framingFlag = buffer.get() & 0x01;
         if (framingFlag != 1) {
-            throw new VorbisException("Invalid framing flag: " + framingFlag);
+            throw new AudioFormatException("Invalid framing flag: " + framingFlag);
         }
 
         return new Identification(
@@ -81,7 +81,7 @@ public final class Identification {
 
     private static int checkBlockSize(int blockSizeLog2) throws IOException {
         if (blockSizeLog2 < 6 || blockSizeLog2 > 13) {
-            throw new VorbisException("Invalid block size: " + (1 << blockSizeLog2));
+            throw new AudioFormatException("Invalid block size: " + (1 << blockSizeLog2));
         }
         return blockSizeLog2;
     }

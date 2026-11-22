@@ -1,8 +1,8 @@
 package be.twofold.tinyaudio.vorbis.internal;
 
+import be.twofold.tinyaudio.core.AudioFormatException;
 import be.twofold.tinyaudio.core.internal.BitReader;
 import be.twofold.tinyaudio.core.internal.MathUtils;
-import be.twofold.tinyaudio.vorbis.VorbisException;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -151,7 +151,7 @@ final class Floor1 implements Floor {
             if (classSubclass != 0) {
                 int book = bits.read(8);
                 if (book >= codebookCount) {
-                    throw new VorbisException("Floor 1 class master book out of range: " + book);
+                    throw new AudioFormatException("Floor 1 class master book out of range: " + book);
                 }
                 classMasterBooks[i] = book;
             } else {
@@ -161,7 +161,7 @@ final class Floor1 implements Floor {
             for (int j = 0; j < 1 << classSubclass; j++) {
                 int book = bits.read(8) - 1;
                 if (book >= codebookCount) {
-                    throw new VorbisException("Floor 1 subclass book out of range: " + book);
+                    throw new AudioFormatException("Floor 1 subclass book out of range: " + book);
                 }
                 subclassBooks[i][j] = book;
             }
@@ -175,7 +175,7 @@ final class Floor1 implements Floor {
             floorValues += classDimensions[partitionClassList[i]];
         }
         if (floorValues > 63) {
-            throw new VorbisException("Floor 1 has too many values: " + floorValues);
+            throw new AudioFormatException("Floor 1 has too many values: " + floorValues);
         }
 
         int[] xList = new int[floorValues + 2];
@@ -193,7 +193,7 @@ final class Floor1 implements Floor {
         for (int i = 0; i < xList.length; i++) {
             for (int j = i + 1; j < xList.length; j++) {
                 if (xList[i] == xList[j]) {
-                    throw new VorbisException("Floor 1 X list has duplicate values: " + xList[i]);
+                    throw new AudioFormatException("Floor 1 X list has duplicate values: " + xList[i]);
                 }
             }
         }

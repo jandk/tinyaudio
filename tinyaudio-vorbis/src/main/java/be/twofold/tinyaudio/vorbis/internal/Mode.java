@@ -1,7 +1,7 @@
 package be.twofold.tinyaudio.vorbis.internal;
 
+import be.twofold.tinyaudio.core.AudioFormatException;
 import be.twofold.tinyaudio.core.internal.BitReader;
-import be.twofold.tinyaudio.vorbis.VorbisException;
 
 import java.io.IOException;
 
@@ -21,15 +21,15 @@ final class Mode {
         boolean blockFlag = bits.readBool();
         int windowType = bits.read(16);
         if (windowType != 0) {
-            throw new VorbisException("Invalid window type: " + windowType);
+            throw new AudioFormatException("Invalid window type: " + windowType);
         }
         int transformType = bits.read(16);
         if (transformType != 0) {
-            throw new VorbisException("Invalid transform type: " + transformType);
+            throw new AudioFormatException("Invalid transform type: " + transformType);
         }
         int mapping = bits.read(8);
         if (mapping >= mappingCount) {
-            throw new VorbisException("Mode mapping out of range: " + mapping);
+            throw new AudioFormatException("Mode mapping out of range: " + mapping);
         }
 
         return new Mode(blockFlag, mapping);

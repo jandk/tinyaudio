@@ -1,5 +1,6 @@
 package be.twofold.tinyaudio.vorbis;
 
+import be.twofold.tinyaudio.core.AudioFormatException;
 import be.twofold.tinyaudio.core.internal.IOUtils;
 import be.twofold.tinyaudio.core.internal.Packet;
 import be.twofold.tinyaudio.core.internal.PacketSource;
@@ -46,10 +47,10 @@ final class VorbisHeader {
 
     private static ByteBuffer header(Packet packet, int type) throws IOException {
         if (packet == null) {
-            throw new VorbisException("Stream ended before header packet of type " + type);
+            throw new AudioFormatException("Stream ended before header packet of type " + type);
         }
         if (!isHeader(packet.data(), type)) {
-            throw new VorbisException("Expected header packet of type " + type);
+            throw new AudioFormatException("Expected header packet of type " + type);
         }
 
         return ByteBuffer.wrap(packet.data())

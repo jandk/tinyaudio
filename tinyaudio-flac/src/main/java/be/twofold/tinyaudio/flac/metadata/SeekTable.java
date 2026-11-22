@@ -1,6 +1,6 @@
 package be.twofold.tinyaudio.flac.metadata;
 
-import be.twofold.tinyaudio.flac.FlacException;
+import be.twofold.tinyaudio.core.AudioFormatException;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -13,9 +13,9 @@ public final class SeekTable implements MetadataBlock {
         this.points = List.copyOf(points);
     }
 
-    public static SeekTable read(ByteBuffer buffer) throws FlacException {
+    public static SeekTable read(ByteBuffer buffer) throws AudioFormatException {
         if (buffer.remaining() % SeekPoint.BYTES != 0) {
-            throw new FlacException("Seek table size is not a multiple of " + SeekPoint.BYTES);
+            throw new AudioFormatException("Seek table size is not a multiple of " + SeekPoint.BYTES);
         }
 
         int count = buffer.remaining() / SeekPoint.BYTES;

@@ -1,5 +1,7 @@
 package be.twofold.tinyaudio.flac;
 
+import be.twofold.tinyaudio.core.AudioFormatException;
+import be.twofold.tinyaudio.core.UnsupportedFormatException;
 import be.twofold.tinyaudio.core.internal.CRC;
 import be.twofold.tinyaudio.core.internal.Packet;
 import be.twofold.tinyaudio.core.internal.PacketSource;
@@ -115,7 +117,7 @@ final class FlacPacketSource implements PacketSource {
             }
         }
         if (frameEnd < 0) {
-            throw new FlacException("Frame end not found");
+            throw new AudioFormatException("Frame end not found");
         }
         return frameEnd;
     }
@@ -136,11 +138,11 @@ final class FlacPacketSource implements PacketSource {
         FrameHeader header;
         try {
             header = readHeader(offset);
-        } catch (FlacException | EOFException e) {
+        } catch (AudioFormatException | EOFException e) {
             return false;
         }
         if (!header.matches(streamInfo, first)) {
-            throw new UnsupportedOperationException("Stream parameters change mid-stream");
+            throw new UnsupportedFormatException("Stream parameters change mid-stream");
         }
         return true;
     }

@@ -1,7 +1,7 @@
 package be.twofold.tinyaudio.vorbis.internal;
 
+import be.twofold.tinyaudio.core.AudioFormatException;
 import be.twofold.tinyaudio.core.internal.BitReader;
-import be.twofold.tinyaudio.vorbis.VorbisException;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -34,24 +34,24 @@ final class Residue {
     static Residue unpack(BitReader bits, List<Codebook> codebooks) throws IOException {
         int type = bits.read(16);
         if (type > 2) {
-            throw new VorbisException("Invalid residue type: " + type);
+            throw new AudioFormatException("Invalid residue type: " + type);
         }
 
         int begin = bits.read(24);
         int end = bits.read(24);
         if (begin > end) {
-            throw new VorbisException("Residue begin " + begin + " is greater than end " + end);
+            throw new AudioFormatException("Residue begin " + begin + " is greater than end " + end);
         }
 
         int partitionSize = bits.read(24) + 1;
         int classifications = bits.read(6) + 1;
         int classBook = bits.read(8);
         if (classBook >= codebooks.size()) {
-            throw new VorbisException("Residue class book out of range: " + classBook);
+            throw new AudioFormatException("Residue class book out of range: " + classBook);
         }
         Codebook book = codebooks.get(classBook);
         if (!Codebook.powAtMost(classifications, book.dimensions(), book.codewordLengths().length)) {
-            throw new VorbisException("Residue class book cannot encode " + classifications + " classifications");
+            throw new AudioFormatException("Residue class book cannot encode " + classifications + " classifications");
         }
 
         int[] cascade = new int[classifications];
@@ -71,10 +71,10 @@ final class Residue {
                 if ((cascade[i] & (1 << j)) != 0) {
                     int number = bits.read(8);
                     if (number >= codebooks.size()) {
-                        throw new VorbisException("Residue book out of range: " + number);
+                        throw new AudioFormatException("Residue book out of range: " + number);
                     }
                     if (codebooks.get(number).lookupType() == 0) {
-                        throw new VorbisException("Residue book " + number + " has no value mapping");
+                        throw new AudioFormatException("Residue book " + number + " has no value mapping");
                     }
                     books[i][j] = number;
                 } else {

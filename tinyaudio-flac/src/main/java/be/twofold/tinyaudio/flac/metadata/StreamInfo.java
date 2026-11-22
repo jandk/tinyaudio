@@ -1,7 +1,7 @@
 package be.twofold.tinyaudio.flac.metadata;
 
+import be.twofold.tinyaudio.core.AudioFormatException;
 import be.twofold.tinyaudio.core.internal.IOUtils;
-import be.twofold.tinyaudio.flac.FlacException;
 
 import java.nio.ByteBuffer;
 
@@ -28,9 +28,9 @@ public final class StreamInfo implements MetadataBlock {
         int bitsPerSample,
         long totalSamples,
         byte[] md5Sum
-    ) throws FlacException {
+    ) throws AudioFormatException {
         if (sampleRate == 0) {
-            throw new FlacException("Invalid sample rate");
+            throw new AudioFormatException("Invalid sample rate");
         }
         this.minBlockSize = minBlockSize;
         this.maxBlockSize = maxBlockSize;
@@ -43,7 +43,7 @@ public final class StreamInfo implements MetadataBlock {
         this.md5Sum = md5Sum.clone();
     }
 
-    public static StreamInfo read(ByteBuffer buffer) throws FlacException {
+    public static StreamInfo read(ByteBuffer buffer) throws AudioFormatException {
         int minBlockSize = Short.toUnsignedInt(buffer.getShort());
         int maxBlockSize = Short.toUnsignedInt(buffer.getShort());
         int minFrameSize = getInt24(buffer);

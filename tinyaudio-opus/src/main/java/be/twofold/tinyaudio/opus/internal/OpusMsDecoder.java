@@ -1,6 +1,7 @@
 package be.twofold.tinyaudio.opus.internal;
 
-import be.twofold.tinyaudio.opus.OpusException;
+import be.twofold.tinyaudio.core.AudioFormatException;
+import be.twofold.tinyaudio.core.UnsupportedFormatException;
 import be.twofold.tinyaudio.opus.celt.CeltMdct;
 
 import java.util.Arrays;
@@ -30,21 +31,21 @@ public final class OpusMsDecoder {
         }
     }
 
-    public int opus_multistream_decode_native(byte[] data, int dataOff, int len, float[][] pcm, int pcmOff, int frame_size) throws OpusException {
+    public int opus_multistream_decode_native(byte[] data, int dataOff, int len, float[][] pcm, int pcmOff, int frame_size) throws AudioFormatException {
         if (frame_size <= 0) {
-            throw new OpusException("OPUS_BAD_ARG");
+            throw new AudioFormatException("OPUS_BAD_ARG");
         }
         // buf holds at most 120 ms per stream
         frame_size = Math.min(frame_size, Fs / 25 * 3);
         if (len < 0) {
-            throw new OpusException("OPUS_BAD_ARG");
+            throw new AudioFormatException("OPUS_BAD_ARG");
         }
         if (len < 2 * nb_streams - 1) {
-            throw new OpusException("OPUS_INVALID_PACKET");
+            throw new AudioFormatException("OPUS_INVALID_PACKET");
         }
         int samples = opus_multistream_packet_validate(data, dataOff, len);
         if (samples > frame_size) {
-            throw new OpusException("OPUS_BUFFER_TOO_SMALL");
+            throw new AudioFormatException("OPUS_BUFFER_TOO_SMALL");
         }
         // Validation guarantees every stream fits and yields the same number of samples
         for (int s = 0; s < nb_streams; s++) {
@@ -82,23 +83,23 @@ public final class OpusMsDecoder {
      * Parse every stream of a multistream packet before decoding any of them, so
      * a bad packet leaves no stream half-decoded. Returns the samples per stream.
      */
-    private int opus_multistream_packet_validate(byte[] data, int dataOff, int len) throws OpusException {
+    private int opus_multistream_packet_validate(byte[] data, int dataOff, int len) throws AudioFormatException {
         int samples = 0;
         for (int s = 0; s < nb_streams; s++) {
             OpusDecoder decoder = decoders[s];
             if (len <= 0) {
-                throw new OpusException("OPUS_INVALID_PACKET");
+                throw new AudioFormatException("OPUS_INVALID_PACKET");
             }
 
             // Only CELT packets can be decoded
             if ((data[dataOff] & 0x80) == 0) {
-                throw new UnsupportedOperationException("SILK and Hybrid are not supported");
+                throw new UnsupportedFormatException("SILK and Hybrid are not supported");
             }
             int count = decoder.opus_packet_parse_impl(data, dataOff, len, s != nb_streams - 1, frames, size);
             int packet_offset = decoder.packet_offset();
             int tmp_samples = count * decoder.opus_packet_get_samples_per_frame(data[dataOff], Fs);
             if (s != 0 && samples != tmp_samples) {
-                throw new OpusException("OPUS_INVALID_PACKET");
+                throw new AudioFormatException("OPUS_INVALID_PACKET");
             }
             samples = tmp_samples;
             dataOff += packet_offset;

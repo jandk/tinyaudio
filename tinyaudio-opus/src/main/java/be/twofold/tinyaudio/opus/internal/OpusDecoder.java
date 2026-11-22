@@ -1,6 +1,7 @@
 package be.twofold.tinyaudio.opus.internal;
 
-import be.twofold.tinyaudio.opus.OpusException;
+import be.twofold.tinyaudio.core.AudioFormatException;
+import be.twofold.tinyaudio.core.UnsupportedFormatException;
 import be.twofold.tinyaudio.opus.celt.CeltDecoder;
 import be.twofold.tinyaudio.opus.celt.CeltMdct;
 
@@ -40,18 +41,18 @@ public final class OpusDecoder {
     }
 
     public int opus_decode_native(byte[] data, int dataOff, int len, float[][] pcm, int pcmOff, int frame_size,
-                                  boolean self_delimited) throws OpusException {
+                                  boolean self_delimited) throws AudioFormatException {
         // SILK-only and hybrid packets are not supported: only CELT is built in.
         // Reject them before touching any decoder state.
         byte toc = data[dataOff];
         if ((toc & 0x80) == 0) {
-            throw new UnsupportedOperationException("SILK and Hybrid are not supported");
+            throw new UnsupportedFormatException("SILK and Hybrid are not supported");
         }
 
         int packet_frame_size = opus_packet_get_samples_per_frame(toc, Fs);
         int count = opus_packet_parse_impl(data, dataOff, len, self_delimited, frames, size);
         if (count * packet_frame_size > frame_size) {
-            throw new OpusException("OPUS_BUFFER_TOO_SMALL");
+            throw new AudioFormatException("OPUS_BUFFER_TOO_SMALL");
         }
 
         // The packet is valid: only now update the decoder state
@@ -73,9 +74,9 @@ public final class OpusDecoder {
     }
 
     int opus_packet_parse_impl(byte[] data, int dataOff, int len, boolean self_delimited, int[] frames,
-                               int[] size) throws OpusException {
+                               int[] size) throws AudioFormatException {
         if (len == 0) {
-            throw new OpusException("OPUS_INVALID_PACKET");
+            throw new AudioFormatException("OPUS_INVALID_PACKET");
         }
 
         int startOff = dataOff;
@@ -95,7 +96,7 @@ public final class OpusDecoder {
                 cbr = true;
                 if (!self_delimited) {
                     if ((len & 0x1) != 0) {
-                        throw new OpusException("OPUS_INVALID_PACKET");
+                        throw new AudioFormatException("OPUS_INVALID_PACKET");
                     }
                     size[0] = last_size = len / 2;
                 }
@@ -107,7 +108,7 @@ public final class OpusDecoder {
                 int bytes = (size[0] < 252) ? 1 : 2;
                 len -= bytes;
                 if ((size[0] < 0) || (size[0] > len)) {
-                    throw new OpusException("OPUS_INVALID_PACKET");
+                    throw new AudioFormatException("OPUS_INVALID_PACKET");
                 }
                 dataOff += bytes;
                 last_size = len - size[0];
@@ -116,14 +117,14 @@ public final class OpusDecoder {
             // case 3:
             default: { // Multiple CBR/VBR frames (from 0 to 120 ms)
                 if (len < 1) {
-                    throw new OpusException("OPUS_INVALID_PACKET");
+                    throw new AudioFormatException("OPUS_INVALID_PACKET");
                 }
                 // Number of frames encoded in bits 0 to 5
                 byte ch = data[dataOff++];
                 count = ch & 0x3F;
                 int framesize = opus_packet_get_samples_per_frame(toc, 48000);
                 if ((count == 0) || ((framesize * count) > 5760)) {
-                    throw new OpusException("OPUS_INVALID_PACKET");
+                    throw new AudioFormatException("OPUS_INVALID_PACKET");
                 }
                 len--;
                 // Padding flag is bit 6
@@ -131,7 +132,7 @@ public final class OpusDecoder {
                     int p;
                     do {
                         if (len <= 0) {
-                            throw new OpusException("OPUS_INVALID_PACKET");
+                            throw new AudioFormatException("OPUS_INVALID_PACKET");
                         }
                         p = Byte.toUnsignedInt(data[dataOff++]);
                         len--;
@@ -141,7 +142,7 @@ public final class OpusDecoder {
                     } while (p == 255);
                 }
                 if (len < 0) {
-                    throw new OpusException("OPUS_INVALID_PACKET");
+                    throw new AudioFormatException("OPUS_INVALID_PACKET");
                 }
                 // VBR flag is bit 7
                 cbr = (ch & 0x80) == 0;
@@ -153,19 +154,19 @@ public final class OpusDecoder {
                         int bytes = (size[i] < 252) ? 1 : 2;
                         len -= bytes;
                         if ((size[i] < 0) || (size[i] > len)) {
-                            throw new OpusException("OPUS_INVALID_PACKET");
+                            throw new AudioFormatException("OPUS_INVALID_PACKET");
                         }
                         dataOff += bytes;
                         last_size -= bytes + size[i];
                     }
                     if (last_size < 0) {
-                        throw new OpusException("OPUS_INVALID_PACKET");
+                        throw new AudioFormatException("OPUS_INVALID_PACKET");
                     }
                 } else if (!self_delimited) {
                     // CBR case
                     last_size = len / count;
                     if ((last_size * count) != len) {
-                        throw new OpusException("OPUS_INVALID_PACKET");
+                        throw new AudioFormatException("OPUS_INVALID_PACKET");
                     }
                     for (int i = 0; i < (count - 1); i++) {
                         size[i] = last_size;
@@ -181,26 +182,26 @@ public final class OpusDecoder {
             int bytes = (size[count - 1] < 252) ? 1 : 2;
             len -= bytes;
             if ((size[count - 1] < 0) || (size[count - 1] > len)) {
-                throw new OpusException("OPUS_INVALID_PACKET");
+                throw new AudioFormatException("OPUS_INVALID_PACKET");
             }
             dataOff += bytes;
             // For CBR packets, apply the size to all the frames.
             if (cbr) {
                 if ((size[count - 1] * count) > len) {
-                    throw new OpusException("OPUS_INVALID_PACKET");
+                    throw new AudioFormatException("OPUS_INVALID_PACKET");
                 }
                 for (int i = 0; i < (count - 1); i++) {
                     size[i] = size[count - 1];
                 }
             } else if ((bytes + size[count - 1]) > last_size) {
-                throw new OpusException("OPUS_INVALID_PACKET");
+                throw new AudioFormatException("OPUS_INVALID_PACKET");
             }
         } else {
             // Because it's not encoded explicitly, it's possible the size of the
             // last packet (or all the packets, for the CBR case) is larger than
             // 1275. Reject them here.
             if (last_size > 1275) {
-                throw new OpusException("OPUS_INVALID_PACKET");
+                throw new AudioFormatException("OPUS_INVALID_PACKET");
             }
             size[count - 1] = last_size;
         }
@@ -225,20 +226,20 @@ public final class OpusDecoder {
         return (toc & 0x4) != 0 ? 2 : 1;
     }
 
-    int opus_packet_get_nb_samples(byte[] packet, int packetOff, int len, int Fs) throws OpusException {
+    int opus_packet_get_nb_samples(byte[] packet, int packetOff, int len, int Fs) throws AudioFormatException {
         int count = opus_packet_get_nb_frames(packet, packetOff, len);
         int samples = count * opus_packet_get_samples_per_frame(packet[packetOff], Fs);
         // Can't have more than 120 ms
         if (samples * 25 > Fs * 3) {
-            throw new OpusException("OPUS_INVALID_PACKET");
+            throw new AudioFormatException("OPUS_INVALID_PACKET");
         } else {
             return samples;
         }
     }
 
-    int opus_packet_get_nb_frames(byte[] packet, int packetOff, int len) throws OpusException {
+    int opus_packet_get_nb_frames(byte[] packet, int packetOff, int len) throws AudioFormatException {
         if (len < 1) {
-            throw new OpusException("OPUS_BAD_ARG");
+            throw new AudioFormatException("OPUS_BAD_ARG");
         }
 
         int count = packet[packetOff] & 0x3;
@@ -247,7 +248,7 @@ public final class OpusDecoder {
         } else if (count != 3) {
             return 2;
         } else if (len < 2) {
-            throw new OpusException("OPUS_INVALID_PACKET");
+            throw new AudioFormatException("OPUS_INVALID_PACKET");
         } else {
             return packet[packetOff + 1] & 0x3F;
         }

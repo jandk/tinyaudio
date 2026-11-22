@@ -1,7 +1,7 @@
 package be.twofold.tinyaudio.vorbis.internal;
 
+import be.twofold.tinyaudio.core.AudioFormatException;
 import be.twofold.tinyaudio.core.internal.BitReader;
-import be.twofold.tinyaudio.vorbis.VorbisException;
 
 import java.io.IOException;
 
@@ -29,7 +29,7 @@ final class Mapping {
     static Mapping unpack(BitReader bits, int channels, int floorCount, int residueCount) throws IOException {
         int type = bits.read(16);
         if (type != 0) {
-            throw new VorbisException("Invalid mapping type: " + type);
+            throw new AudioFormatException("Invalid mapping type: " + type);
         }
 
         int submaps = bits.readBool()
@@ -49,7 +49,7 @@ final class Mapping {
                 int mag = bits.read(channelLog);
                 int ang = bits.read(channelLog);
                 if (mag == ang || mag >= channels || ang >= channels) {
-                    throw new VorbisException("Invalid coupling step: magnitude=" + mag + ", angle=" + ang);
+                    throw new AudioFormatException("Invalid coupling step: magnitude=" + mag + ", angle=" + ang);
                 }
                 magnitude[i] = mag;
                 angle[i] = ang;
@@ -58,7 +58,7 @@ final class Mapping {
 
         int reserved = bits.read(2);
         if (reserved != 0) { /* 2,3:reserved */
-            throw new VorbisException("Invalid reserved value: " + reserved);
+            throw new AudioFormatException("Invalid reserved value: " + reserved);
         }
 
         int[] mux = new int[channels];
@@ -66,7 +66,7 @@ final class Mapping {
             for (int i = 0; i < channels; i++) {
                 int submap = bits.read(4);
                 if (submap >= submaps) {
-                    throw new VorbisException("Channel multiplex out of range: " + submap);
+                    throw new AudioFormatException("Channel multiplex out of range: " + submap);
                 }
                 mux[i] = submap;
             }
@@ -78,11 +78,11 @@ final class Mapping {
             bits.read(8); // unused time configuration placeholder
             int floor = bits.read(8);
             if (floor >= floorCount) {
-                throw new VorbisException("Submap floor out of range: " + floor);
+                throw new AudioFormatException("Submap floor out of range: " + floor);
             }
             int residue = bits.read(8);
             if (residue >= residueCount) {
-                throw new VorbisException("Submap residue out of range: " + residue);
+                throw new AudioFormatException("Submap residue out of range: " + residue);
             }
             submapFloor[i] = floor;
             submapResidue[i] = residue;

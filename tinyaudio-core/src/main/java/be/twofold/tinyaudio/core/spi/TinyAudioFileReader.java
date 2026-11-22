@@ -2,6 +2,7 @@ package be.twofold.tinyaudio.core.spi;
 
 import be.twofold.tinyaudio.core.AudioDecoder;
 import be.twofold.tinyaudio.core.AudioInfo;
+import be.twofold.tinyaudio.core.UnsupportedFormatException;
 import be.twofold.tinyaudio.core.internal.DecoderDetector;
 
 import javax.sound.sampled.*;
@@ -66,8 +67,14 @@ public final class TinyAudioFileReader extends AudioFileReader {
         }
 
         in.mark(markLimit);
-        return DecoderDetector.detect(in)
-            .orElseThrow(() -> new UnsupportedAudioFileException("No decoder found for stream"));
+        try {
+            return DecoderDetector.detect(in)
+                .orElseThrow(() -> new UnsupportedAudioFileException("No decoder found for stream"));
+        } catch (UnsupportedFormatException e) {
+            // Recognized but not supported, let AudioSystem try the other readers
+            in.reset();
+            throw new UnsupportedAudioFileException(e.getMessage());
+        }
     }
 
     private AudioInputStream openOwned(InputStream in)

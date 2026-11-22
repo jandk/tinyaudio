@@ -1,7 +1,7 @@
 package be.twofold.tinyaudio.flac.internal;
 
+import be.twofold.tinyaudio.core.AudioFormatException;
 import be.twofold.tinyaudio.core.internal.CRC;
-import be.twofold.tinyaudio.flac.FlacException;
 import be.twofold.tinyaudio.flac.metadata.StreamInfo;
 
 import java.nio.ByteBuffer;
@@ -33,7 +33,7 @@ public final class FrameHeader {
         this.codedNumber = codedNumber;
     }
 
-    public static FrameHeader read(ByteBuffer buffer) throws FlacException {
+    public static FrameHeader read(ByteBuffer buffer) throws AudioFormatException {
         int position = buffer.position();
         int b0 = Byte.toUnsignedInt(buffer.get());
         int b1 = Byte.toUnsignedInt(buffer.get());
@@ -41,7 +41,7 @@ public final class FrameHeader {
         int b3 = Byte.toUnsignedInt(buffer.get());
 
         if (b0 != 0xFF || b1 >> 1 != 0x7C) {
-            throw new FlacException("Invalid sync");
+            throw new AudioFormatException("Invalid sync");
         }
 
         boolean variableBlockSize = (b1 & 0x01) != 0;
@@ -49,7 +49,7 @@ public final class FrameHeader {
         ChannelAssignment channelAssignment = parseChannelAssignment(b3 >> 4);
         int bitsPerSample = parseBitsPerSample((b3 >> 1) & 0x07);
         if ((b3 & 1) != 0) {
-            throw new FlacException("Reserved bit must be zero");
+            throw new AudioFormatException("Reserved bit must be zero");
         }
 
         long codedNumber = parseCodedNumber(buffer);
@@ -60,7 +60,7 @@ public final class FrameHeader {
         var crc = CRC.FLAC_HEADER.get();
         crc.update(crcBuffer);
         if ((byte) crc.getValue() != buffer.get()) {
-            throw new FlacException("Invalid frame header crc");
+            throw new AudioFormatException("Invalid frame header crc");
         }
 
         return new FrameHeader(
@@ -74,12 +74,12 @@ public final class FrameHeader {
         );
     }
 
-    private static int parseChannels(int channelBits) throws FlacException {
+    private static int parseChannels(int channelBits) throws AudioFormatException {
         if (channelBits < 8) {
             return channelBits + 1;
         } else if (channelBits < 11) {
             return 2;
-        } else throw new FlacException("Invalid channel bits: " + channelBits);
+        } else throw new AudioFormatException("Invalid channel bits: " + channelBits);
     }
 
     private static ChannelAssignment parseChannelAssignment(int channelBits) {
@@ -97,7 +97,7 @@ public final class FrameHeader {
         }
     }
 
-    private static int parseBitsPerSample(int bitsPerSampleBits) throws FlacException {
+    private static int parseBitsPerSample(int bitsPerSampleBits) throws AudioFormatException {
         switch (bitsPerSampleBits) {
             case 0:
                 return -1;
@@ -114,11 +114,11 @@ public final class FrameHeader {
             case 7:
                 return 32;
             default:
-                throw new FlacException("Invalid bit depth bits: " + bitsPerSampleBits);
+                throw new AudioFormatException("Invalid bit depth bits: " + bitsPerSampleBits);
         }
     }
 
-    private static long parseCodedNumber(ByteBuffer buffer) throws FlacException {
+    private static long parseCodedNumber(ByteBuffer buffer) throws AudioFormatException {
         int b = Byte.toUnsignedInt(buffer.get());
         if (b < 0x80) {
             return b;
@@ -126,7 +126,7 @@ public final class FrameHeader {
 
         int extra = Integer.numberOfLeadingZeros(~(b << 24)) - 1;
         if (extra > 6) {
-            throw new FlacException("Invalid UTF-8 start byte: " + b);
+            throw new AudioFormatException("Invalid UTF-8 start byte: " + b);
         }
 
         long codedNumber = b & (0x7F >> extra);
@@ -135,18 +135,18 @@ public final class FrameHeader {
         for (int i = 0; i < extra; i++) {
             int continuation = Byte.toUnsignedInt(buffer.get());
             if ((continuation & 0xC0) != 0x80) {
-                throw new FlacException("Invalid continuation byte: " + continuation);
+                throw new AudioFormatException("Invalid continuation byte: " + continuation);
             }
             codedNumber = (codedNumber << 6) | (continuation & 0x3F);
         }
 
         if (codedNumber < minValid) {
-            throw new FlacException("Non-canonical coded number: " + codedNumber);
+            throw new AudioFormatException("Non-canonical coded number: " + codedNumber);
         }
         return codedNumber;
     }
 
-    private static int parseBlockSize(int blockSizeBits, ByteBuffer buffer) throws FlacException {
+    private static int parseBlockSize(int blockSizeBits, ByteBuffer buffer) throws AudioFormatException {
         switch (blockSizeBits) {
             case 1:
                 return 192;
@@ -169,11 +169,11 @@ public final class FrameHeader {
             case 15:
                 return 1 << blockSizeBits;
             default:
-                throw new FlacException("Invalid block size bits: " + blockSizeBits);
+                throw new AudioFormatException("Invalid block size bits: " + blockSizeBits);
         }
     }
 
-    private static int parseSampleRate(int sampleRateBits, ByteBuffer buffer) throws FlacException {
+    private static int parseSampleRate(int sampleRateBits, ByteBuffer buffer) throws AudioFormatException {
         switch (sampleRateBits) {
             case 0:
                 return -1;
@@ -206,7 +206,7 @@ public final class FrameHeader {
             case 14:
                 return Short.toUnsignedInt(buffer.getShort()) * 10;
             default:
-                throw new FlacException("Invalid sample rate bits: " + sampleRateBits);
+                throw new AudioFormatException("Invalid sample rate bits: " + sampleRateBits);
         }
     }
 

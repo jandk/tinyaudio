@@ -1,5 +1,6 @@
 package be.twofold.tinyaudio.opus;
 
+import be.twofold.tinyaudio.core.AudioFormatException;
 import be.twofold.tinyaudio.core.internal.IOUtils;
 
 import java.nio.ByteBuffer;
@@ -38,14 +39,14 @@ final class OpusIdentification {
         this.mapping = mapping;
     }
 
-    static OpusIdentification read(ByteBuffer buffer) throws OpusException {
+    static OpusIdentification read(ByteBuffer buffer) throws AudioFormatException {
         buffer.order(ByteOrder.LITTLE_ENDIAN);
         if (buffer.remaining() < BYTES || !IOUtils.matches(buffer, OpusHeader.MAGIC)) {
-            throw new OpusException("Invalid OpusHead packet");
+            throw new AudioFormatException("Invalid OpusHead packet");
         }
         int version = Byte.toUnsignedInt(buffer.get());
         if (version >> 4 != 0) {
-            throw new OpusException("Unsupported Opus version: " + version);
+            throw new AudioFormatException("Unsupported Opus version: " + version);
         }
 
         int channels = Byte.toUnsignedInt(buffer.get());
@@ -65,7 +66,7 @@ final class OpusIdentification {
                 checkChannels(mappingFamily, channels, 255);
                 break;
             default:
-                throw new OpusException("Unsupported mapping family: " + mappingFamily);
+                throw new AudioFormatException("Unsupported mapping family: " + mappingFamily);
         }
 
         // Family 0 has no mapping table, so describe it as one stream with an identity mapping
@@ -74,7 +75,7 @@ final class OpusIdentification {
         int[] mapping = channels == 1 ? new int[]{0} : new int[]{0, 1};
         if (mappingFamily != 0) {
             if (buffer.remaining() < 2 + channels) {
-                throw new OpusException("Truncated channel mapping table");
+                throw new AudioFormatException("Truncated channel mapping table");
             }
             streamCount = Byte.toUnsignedInt(buffer.get());
             coupledCount = Byte.toUnsignedInt(buffer.get());
@@ -88,12 +89,12 @@ final class OpusIdentification {
 
         int streams = streamCount + coupledCount;
         if (streamCount == 0 || coupledCount > streamCount || streams > 255) {
-            throw new OpusException("Invalid stream counts: " + streamCount + "/" + coupledCount);
+            throw new AudioFormatException("Invalid stream counts: " + streamCount + "/" + coupledCount);
         }
         for (int channel = 0; channel < channels; channel++) {
             int index = mapping[channel];
             if (index != 255 && index >= streams) { // 255 = silent channel
-                throw new OpusException("Invalid channel mapping index: " + index);
+                throw new AudioFormatException("Invalid channel mapping index: " + index);
             }
         }
 
@@ -109,9 +110,9 @@ final class OpusIdentification {
         );
     }
 
-    private static void checkChannels(int mappingFamily, int channels, int max) throws OpusException {
+    private static void checkChannels(int mappingFamily, int channels, int max) throws AudioFormatException {
         if (channels < 1 || channels > max) {
-            throw new OpusException("Mapping family " + mappingFamily + " requires 1 to " + max + " channels, got " + channels);
+            throw new AudioFormatException("Mapping family " + mappingFamily + " requires 1 to " + max + " channels, got " + channels);
         }
     }
 

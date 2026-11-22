@@ -22,7 +22,8 @@ public interface AudioDecoderProvider {
      * @param head the first 256 bytes of the stream, or fewer if it is shorter
      * @param in   the stream, at its start, so {@code head} is read again
      * @return a decoder that owns the stream, or empty if the format is not recognized
-     * @throws IOException if the format is recognized, but reading fails or the data is invalid
+     * @throws AudioFormatException if the format is recognized, but the data is invalid or not supported
+     * @throws IOException          if reading fails
      */
     Optional<AudioDecoder> open(byte[] head, InputStream in) throws IOException;
 

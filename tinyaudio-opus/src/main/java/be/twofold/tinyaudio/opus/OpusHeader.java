@@ -1,5 +1,6 @@
 package be.twofold.tinyaudio.opus;
 
+import be.twofold.tinyaudio.core.AudioFormatException;
 import be.twofold.tinyaudio.core.internal.IOUtils;
 import be.twofold.tinyaudio.core.internal.Packet;
 import be.twofold.tinyaudio.core.internal.PacketSource;
@@ -34,13 +35,13 @@ final class OpusHeader {
     private static VorbisComment readComment(PacketSource packets) throws IOException {
         Packet packet = packets.next();
         if (packet == null) {
-            throw new OpusException("Expected 'OpusTags' header");
+            throw new AudioFormatException("Expected 'OpusTags' header");
         }
 
         ByteBuffer buffer = ByteBuffer.wrap(packet.data())
             .order(ByteOrder.LITTLE_ENDIAN);
         if (!IOUtils.matches(buffer, TAGS_MAGIC)) {
-            throw new OpusException("Expected 'OpusTags' header");
+            throw new AudioFormatException("Expected 'OpusTags' header");
         }
 
         try {

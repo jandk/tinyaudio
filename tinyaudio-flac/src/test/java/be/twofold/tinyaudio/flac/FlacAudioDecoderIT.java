@@ -1,5 +1,7 @@
 package be.twofold.tinyaudio.flac;
 
+import be.twofold.tinyaudio.core.AudioFormatException;
+import be.twofold.tinyaudio.core.UnsupportedFormatException;
 import be.twofold.tinyaudio.flac.metadata.StreamInfo;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -87,9 +89,9 @@ class FlacAudioDecoderIT {
         int index = file.lastIndexOf('/');
         int id = Integer.parseInt(file.substring(index + 1, index + 1 + 2));
         if (id >= 1 && id <= 4 || id == 5) { // unsupported features
-            skipIfThrows(file, UnsupportedOperationException.class);
+            skipIfThrows(file, UnsupportedFormatException.class);
         } else if (id >= 10 && id <= 11) { // no streaminfo
-            skipIfThrows(file, FlacException.class);
+            skipIfThrows(file, AudioFormatException.class);
         } else {
             testFlac(file);
         }

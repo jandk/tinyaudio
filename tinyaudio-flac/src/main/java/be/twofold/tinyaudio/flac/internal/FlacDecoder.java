@@ -1,7 +1,8 @@
 package be.twofold.tinyaudio.flac.internal;
 
+import be.twofold.tinyaudio.core.AudioFormatException;
+import be.twofold.tinyaudio.core.UnsupportedFormatException;
 import be.twofold.tinyaudio.core.internal.BitReader;
-import be.twofold.tinyaudio.flac.FlacException;
 import be.twofold.tinyaudio.flac.metadata.StreamInfo;
 
 import java.nio.ByteBuffer;
@@ -24,14 +25,14 @@ public final class FlacDecoder {
     private int rightShift;
     private long sampleCount;
 
-    public FlacDecoder(StreamInfo streamInfo) {
+    public FlacDecoder(StreamInfo streamInfo) throws UnsupportedFormatException {
         this.streamInfo = Objects.requireNonNull(streamInfo);
         if (streamInfo.bitsPerSample() >= 32) {
-            throw new UnsupportedOperationException("Unsupported bits per sample: " + streamInfo.bitsPerSample());
+            throw new UnsupportedFormatException("Unsupported bits per sample: " + streamInfo.bitsPerSample());
         }
     }
 
-    public int decodeFrame(byte[] data, int off, int len, int[][] pcm, boolean finished) throws FlacException {
+    public int decodeFrame(byte[] data, int off, int len, int[][] pcm, boolean finished) throws AudioFormatException {
         ByteBuffer buffer = ByteBuffer.wrap(data, off, len);
         FrameHeader header = FrameHeader.read(buffer);
         int blockSize = header.blockSize();
@@ -47,7 +48,7 @@ public final class FlacDecoder {
             boolean side = header.channelAssignment() != null && header.channelAssignment().side() == ch;
             int bitsPerSample = streamInfo.bitsPerSample() - subframeHeader.wastedBits() + (side ? 1 : 0);
             if (bitsPerSample <= 0) {
-                throw new FlacException("Invalid wasted bits");
+                throw new AudioFormatException("Invalid wasted bits");
             }
 
             switch (subframeHeader.type()) {
@@ -68,10 +69,10 @@ public final class FlacDecoder {
             applyWastedBits(pcm[ch], blockSize, subframeHeader.wastedBits());
         }
         if (bits.isOverrun()) {
-            throw new FlacException("Frame data truncated");
+            throw new AudioFormatException("Frame data truncated");
         }
         if (bits.bitsRemaining() >= 24 && !finished) {
-            throw new FlacException("Packet contains more than one frame");
+            throw new AudioFormatException("Packet contains more than one frame");
         }
 
         decorrelate(pcm, header.channelAssignment(), blockSize);
@@ -87,24 +88,24 @@ public final class FlacDecoder {
         readInts(bits, samples, 0, blockSize, bitsPerSample);
     }
 
-    private void decodeFixed(BitReader bits, int[] samples, int blockSize, int bitsPerSample, int order) throws FlacException {
+    private void decodeFixed(BitReader bits, int[] samples, int blockSize, int bitsPerSample, int order) throws AudioFormatException {
         rightShift = 0;
         coefficients = FIXED[order];
         readInts(bits, samples, 0, order, bitsPerSample);
         decodeCodedResidual(bits, samples, blockSize, order);
     }
 
-    private void decodeLpc(BitReader bits, int[] samples, int blockSize, int bitsPerSample, int order) throws FlacException {
+    private void decodeLpc(BitReader bits, int[] samples, int blockSize, int bitsPerSample, int order) throws AudioFormatException {
         readInts(bits, samples, 0, order, bitsPerSample);
 
         int precision = bits.read(4) + 1;
         if (precision == 16) {
-            throw new FlacException("Invalid LPC precision");
+            throw new AudioFormatException("Invalid LPC precision");
         }
 
         rightShift = bits.readSigned(5);
         if (rightShift < 0) {
-            throw new FlacException("Invalid LPC right shift");
+            throw new AudioFormatException("Invalid LPC right shift");
         }
 
         coefficients = new int[order];
@@ -112,10 +113,10 @@ public final class FlacDecoder {
         decodeCodedResidual(bits, samples, blockSize, order);
     }
 
-    private void decodeCodedResidual(BitReader bits, int[] samples, int blockSize, int order) throws FlacException {
+    private void decodeCodedResidual(BitReader bits, int[] samples, int blockSize, int order) throws AudioFormatException {
         int codingMethod = bits.read(2);
         if (codingMethod > 1) {
-            throw new FlacException("Invalid coding method: " + codingMethod);
+            throw new AudioFormatException("Invalid coding method: " + codingMethod);
         }
         codingMethod += 4;
 
@@ -123,7 +124,7 @@ public final class FlacDecoder {
         int partitionCount = 1 << partitionOrder;
         int samplesPerPartition = blockSize >> partitionOrder;
         if ((blockSize & (partitionCount - 1)) != 0 || samplesPerPartition < order) {
-            throw new FlacException("Invalid residual partition order: " + partitionOrder);
+            throw new AudioFormatException("Invalid residual partition order: " + partitionOrder);
         }
 
         int offset = order;
@@ -216,14 +217,14 @@ public final class FlacDecoder {
         }
     }
 
-    private void validateFrameHeader(FrameHeader header, boolean last) throws FlacException {
+    private void validateFrameHeader(FrameHeader header, boolean last) throws AudioFormatException {
         if (first == null) {
             if (!header.matchesFirst(streamInfo)) {
-                throw new FlacException("First frame header does not match stream info");
+                throw new AudioFormatException("First frame header does not match stream info");
             }
             first = header;
         } else if (!header.matches(streamInfo, first)) {
-            throw new FlacException("Frame header does not match first frame");
+            throw new AudioFormatException("Frame header does not match first frame");
         }
 
         int minimumBlockSize = streamInfo.minBlockSize();
@@ -232,7 +233,7 @@ public final class FlacDecoder {
 
         boolean checkMin = minimumBlockSize > 0 && !last;
         if (checkMin && blockSize < minimumBlockSize || blockSize > maximumBlockSize) {
-            throw new FlacException("Block size (" + blockSize + ") not between " + minimumBlockSize + " and " + maximumBlockSize);
+            throw new AudioFormatException("Block size (" + blockSize + ") not between " + minimumBlockSize + " and " + maximumBlockSize);
         }
     }
 }

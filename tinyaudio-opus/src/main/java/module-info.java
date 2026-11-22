@@ -1,6 +1,6 @@
 /**
  * Opus decoding, in Ogg, including multichannel streams. Only CELT is supported: reading a SILK or hybrid packet
- * throws {@link java.lang.UnsupportedOperationException}.
+ * throws {@link be.twofold.tinyaudio.core.UnsupportedFormatException}.
  */
 module be.twofold.tinyaudio.opus {
     requires be.twofold.tinyaudio.core;

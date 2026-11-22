@@ -1,8 +1,8 @@
 package be.twofold.tinyaudio.ogg.internal;
 
+import be.twofold.tinyaudio.core.AudioFormatException;
 import be.twofold.tinyaudio.core.internal.CRC;
 import be.twofold.tinyaudio.core.internal.IOUtils;
-import be.twofold.tinyaudio.ogg.OggException;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -59,11 +59,11 @@ public final class OggPage {
     public static OggPage read(InputStream in) throws IOException {
         ByteBuffer buffer = IOUtils.readBuffer(in, HEADER_SIZE, ByteOrder.LITTLE_ENDIAN);
         if (!IOUtils.matches(buffer, MAGIC)) {
-            throw new OggException("Invalid capture pattern");
+            throw new AudioFormatException("Invalid capture pattern");
         }
         byte streamStructureVersion = buffer.get();
         if (streamStructureVersion != 0) {
-            throw new OggException("Invalid stream structure version: " + streamStructureVersion);
+            throw new AudioFormatException("Invalid stream structure version: " + streamStructureVersion);
         }
         byte headerTypeFlag = buffer.get();
         long granulePosition = buffer.getLong();
@@ -88,7 +88,7 @@ public final class OggPage {
         int crcValue = (int) crc.getValue();
 
         if (crcValue != expectedCrc) {
-            throw new OggException("Invalid CRC checksum");
+            throw new AudioFormatException("Invalid CRC checksum");
         }
 
         return new OggPage(

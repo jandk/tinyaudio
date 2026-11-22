@@ -1,7 +1,7 @@
 package be.twofold.tinyaudio.vorbis.internal;
 
+import be.twofold.tinyaudio.core.AudioFormatException;
 import be.twofold.tinyaudio.core.internal.BitReader;
-import be.twofold.tinyaudio.vorbis.VorbisException;
 
 import java.util.List;
 import java.util.Objects;
@@ -31,22 +31,22 @@ final class Floor0 implements Floor {
         this.books = Objects.requireNonNull(books);
     }
 
-    static Floor0 unpack(BitReader bits, List<Codebook> codebooks) throws VorbisException {
+    static Floor0 unpack(BitReader bits, List<Codebook> codebooks) throws AudioFormatException {
         int order = bits.read(8);
         if (order < 1) {
-            throw new VorbisException("Floor 0 order must be at least 1");
+            throw new AudioFormatException("Floor 0 order must be at least 1");
         }
         int rate = bits.read(16);
         if (rate < 1) {
-            throw new VorbisException("Floor 0 rate must be at least 1");
+            throw new AudioFormatException("Floor 0 rate must be at least 1");
         }
         int barkMapSize = bits.read(16);
         if (barkMapSize < 1) {
-            throw new VorbisException("Floor 0 bark map size must be at least 1");
+            throw new AudioFormatException("Floor 0 bark map size must be at least 1");
         }
         int amplitudeBits = bits.read(6);
         if (amplitudeBits > 32) {
-            throw new VorbisException("Floor 0 amplitude bits out of range: " + amplitudeBits);
+            throw new AudioFormatException("Floor 0 amplitude bits out of range: " + amplitudeBits);
         }
         int amplitudeOffset = bits.read(8);
 
@@ -55,10 +55,10 @@ final class Floor0 implements Floor {
         for (int i = 0; i < bookCount; i++) {
             int book = bits.read(8);
             if (book >= codebooks.size()) {
-                throw new VorbisException("Floor 0 book out of range: " + book);
+                throw new AudioFormatException("Floor 0 book out of range: " + book);
             }
             if (codebooks.get(book).lookupType() == 0) {
-                throw new VorbisException("Floor 0 book " + book + " has no value mapping");
+                throw new AudioFormatException("Floor 0 book " + book + " has no value mapping");
             }
             books[i] = book;
         }

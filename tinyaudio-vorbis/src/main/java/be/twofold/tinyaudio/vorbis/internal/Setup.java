@@ -1,7 +1,7 @@
 package be.twofold.tinyaudio.vorbis.internal;
 
+import be.twofold.tinyaudio.core.AudioFormatException;
 import be.twofold.tinyaudio.core.internal.BitReader;
-import be.twofold.tinyaudio.vorbis.VorbisException;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -43,7 +43,7 @@ public final class Setup {
         List<Mode> modes = readList(bits, 6, in -> Mode.unpack(in, mappings.size()));
 
         if (!bits.readBool()) { // framing flag
-            throw new VorbisException("Invalid framing flag");
+            throw new AudioFormatException("Invalid framing flag");
         }
 
         return new Setup(
@@ -66,7 +66,7 @@ public final class Setup {
 
     private static Void unpackTimeValue(BitReader bits) throws IOException {
         if (bits.read(16) != 0) {
-            throw new VorbisException("Invalid time domain transform");
+            throw new AudioFormatException("Invalid time domain transform");
         }
         return null;
     }

@@ -1,5 +1,6 @@
 package be.twofold.tinyaudio.flac;
 
+import be.twofold.tinyaudio.core.AudioFormatException;
 import be.twofold.tinyaudio.core.internal.IOUtils;
 import be.twofold.tinyaudio.core.internal.Packet;
 import be.twofold.tinyaudio.core.internal.PacketSource;
@@ -30,7 +31,7 @@ final class FlacHeader {
     static FlacHeader read(InputStream in) throws IOException {
         ByteBuffer buffer = IOUtils.readBuffer(in, MAGIC.length + 4 + StreamInfo.BYTES, ByteOrder.BIG_ENDIAN);
         if (!IOUtils.matches(buffer, MAGIC)) {
-            throw new FlacException("Not a FLAC stream");
+            throw new AudioFormatException("Not a FLAC stream");
         }
 
         boolean last = buffer.get(buffer.position()) < 0;
@@ -48,18 +49,18 @@ final class FlacHeader {
 
     static FlacHeader read(Packet first, PacketSource packets) throws IOException {
         if (first.data().length < OGG_HEADER_SIZE + 4 + StreamInfo.BYTES) {
-            throw new FlacException("Ogg FLAC header packet too short");
+            throw new AudioFormatException("Ogg FLAC header packet too short");
         }
 
         ByteBuffer buffer = ByteBuffer.wrap(first.data());
         if (!IOUtils.matches(buffer, OGG_MAGIC)) {
-            throw new FlacException("Invalid Ogg FLAC header");
+            throw new AudioFormatException("Invalid Ogg FLAC header");
         }
         int major = buffer.get();
         buffer.get(); // minor
         buffer.getShort(); // header packet count
         if (major != 1 || !IOUtils.matches(buffer, MAGIC)) {
-            throw new FlacException("Invalid Ogg FLAC header");
+            throw new AudioFormatException("Invalid Ogg FLAC header");
         }
 
         boolean last = buffer.get(buffer.position()) < 0;
@@ -69,11 +70,11 @@ final class FlacHeader {
         while (!last) {
             Packet packet = packets.next();
             if (packet == null) {
-                throw new FlacException("Stream ended before the last metadata block");
+                throw new AudioFormatException("Stream ended before the last metadata block");
             }
             ByteBuffer block = ByteBuffer.wrap(packet.data());
             if (block.remaining() < 4) {
-                throw new FlacException("Metadata packet too short");
+                throw new AudioFormatException("Metadata packet too short");
             }
             int header = block.getInt();
             blocks.add(parseBlock(header, block));
@@ -82,10 +83,10 @@ final class FlacHeader {
         return new FlacHeader(streamInfo, blocks);
     }
 
-    private static StreamInfo parseStreamInfo(ByteBuffer buffer) throws FlacException {
+    private static StreamInfo parseStreamInfo(ByteBuffer buffer) throws AudioFormatException {
         int header = buffer.getInt();
         if ((header & 0x7FFF_FFFF) != StreamInfo.BYTES) {
-            throw new FlacException("First metadata block must be a StreamInfo block");
+            throw new AudioFormatException("First metadata block must be a StreamInfo block");
         }
         return (StreamInfo) parseBlock(header, buffer);
     }
@@ -96,15 +97,15 @@ final class FlacHeader {
         return parseBlock(header, buffer);
     }
 
-    private static MetadataBlock parseBlock(int header, ByteBuffer data) throws FlacException {
+    private static MetadataBlock parseBlock(int header, ByteBuffer data) throws AudioFormatException {
         int code = (header >> 24) & 0x7F;
         if (code == 127) {
-            throw new FlacException("Forbidden metadata block type: 127");
+            throw new AudioFormatException("Forbidden metadata block type: 127");
         }
         MetadataType type = MetadataType.fromCode(code);
         int length = header & 0x00FF_FFFF;
         if (data.remaining() < length) {
-            throw new FlacException("Truncated metadata block");
+            throw new AudioFormatException("Truncated metadata block");
         }
 
         ByteBuffer buffer = data.slice().limit(length);
@@ -131,7 +132,7 @@ final class FlacHeader {
             }
         } catch (BufferUnderflowException | IOException e) {
             if (type == MetadataType.STREAM_INFO) {
-                throw new FlacException("Invalid stream info block", e);
+                throw new AudioFormatException("Invalid stream info block", e);
             }
             // failed metadata shouldn't cause an exception
             return Unknown.read(buffer.rewind(), code);

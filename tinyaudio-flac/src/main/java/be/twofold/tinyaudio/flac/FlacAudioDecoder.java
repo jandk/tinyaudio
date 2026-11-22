@@ -1,6 +1,7 @@
 package be.twofold.tinyaudio.flac;
 
 import be.twofold.tinyaudio.core.AudioInfo;
+import be.twofold.tinyaudio.core.UnsupportedFormatException;
 import be.twofold.tinyaudio.core.internal.BlockAudioDecoder;
 import be.twofold.tinyaudio.core.internal.Packet;
 import be.twofold.tinyaudio.core.internal.PacketSource;
@@ -17,7 +18,7 @@ final class FlacAudioDecoder extends BlockAudioDecoder {
     private final String container;
     private final int[][] pcmInt;
 
-    FlacAudioDecoder(PacketSource packets, StreamInfo streamInfo, String container) {
+    FlacAudioDecoder(PacketSource packets, StreamInfo streamInfo, String container) throws UnsupportedFormatException {
         super(streamInfo.channels(), streamInfo.maxBlockSizeOrDefault());
 
         this.decoder = new FlacDecoder(streamInfo);

@@ -1,7 +1,7 @@
 package be.twofold.tinyaudio.vorbis.internal;
 
+import be.twofold.tinyaudio.core.AudioFormatException;
 import be.twofold.tinyaudio.core.internal.BitReader;
-import be.twofold.tinyaudio.vorbis.VorbisException;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -32,7 +32,7 @@ final class Codebook {
         int valueBits,
         boolean sequenceP,
         int[] multiplicands
-    ) throws VorbisException {
+    ) throws AudioFormatException {
         this.dimensions = dimensions;
         this.ordered = ordered;
         this.sparse = sparse;
@@ -50,16 +50,16 @@ final class Codebook {
 
     static Codebook unpack(BitReader bits) throws IOException {
         if (bits.read(24) != MAGIC) {
-            throw new VorbisException("Invalid Vorbis codebook");
+            throw new AudioFormatException("Invalid Vorbis codebook");
         }
 
         int dimensions = bits.read(16);
         if (dimensions == 0) {
-            throw new VorbisException("Codebook dimensions must be greater than zero");
+            throw new AudioFormatException("Codebook dimensions must be greater than zero");
         }
         int entries = bits.read(24);
         if (entries == 0) {
-            throw new VorbisException("Codebook entries must be greater than zero");
+            throw new AudioFormatException("Codebook entries must be greater than zero");
         }
 
         boolean ordered = bits.readBool();
@@ -105,7 +105,7 @@ final class Codebook {
                 multiplicands[i] = bits.read(valueBits);
             }
         } else {
-            throw new VorbisException("Reserved codebook lookup type: " + lookupType);
+            throw new AudioFormatException("Reserved codebook lookup type: " + lookupType);
         }
         return new Codebook(
             dimensions, ordered, sparse, codewordLengths, lookupType,
@@ -120,11 +120,11 @@ final class Codebook {
         int entry = 0;
         while (entry < entries) {
             if (length > 32) {
-                throw new VorbisException("Ordered codebook codeword length exceeds 32 bits");
+                throw new AudioFormatException("Ordered codebook codeword length exceeds 32 bits");
             }
             int number = bits.read(Util.ilog(entries - entry));
             if (entry + number > entries) {
-                throw new VorbisException("Codebook has more codewords than its " + entries + " entries");
+                throw new AudioFormatException("Codebook has more codewords than its " + entries + " entries");
             }
             Arrays.fill(codewordLengths, entry, entry + number, length);
             entry += number;
@@ -132,9 +132,9 @@ final class Codebook {
         }
     }
 
-    static int lookup1Values(int entries, int dimensions) throws VorbisException {
+    static int lookup1Values(int entries, int dimensions) throws AudioFormatException {
         if (entries < 1 || dimensions < 1) {
-            throw new VorbisException("Invalid codebook: entries=" + entries + ", dimensions=" + dimensions);
+            throw new AudioFormatException("Invalid codebook: entries=" + entries + ", dimensions=" + dimensions);
         }
 
         int lo = 1;
@@ -204,7 +204,7 @@ final class Codebook {
         return true;
     }
 
-    private long[] makeWords() throws VorbisException {
+    private long[] makeWords() throws AudioFormatException {
         int usedEntries = 0;
         for (int length : codewordLengths) {
             if (length > 0) {
@@ -222,7 +222,7 @@ final class Codebook {
                 int code = marker[length];
 
                 if (length < 32 && code >>> length != 0) {
-                    throw new VorbisException("Overpopulated tree");
+                    throw new AudioFormatException("Overpopulated tree");
                 }
                 words[count++] = (((long) code << (32 - length) ^ 0x8000_0000L) << 32) | (long) i << 8 | length;
 
@@ -252,7 +252,7 @@ final class Codebook {
         if (usedEntries != 1 || marker[2] != 2) {
             for (int i = 1; i < 33; i++) {
                 if ((marker[i] & (0xFFFF_FFFF >>> (32 - i))) != 0) {
-                    throw new VorbisException("Underpopulated tree");
+                    throw new AudioFormatException("Underpopulated tree");
                 }
             }
         }

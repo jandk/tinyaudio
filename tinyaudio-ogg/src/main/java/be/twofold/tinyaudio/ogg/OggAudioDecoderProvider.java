@@ -4,6 +4,10 @@ import be.twofold.tinyaudio.core.AudioDecoder;
 import be.twofold.tinyaudio.core.AudioDecoderProvider;
 import be.twofold.tinyaudio.core.internal.IOUtils;
 import be.twofold.tinyaudio.core.internal.Packet;
+import be.twofold.tinyaudio.ogg.internal.OggCodec;
+import be.twofold.tinyaudio.ogg.internal.OggPacketReader;
+import be.twofold.tinyaudio.ogg.internal.OggPage;
+import be.twofold.tinyaudio.ogg.internal.OggPageReader;
 
 import java.io.IOException;
 import java.io.InputStream;

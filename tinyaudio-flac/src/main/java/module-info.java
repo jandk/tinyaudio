@@ -6,6 +6,6 @@ module be.twofold.tinyaudio.flac {
 
     provides be.twofold.tinyaudio.core.AudioDecoderProvider
         with be.twofold.tinyaudio.flac.FlacAudioDecoderProvider;
-    provides be.twofold.tinyaudio.ogg.OggCodec
+    provides be.twofold.tinyaudio.ogg.internal.OggCodec
         with be.twofold.tinyaudio.flac.FlacOggCodec;
 }

@@ -5,7 +5,7 @@ import be.twofold.tinyaudio.core.internal.IOUtils;
 import be.twofold.tinyaudio.core.internal.Packet;
 import be.twofold.tinyaudio.core.internal.PacketSource;
 import be.twofold.tinyaudio.flac.metadata.StreamInfo;
-import be.twofold.tinyaudio.ogg.OggCodec;
+import be.twofold.tinyaudio.ogg.internal.OggCodec;
 
 import java.io.IOException;
 import java.util.Optional;

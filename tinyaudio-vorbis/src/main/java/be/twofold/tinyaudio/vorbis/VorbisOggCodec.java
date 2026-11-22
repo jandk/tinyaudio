@@ -3,7 +3,7 @@ package be.twofold.tinyaudio.vorbis;
 import be.twofold.tinyaudio.core.AudioDecoder;
 import be.twofold.tinyaudio.core.internal.Packet;
 import be.twofold.tinyaudio.core.internal.PacketSource;
-import be.twofold.tinyaudio.ogg.OggCodec;
+import be.twofold.tinyaudio.ogg.internal.OggCodec;
 
 import java.io.IOException;
 import java.util.Optional;

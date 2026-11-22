@@ -1,8 +1,8 @@
 package be.twofold.tinyaudio.opus;
 
 import be.twofold.tinyaudio.core.AudioDecoder;
-import be.twofold.tinyaudio.ogg.OggPacketReader;
-import be.twofold.tinyaudio.ogg.OggPageReader;
+import be.twofold.tinyaudio.ogg.internal.OggPacketReader;
+import be.twofold.tinyaudio.ogg.internal.OggPageReader;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 

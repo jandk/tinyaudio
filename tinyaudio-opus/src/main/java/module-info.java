@@ -5,6 +5,6 @@ module be.twofold.tinyaudio.opus {
 
     exports be.twofold.tinyaudio.opus;
 
-    provides be.twofold.tinyaudio.ogg.OggCodec
+    provides be.twofold.tinyaudio.ogg.internal.OggCodec
         with be.twofold.tinyaudio.opus.OpusOggCodec;
 }

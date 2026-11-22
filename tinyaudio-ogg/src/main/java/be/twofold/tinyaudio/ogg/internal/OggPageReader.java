@@ -1,4 +1,6 @@
-package be.twofold.tinyaudio.ogg;
+package be.twofold.tinyaudio.ogg.internal;
+
+import be.twofold.tinyaudio.ogg.OggException;
 
 import java.io.*;
 

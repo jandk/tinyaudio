@@ -1,4 +1,4 @@
-package be.twofold.tinyaudio.ogg;
+package be.twofold.tinyaudio.ogg.internal;
 
 import be.twofold.tinyaudio.core.AudioDecoder;
 import be.twofold.tinyaudio.core.internal.Packet;

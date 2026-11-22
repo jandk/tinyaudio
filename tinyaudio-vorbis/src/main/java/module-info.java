@@ -4,6 +4,6 @@ module be.twofold.tinyaudio.vorbis {
 
     exports be.twofold.tinyaudio.vorbis;
 
-    provides be.twofold.tinyaudio.ogg.OggCodec
+    provides be.twofold.tinyaudio.ogg.internal.OggCodec
         with be.twofold.tinyaudio.vorbis.VorbisOggCodec;
 }

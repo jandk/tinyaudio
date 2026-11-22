@@ -1,7 +1,8 @@
-package be.twofold.tinyaudio.ogg;
+package be.twofold.tinyaudio.ogg.internal;
 
 import be.twofold.tinyaudio.core.internal.CRC;
 import be.twofold.tinyaudio.core.internal.IOUtils;
+import be.twofold.tinyaudio.ogg.OggException;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -14,7 +15,7 @@ import java.util.stream.IntStream;
 public final class OggPage {
     private static final int HEADER_SIZE = 27;
     static final int MAX_PAGE_SIZE = HEADER_SIZE + 255 + 255 * 255;
-    static final byte[] MAGIC = {'O', 'g', 'g', 'S'};
+    public static final byte[] MAGIC = {'O', 'g', 'g', 'S'};
 
     private final byte headerTypeFlag;
     private final long granulePosition;

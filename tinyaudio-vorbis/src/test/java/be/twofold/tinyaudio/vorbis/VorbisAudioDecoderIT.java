@@ -1,8 +1,8 @@
 package be.twofold.tinyaudio.vorbis;
 
 import be.twofold.tinyaudio.core.internal.Packet;
-import be.twofold.tinyaudio.ogg.OggPacketReader;
-import be.twofold.tinyaudio.ogg.OggPageReader;
+import be.twofold.tinyaudio.ogg.internal.OggPacketReader;
+import be.twofold.tinyaudio.ogg.internal.OggPageReader;
 import com.sun.jna.Memory;
 import com.sun.jna.NativeLong;
 import com.sun.jna.Platform;

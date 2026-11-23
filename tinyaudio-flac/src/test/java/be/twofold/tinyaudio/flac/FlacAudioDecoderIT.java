@@ -58,15 +58,23 @@ class FlacAudioDecoderIT {
                 MessageDigest md5 = MessageDigest.getInstance("MD5");
                 int channels = info.channels();
                 int bytes = (info.bitsPerSample() + 7) / 8;
-                int[][] pcm = new int[channels][info.maxBlockSizeOrDefault()];
-                byte[] buffer = new byte[pcm[0].length * channels * bytes];
+                int frames = info.maxBlockSizeOrDefault();
+                float[][] pcm = new float[channels][frames];
+                byte[] buffer = new byte[frames * channels * bytes];
 
-                for (int n; (n = decoder.decodeInt(pcm)) >= 0; ) {
+                // And here we get back our original samples.
+                float scale = 1 << (info.bitsPerSample() - 1);
+                while (true) {
+                    int n = decoder.read(pcm, 0, frames);
+                    if (n < 0) {
+                        break;
+                    }
                     int pos = 0;
                     for (int i = 0; i < n; i++) {
                         for (int c = 0; c < channels; c++) {
+                            int sample = (int) (pcm[c][i] * scale);
                             for (int b = 0; b < bytes; b++) {
-                                buffer[pos++] = (byte) (pcm[c][i] >> (8 * b));
+                                buffer[pos++] = (byte) (sample >> (8 * b));
                             }
                         }
                     }

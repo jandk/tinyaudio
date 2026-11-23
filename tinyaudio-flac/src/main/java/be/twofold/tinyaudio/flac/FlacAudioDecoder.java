@@ -40,33 +40,24 @@ final class FlacAudioDecoder extends BlockAudioDecoder {
     }
 
     @Override
-    protected int decodeBlock(short[][] pcm) throws IOException {
-        int samples = decodeInt(pcmInt);
-
-        int shift = streamInfo.bitsPerSample() - 16;
-        for (int ch = 0; ch < pcm.length; ch++) {
-            int[] src = pcmInt[ch];
-            short[] dst = pcm[ch];
-            if (shift >= 0) {
-                for (int i = 0; i < samples; i++) {
-                    dst[i] = (short) (src[i] >> shift);
-                }
-            } else {
-                for (int i = 0; i < samples; i++) {
-                    dst[i] = (short) (src[i] << -shift);
-                }
-            }
-        }
-        return samples;
-    }
-
-    int decodeInt(int[][] pcm) throws IOException {
+    protected int decodeBlock(float[][] pcm) throws IOException {
         Packet packet = packets.next();
         if (packet == null) {
             return -1;
         }
         byte[] data = packet.data();
-        return decoder.decodeFrame(data, 0, data.length, pcm, packet.finished());
+        int samples = decoder.decodeFrame(data, 0, data.length, pcmInt, packet.finished());
+
+        // It's a power of two, so it's exact.
+        float factor = 1.0f / (1 << (streamInfo.bitsPerSample() - 1));
+        for (int ch = 0; ch < pcm.length; ch++) {
+            int[] src = pcmInt[ch];
+            float[] dst = pcm[ch];
+            for (int i = 0; i < samples; i++) {
+                dst[i] = src[i] * factor;
+            }
+        }
+        return samples;
     }
 
     @Override

@@ -80,7 +80,7 @@ class OpusAudioDecoderIT {
                 if (n < 0) {
                     break;
                 }
-                assertThat(decoder.rangeFinal)
+                assertThat(decoder.rangeFinal())
                     .as("final range at frame %d", frames)
                     .isEqualTo(packets.rangeFinal);
                 for (int i = 0; i < n; i++) {

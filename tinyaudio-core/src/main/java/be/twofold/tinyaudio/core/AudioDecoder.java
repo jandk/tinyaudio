@@ -30,8 +30,9 @@ public interface AudioDecoder extends Closeable {
     /**
      * Reads up to {@code len} frames into planar buffers, one array per channel.
      *
-     * <p>Samples are signed 16-bit. Higher bit depths are truncated, lower ones are shifted up. Channels are in the
-     * codec's order: WAVE order for FLAC, Vorbis order for Vorbis and Opus.
+     * <p>Samples are signed 16-bit, converted from the float output: scaled by 32768, rounded and clamped. Opus is
+     * soft clipped first, like libopus does for 16-bit output. Channels are in the codec's order: WAVE order for
+     * FLAC, Vorbis order for Vorbis and Opus.
      *
      * <p>At least one frame is read, unless {@code len} is zero or the stream has ended. Fewer frames than requested
      * may be returned, even before the end.
@@ -45,6 +46,26 @@ public interface AudioDecoder extends Closeable {
      * @throws IOException                if reading fails
      */
     int read(short[][] pcm, int off, int len) throws IOException;
+
+    /**
+     * Reads up to {@code len} frames into planar buffers, one array per channel.
+     *
+     * <p>Samples are floats, where full scale is -1.0 to +1.0. FLAC samples are divided by a power of two, so they
+     * are exact. Vorbis and Opus can overshoot full scale, and are not clipped. Channels are in the same order as for
+     * {@link #read(short[][], int, int)}, and both methods read from the same position.
+     *
+     * <p>At least one frame is read, unless {@code len} is zero or the stream has ended. Fewer frames than requested
+     * may be returned, even before the end.
+     *
+     * @param pcm the destination, with at least {@link AudioInfo#channels()} arrays
+     * @param off the offset in each array to start writing at
+     * @param len the maximum number of frames to read
+     * @return the number of frames read, or {@code -1} at the end of the stream
+     * @throws UnsupportedFormatException if the stream uses a feature that is not supported, like SILK in Opus
+     * @throws AudioFormatException       if the data is invalid
+     * @throws IOException                if reading fails
+     */
+    int read(float[][] pcm, int off, int len) throws IOException;
 
     /**
      * Opens a decoder for a file. The decoder closes the file when closed.

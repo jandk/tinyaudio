@@ -4,7 +4,6 @@ import be.twofold.tinyaudio.core.AudioInfo;
 import be.twofold.tinyaudio.core.internal.BlockAudioDecoder;
 import be.twofold.tinyaudio.core.internal.Packet;
 import be.twofold.tinyaudio.core.internal.PacketSource;
-import be.twofold.tinyaudio.core.internal.PcmUtils;
 import be.twofold.tinyaudio.ogg.internal.OggTrim;
 import be.twofold.tinyaudio.vorbis.internal.Identification;
 import be.twofold.tinyaudio.vorbis.internal.Setup;
@@ -17,7 +16,6 @@ final class VorbisAudioDecoder extends BlockAudioDecoder {
     private final PacketSource packets;
     private final Identification identification;
     private final VorbisDecoder decoder;
-    private final float[][] pcmFloat;
     private final OggTrim oggTrim = new OggTrim();
 
     VorbisAudioDecoder(PacketSource packets, Identification identification, Setup setup) {
@@ -25,7 +23,6 @@ final class VorbisAudioDecoder extends BlockAudioDecoder {
         this.packets = Objects.requireNonNull(packets);
         this.identification = Objects.requireNonNull(identification);
         this.decoder = new VorbisDecoder(identification, setup);
-        this.pcmFloat = new float[identification.channels()][identification.blockSize1()];
     }
 
     @Override
@@ -38,8 +35,8 @@ final class VorbisAudioDecoder extends BlockAudioDecoder {
         );
     }
 
-    // TODO: Decode float for all?
-    int decodeFloat(float[][] pcm) throws IOException {
+    @Override
+    protected int decodeBlock(float[][] pcm) throws IOException {
         Packet packet = packets.next();
         if (packet == null) {
             return -1;
@@ -57,15 +54,6 @@ final class VorbisAudioDecoder extends BlockAudioDecoder {
             }
         }
         return count;
-    }
-
-    @Override
-    protected int decodeBlock(short[][] pcm) throws IOException {
-        int frames = decodeFloat(pcmFloat);
-        for (int ch = 0; ch < identification.channels(); ch++) {
-            PcmUtils.floatToPcm(pcmFloat[ch], 0, 1, pcm[ch], 0, Math.max(frames, 0));
-        }
-        return frames;
     }
 
     @Override

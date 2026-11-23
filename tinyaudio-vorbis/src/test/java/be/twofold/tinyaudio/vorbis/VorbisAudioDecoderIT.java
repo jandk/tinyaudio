@@ -140,7 +140,7 @@ class VorbisAudioDecoderIT {
 
             int frames = 0;
             while (true) {
-                int n = decoder.decodeFloat(pcm);
+                int n = decoder.read(pcm, 0, pcm[0].length);
                 if (n < 0) {
                     break;
                 }

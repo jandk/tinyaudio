@@ -1,7 +1,10 @@
 package be.twofold.tinyaudio.opus;
 
 import be.twofold.tinyaudio.core.AudioInfo;
-import be.twofold.tinyaudio.core.internal.*;
+import be.twofold.tinyaudio.core.internal.BlockAudioDecoder;
+import be.twofold.tinyaudio.core.internal.MathUtils;
+import be.twofold.tinyaudio.core.internal.Packet;
+import be.twofold.tinyaudio.core.internal.PacketSource;
 import be.twofold.tinyaudio.ogg.internal.OggTrim;
 import be.twofold.tinyaudio.opus.internal.OpusMsDecoder;
 
@@ -18,7 +21,6 @@ final class OpusAudioDecoder extends BlockAudioDecoder {
     private final OggTrim trim = new OggTrim();
 
     private int skip;
-    int rangeFinal;
 
     OpusAudioDecoder(PacketSource packets, OpusIdentification identification) {
         super(identification.channels(), MAX_BLOCK_SIZE);
@@ -35,6 +37,10 @@ final class OpusAudioDecoder extends BlockAudioDecoder {
         this.skip = identification.preSkip();
     }
 
+    int rangeFinal() {
+        return decoder.rng();
+    }
+
     @Override
     public AudioInfo info() {
         return new AudioInfo(
@@ -46,16 +52,14 @@ final class OpusAudioDecoder extends BlockAudioDecoder {
     }
 
     @Override
-    protected int decodeBlock(short[][] pcm) throws IOException {
+    protected int decodeBlock(float[][] pcm) throws IOException {
         Packet packet = packets.next();
         if (packet == null) {
             return -1;
         }
 
-        int samples = decoder.opus_multistream_decode_native(
-            packet.data(), 0, packet.data().length,
-            pcmFloat, 0, MAX_BLOCK_SIZE
-        );
+        byte[] data = packet.data();
+        int samples = decoder.opus_multistream_decode_native(data, 0, data.length, pcm, 0, MAX_BLOCK_SIZE);
 
         trim.update(packet, samples);
         int start = trim.start();
@@ -65,13 +69,30 @@ final class OpusAudioDecoder extends BlockAudioDecoder {
         start += skipped;
         count -= skipped;
 
-        softClip(start, count);
-        for (int c = 0; c < identification.channels(); c++) {
-            PcmUtils.floatToPcm(pcmFloat[c], start, 1, pcm[c], 0, count);
+        if (start > 0) {
+            for (float[] channel : pcm) {
+                System.arraycopy(channel, start, channel, 0, count);
+            }
+        }
+        return count;
+    }
+
+    @Override
+    public int read(short[][] pcm, int off, int len) throws IOException {
+        int frames = read(pcmFloat, 0, Math.min(len, MAX_BLOCK_SIZE));
+        if (frames <= 0) {
+            return frames;
         }
 
-        this.rangeFinal = decoder.rng();
-        return count;
+        softClip(frames);
+        for (int c = 0; c < pcmFloat.length; c++) {
+            float[] src = pcmFloat[c];
+            short[] dst = pcm[c];
+            for (int i = 0; i < frames; i++) {
+                dst[off + i] = toShort(src[i]);
+            }
+        }
+        return frames;
     }
 
     @Override
@@ -80,11 +101,12 @@ final class OpusAudioDecoder extends BlockAudioDecoder {
     }
 
     // opus_pcm_soft_clip_impl
-    private void softClip(int off, int len) {
+    private void softClip(int len) {
         if (len < 1) {
             return;
         }
-        int end = off + len;
+        int off = 0;
+        int end = len;
 
         for (int c = 0; c < pcmFloat.length; c++) {
             float[] x = pcmFloat[c];

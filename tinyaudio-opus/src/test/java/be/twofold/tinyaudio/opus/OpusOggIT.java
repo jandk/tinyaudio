@@ -31,7 +31,12 @@ class OpusOggIT {
             short[][] pcm = new short[channels][MAX_FRAMES];
 
             int frames = 0;
-            for (int n; (n = decoder.read(pcm, 0, MAX_FRAMES)) >= 0; ) {
+            while (true) {
+                int n = decoder.read(pcm, 0, MAX_FRAMES);
+                if (n < 0) {
+                    break;
+                }
+
                 assertThat(frames + n)
                     .as("decoded frames, reference has %d", expected)
                     .isLessThanOrEqualTo(expected);

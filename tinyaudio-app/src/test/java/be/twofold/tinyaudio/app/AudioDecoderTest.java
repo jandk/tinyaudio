@@ -80,7 +80,11 @@ class AudioDecoderTest {
     private static long decodeAll(AudioDecoder decoder) throws IOException {
         short[][] pcm = new short[decoder.info().channels()][4096];
         long total = 0;
-        for (int n; (n = decoder.read(pcm, 0, 4096)) >= 0; ) {
+        while (true) {
+            int n = decoder.read(pcm, 0, 4096);
+            if (n < 0) {
+                break;
+            }
             total += n;
         }
         return total;

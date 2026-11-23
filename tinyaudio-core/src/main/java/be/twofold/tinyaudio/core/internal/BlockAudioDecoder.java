@@ -5,38 +5,70 @@ import be.twofold.tinyaudio.core.AudioDecoder;
 import java.io.IOException;
 
 public abstract class BlockAudioDecoder implements AudioDecoder {
-    private final short[][] buffer;   // new short[channels][blockSize]
+    private final float[][] pcmFloat;
     private int position;
     private int available;
 
     protected BlockAudioDecoder(int channels, int blockSize) {
-        buffer = new short[channels][blockSize];
+        pcmFloat = new float[channels][blockSize];
     }
 
     /**
-     * Decodes one block into pcm. Returns the frame count, or -1 at EOF.
+     * Decodes one block into pcm, starting at index 0. Returns the frame count, or -1 at EOF.
      */
-    protected abstract int decodeBlock(short[][] pcm) throws IOException;
+    protected abstract int decodeBlock(float[][] pcm) throws IOException;
 
     @Override
     public int read(short[][] pcm, int off, int len) throws IOException {
         if (len == 0) {
             return 0;
         }
+        if (!fill()) {
+            return -1;
+        }
+
+        int count = Math.min(len, available - position);
+        for (int ch = 0; ch < pcmFloat.length; ch++) {
+            float[] src = pcmFloat[ch];
+            short[] dst = pcm[ch];
+            for (int i = 0; i < count; i++) {
+                dst[off + i] = toShort(src[position + i]);
+            }
+        }
+        position += count;
+        return count;
+    }
+
+    @Override
+    public int read(float[][] pcm, int off, int len) throws IOException {
+        if (len == 0) {
+            return 0;
+        }
+        if (!fill()) {
+            return -1;
+        }
+
+        int count = Math.min(len, available - position);
+        for (int ch = 0; ch < pcmFloat.length; ch++) {
+            System.arraycopy(pcmFloat[ch], position, pcm[ch], off, count);
+        }
+        position += count;
+        return count;
+    }
+
+    protected short toShort(float sample) {
+        return (short) Math.rint(MathUtils.clamp(sample * 32768.0f, -32768.0f, +32767.0f));
+    }
+
+    private boolean fill() throws IOException {
         while (position == available) {
-            int frames = decodeBlock(buffer);
+            int frames = decodeBlock(pcmFloat);
             if (frames < 0) {
-                return -1;
+                return false;
             }
             position = 0;
             available = frames;
         }
-
-        int count = Math.min(len, available - position);
-        for (int ch = 0; ch < buffer.length; ch++) {
-            System.arraycopy(buffer[ch], position, pcm[ch], off, count);
-        }
-        position += count;
-        return count;
+        return true;
     }
 }

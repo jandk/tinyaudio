@@ -10,16 +10,15 @@ TinyAudio decodes FLAC, Vorbis and Opus. It's written in pure Java (11+), withou
 native to ship, with a focus on accuracy.
 
 Another one spun off from [Valen](https://github.com/jandk/valen), like [TinyBCDec](https://github.com/jandk/tinybcdec)
-before it. Games ship their audio as Ogg Vorbis and Opus, and I wanted to play it without converting it first. Java
-Sound
+before it. Games ship their audio as Ogg Vorbis and Opus, and I wanted to play it without converting it first. Java Sound
 reads WAV, AIFF and AU, and that's about it. So, as is tradition, I wrote my own.
 
 ## What does it do?
 
 | Codec  | Container   | Extension       | Support                                          |
 |--------|-------------|-----------------|--------------------------------------------------|
-| FLAC   | Native, Ogg | `.flac`, `.oga` | ✅ Up to 24 bits per sample                      |
-| Vorbis | Ogg         | `.ogg`          | ✅ Vorbis I, so all of it                        |
+| FLAC   | Native, Ogg | `.flac`, `.oga` | ✅ Up to 24 bits per sample                       |
+| Vorbis | Ogg         | `.ogg`          | ✅ Vorbis I, so all of it                         |
 | Opus   | Ogg         | `.opus`         | 🟡 CELT only, but including multichannel streams |
 
 ✅ Supported · 🟡 Partial
@@ -39,14 +38,14 @@ come along by themselves.
     <version>0.1</version>
 </dependency>
 <dependency>
-<groupId>be.twofold</groupId>
-<artifactId>tinyaudio-opus</artifactId>
-<version>0.1</version>
+    <groupId>be.twofold</groupId>
+    <artifactId>tinyaudio-opus</artifactId>
+    <version>0.1</version>
 </dependency>
 <dependency>
-<groupId>be.twofold</groupId>
-<artifactId>tinyaudio-vorbis</artifactId>
-<version>0.1</version>
+    <groupId>be.twofold</groupId>
+    <artifactId>tinyaudio-vorbis</artifactId>
+    <version>0.1</version>
 </dependency>
 ```
 
@@ -62,18 +61,18 @@ There are two ways in. The `AudioDecoder` API gives you the samples, Java Sound 
 closing one closes the other.
 
 ```java
-try(AudioDecoder decoder = AudioDecoder.open(Path.of("music.flac"))){
-AudioInfo info = decoder.info();
-float[][] pcm = new float[info.channels()][4096];
+try (AudioDecoder decoder = AudioDecoder.open(Path.of("music.flac"))) {
+    AudioInfo info = decoder.info();
+    float[][] pcm = new float[info.channels()][4096];
 
-    while(true){
-int frames = decoder.read(pcm, 0, 4096);
-        if(frames< 0){
-    break;
+    while (true) {
+        int frames = decoder.read(pcm, 0, 4096);
+        if (frames < 0) {
+            break;
+        }
+        // pcm[channel][0 .. frames] has your samples
     }
-    // pcm[channel][0 .. frames] has your samples
-    }
-    }
+}
 ```
 
 `AudioInfo` has the sample rate, the channel count and the length in frames. A frame is one sample for every channel,
@@ -88,9 +87,9 @@ If you'd rather not deal with any of that, the core module registers itself with
 every supported format as 16-bit PCM, and you treat it like any WAV file.
 
 ```java
-try(AudioInputStream in = AudioSystem.getAudioInputStream(new File("music.opus"))){
+try (AudioInputStream in = AudioSystem.getAudioInputStream(new File("music.opus"))) {
     // 16-bit signed little endian, ready for a SourceDataLine
-    }
+}
 ```
 
 Passing an `InputStream` works too, as long as it supports mark and reset. Java Sound has always wanted that, so wrap it
@@ -142,8 +141,7 @@ Everything that goes wrong is an `IOException`, and the ones about the data itse
 Accuracy was the whole point, so every codec is tested against its reference decoder, using the official test files
 where there are any.
 
-FLAC is the easy one, being lossless. Every file in
-the [IETF test files](https://github.com/ietf-wg-cellar/flac-test-files)
+FLAC is the easy one, being lossless. Every file in the [IETF test files](https://github.com/ietf-wg-cellar/flac-test-files)
 carries an MD5 of its audio, and the output has to match it. All 64 subset files do, and so do the 4 uncommon ones with
 features I support.
 
